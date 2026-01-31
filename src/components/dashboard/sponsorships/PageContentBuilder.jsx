@@ -389,7 +389,6 @@ export default function PageContentBuilder({ setActiveTab }) {
                                             <div className="relative">
                                                 <button
                                                     onClick={() => setShowStockPicker(showStockPicker === block.id ? null : block.id)}
-                                                    onClick={() => setShowStockPicker(block.id)}
                                                     className="text-sm font-bold text-primary hover:underline flex items-center gap-1"
                                                 >
                                                     <ImageIcon className="w-4 h-4" /> Choose from Stock Library
