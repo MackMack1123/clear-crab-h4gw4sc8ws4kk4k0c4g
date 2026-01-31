@@ -39,6 +39,7 @@ const UserSchema = new mongoose.Schema({
     // embedded organization profile
     organizationProfile: {
         orgName: String,
+        slug: String, // Public handle for this organization
         contactEmail: String,
         website: String, // Matched to frontend "website"
         logoUrl: String,
