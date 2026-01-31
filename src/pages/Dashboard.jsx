@@ -205,19 +205,18 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            </div>
           </div>
+        </div>
 
-          {/* Settings */}
-          <div className="pt-4 mt-4 border-t border-slate-800">
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group ${activeTab === 'settings' ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-            >
-              <Settings className={`w-5 h-5 ${activeTab === 'settings' ? 'text-white' : 'text-slate-500 group-hover:text-white transition-colors'}`} />
-              Settings
-            </button>
-          </div>
+        {/* Settings */}
+        <div className="pt-4 mt-4 border-t border-slate-800">
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group ${activeTab === 'settings' ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+          >
+            <Settings className={`w-5 h-5 ${activeTab === 'settings' ? 'text-white' : 'text-slate-500 group-hover:text-white transition-colors'}`} />
+            Settings
+          </button>
         </div>
       </nav>
 
