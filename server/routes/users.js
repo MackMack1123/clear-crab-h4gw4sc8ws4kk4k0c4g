@@ -8,21 +8,17 @@ router.get('/check-slug/:slug', async (req, res) => {
         const { slug } = req.params;
         const userId = req.query.userId; // Exclude current user from check
 
-        try {
-            const { slug } = req.params;
-            const userId = req.query.userId; // Exclude current user from check
-
-            const query = { slug: slug };
-            if (userId) {
-                query._id = { $ne: userId };
-            }
-
-            const existing = await User.findOne(query);
-            res.json({ available: !existing });
-        } catch (err) {
-            res.status(500).json({ error: err.message });
+        const query = { slug: slug };
+        if (userId) {
+            query._id = { $ne: userId };
         }
-    });
+
+        const existing = await User.findOne(query);
+        res.json({ available: !existing });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Get User (by ID or Slug)
 router.get('/:id', async (req, res) => {
