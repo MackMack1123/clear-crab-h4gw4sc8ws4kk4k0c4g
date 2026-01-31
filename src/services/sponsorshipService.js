@@ -1,4 +1,5 @@
-const API_URL = 'http://localhost:3001/api/sponsorships';
+import { API_BASE_URL } from '../config';
+const API_URL = `${API_BASE_URL}/api/sponsorships`;
 
 export const sponsorshipService = {
     // --- Sponsorship Packages ---
@@ -117,7 +118,7 @@ export const sponsorshipService = {
 
     // Create Stripe Checkout Session
     createStripeCheckoutSession: async (data) => {
-        const res = await fetch('http://localhost:3001/api/payments/stripe/create-checkout', {
+        const res = await fetch(`${API_BASE_URL}/api/payments/stripe/create-checkout`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)

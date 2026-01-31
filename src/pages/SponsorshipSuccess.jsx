@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Mail } from 'lucide-react';
 import { userService } from '../services/userService';
 import toast from 'react-hot-toast';
+import { API_BASE_URL } from '../config';
 
 export default function SponsorshipSuccess() {
     const [searchParams] = useSearchParams();
@@ -41,7 +42,7 @@ export default function SponsorshipSuccess() {
 
     const verifySession = async () => {
         try {
-            const res = await fetch(`http://localhost:3001/api/payments/stripe/verify-session?sessionId=${sessionId}`);
+            const res = await fetch(`${API_BASE_URL}/api/payments/stripe/verify-session?sessionId=${sessionId}`);
             const data = await res.json();
 
             if (data.verified) {

@@ -4,8 +4,7 @@ import { sponsorshipService } from '../../../services/sponsorshipService';
 import { Plus, Edit2, Trash2, Check, X, Upload, Image as ImageIcon, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../../common/ConfirmModal';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_BASE_URL } from '../../../config';
 
 export default function ManagePackages() {
     const { currentUser } = useAuth();
@@ -68,7 +67,8 @@ export default function ManagePackages() {
             formDataUpload.append('file', file);
             formDataUpload.append('userId', currentUser.uid);
 
-            const response = await fetch(`${API_BASE}/api/upload`, {
+            const response = await fetch(`${API_BASE_URL}/api/upload`, {
+
                 method: 'POST',
                 body: formDataUpload
             });
@@ -95,7 +95,8 @@ export default function ManagePackages() {
             formDataUpload.append('file', file);
             formDataUpload.append('userId', currentUser.uid);
 
-            const response = await fetch(`${API_BASE}/api/upload`, {
+            const response = await fetch(`${API_BASE_URL}/api/upload`, {
+
                 method: 'POST',
                 body: formDataUpload
             });

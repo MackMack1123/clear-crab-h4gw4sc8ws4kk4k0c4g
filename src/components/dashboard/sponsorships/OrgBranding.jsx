@@ -3,6 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { userService } from '../../../services/userService';
 import { Upload, Save, Globe, Mail, Link as LinkIcon, Palette } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { API_BASE_URL } from '../../../config';
 
 export default function OrgBranding() {
     const { currentUser, userProfile: initialProfile } = useAuth();
@@ -36,7 +37,8 @@ export default function OrgBranding() {
         setSlugStatus('checking');
         const timer = setTimeout(async () => {
             try {
-                const res = await fetch(`http://localhost:3001/api/users/check-slug/${profile.slug}?userId=${currentUser.uid}`);
+                const res = await fetch(`${API_BASE_URL}/api/users/check-slug/${profile.slug}?userId=${currentUser.uid}`);
+
                 const data = await res.json();
                 setSlugStatus(data.available ? 'available' : 'taken');
             } catch (err) {
@@ -105,7 +107,8 @@ export default function OrgBranding() {
                 formData.append('slug', profile.slug);
             }
 
-            const res = await fetch('http://localhost:3001/api/upload', {
+            const res = await fetch(`${API_BASE_URL}/api/upload`, {
+
                 method: 'POST',
                 body: formData
             });

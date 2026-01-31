@@ -6,6 +6,7 @@ import { Plus, Trash2, GripVertical, Image as ImageIcon, Save, ArrowUp, ArrowDow
 import { v4 as uuidv4 } from 'uuid';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../../common/ConfirmModal';
+import { API_BASE_URL } from '../../../config';
 
 export default function PageContentBuilder({ setActiveTab }) {
     const { currentUser, userProfile } = useAuth();
@@ -121,7 +122,6 @@ export default function PageContentBuilder({ setActiveTab }) {
         updateBlock(blockId, 'packageIds', newIds);
     };
 
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
     const handleImageUpload = async (blockId, file) => {
         if (!file) return;
@@ -141,7 +141,8 @@ export default function PageContentBuilder({ setActiveTab }) {
             formData.append('file', file);
             formData.append('userId', currentUser.uid);
 
-            const response = await fetch(`${API_BASE}/api/upload`, {
+            const response = await fetch(`${API_BASE_URL}/api/upload`, {
+
                 method: 'POST',
                 body: formData
             });

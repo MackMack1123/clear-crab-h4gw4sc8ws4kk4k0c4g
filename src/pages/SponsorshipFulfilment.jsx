@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { sponsorshipService } from '../services/sponsorshipService';
 import { CheckCircle, Upload, Save, Plus, Trash2, Image } from 'lucide-react';
 import SignPreviewEditor from '../components/sponsor/SignPreviewEditor';
+import { API_BASE_URL } from '../config';
 
 export default function SponsorshipFulfilment() {
     const { currentUser, userProfile } = useAuth();
@@ -78,7 +79,6 @@ export default function SponsorshipFulfilment() {
         }
     };
 
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
     const handleLogoUpload = async (e) => {
         const file = e.target.files[0];
@@ -90,7 +90,8 @@ export default function SponsorshipFulfilment() {
             formDataUpload.append('file', file);
             formDataUpload.append('userId', sponsorshipId);
 
-            const response = await fetch(`${API_BASE}/api/upload`, {
+            const response = await fetch(`${API_BASE_URL}/api/upload`, {
+
                 method: 'POST',
                 body: formDataUpload
             });

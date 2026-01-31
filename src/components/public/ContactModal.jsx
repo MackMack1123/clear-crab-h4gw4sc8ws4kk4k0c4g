@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { X, Send, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_BASE_URL } from '../../config';
 
 export default function ContactModal({ isOpen, onClose, toEmail, orgName }) {
     const [formData, setFormData] = useState({
@@ -29,7 +28,8 @@ export default function ContactModal({ isOpen, onClose, toEmail, orgName }) {
 
         setSending(true);
         try {
-            const response = await fetch(`${API_BASE}/api/contact`, {
+            const response = await fetch(`${API_BASE_URL}/api/contact`, {
+
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

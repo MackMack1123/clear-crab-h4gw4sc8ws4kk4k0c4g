@@ -4,6 +4,7 @@ import { userService } from '../../../services/userService';
 import PaymentGatewaySettings from '../PaymentGatewaySettings';
 import { Mail, CheckCircle2, AlertCircle, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { API_BASE_URL } from '../../../config';
 
 export default function OrgIntegrations() {
     const { userProfile: initialProfile, currentUser } = useAuth();
@@ -26,7 +27,8 @@ export default function OrgIntegrations() {
     }, [initialProfile]);
 
     const connectSlack = () => {
-        window.location.href = `http://localhost:3001/api/slack/auth?userId=${currentUser.uid}`;
+        window.location.href = `${API_BASE_URL}/api/slack/auth?userId=${currentUser.uid}`;
+
     };
 
     const handleSaveCheckSettings = async (e) => {

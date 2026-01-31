@@ -6,6 +6,7 @@ import { signOut } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { campaignService } from '../services/campaignService';
 import { promoteToAdmin } from '../utils/seedData';
+import { API_BASE_URL } from '../config';
 
 import PayoutView from '../components/dashboard/PayoutView';
 import RosterUpload from '../components/dashboard/RosterUpload';
@@ -530,10 +531,10 @@ export default function Dashboard() {
               ) : (
                 <button
                   onClick={() => {
-                    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
                     // Pass the current user ID to the server so it knows who to link
-                    window.location.href = `${apiUrl}/api/auth/github?userId=${currentUser?.uid}`;
+                    window.location.href = `${API_BASE_URL}/api/auth/github?userId=${currentUser?.uid}`;
                   }}
+
                   className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition shadow-lg shadow-gray-900/10 hover:-translate-y-0.5 flex items-center gap-2"
                 >
                   Connect GitHub <ArrowRight className="w-4 h-4" />

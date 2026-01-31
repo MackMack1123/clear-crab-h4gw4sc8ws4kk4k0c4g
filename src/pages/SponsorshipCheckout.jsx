@@ -9,9 +9,11 @@ import { useSponsorship } from '../context/SponsorshipContext';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import SquarePaymentForm from '../components/SquarePaymentForm';
+import { API_BASE_URL } from '../config';
 
 export default function SponsorshipCheckout() {
     const { packageId } = useParams();
+
     const navigate = useNavigate();
     const { cart, cartTotal, clearCart, cartSubtotal, processingFee, coverFees } = useSponsorship();
     const { currentUser, userProfile } = useAuth();
@@ -148,7 +150,8 @@ export default function SponsorshipCheckout() {
             const sponsorshipIds = sponsorships.map(s => s.id);
 
             // 2. Process Payment on Backend
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/payments/square/process-payment`, {
+            const response = await fetch(`${API_BASE_URL}/api/payments/square/process-payment`, {
+
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

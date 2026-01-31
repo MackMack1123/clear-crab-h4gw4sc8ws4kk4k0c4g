@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { CreditCard, Check, X, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { API_BASE_URL } from '../../config';
 
 const GATEWAYS = [
     {
@@ -76,7 +77,8 @@ export default function PaymentGatewaySettings() {
 
         try {
             // Check Stripe
-            const resStripe = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/payments/stripe/account-status?userId=${currentUser.uid}`);
+            const resStripe = await fetch(`${API_BASE_URL}/api/payments/stripe/account-status?userId=${currentUser.uid}`);
+
             const dataStripe = await resStripe.json();
             setStripeStatus(dataStripe);
 
@@ -102,7 +104,8 @@ export default function PaymentGatewaySettings() {
     const connectStripe = async () => {
         setConnecting(true);
         try {
-            const res = await fetch(`http://localhost:3001/api/payments/stripe/connect?userId=${currentUser.uid}`);
+            const res = await fetch(`${API_BASE_URL}/api/payments/stripe/connect?userId=${currentUser.uid}`);
+
             const data = await res.json();
 
             if (data.url) {
@@ -124,7 +127,8 @@ export default function PaymentGatewaySettings() {
         }
 
         try {
-            const res = await fetch('http://localhost:3001/api/payments/stripe/disconnect', {
+            const res = await fetch(`${API_BASE_URL}/api/payments/stripe/disconnect`, {
+
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: currentUser.uid })
@@ -148,7 +152,8 @@ export default function PaymentGatewaySettings() {
     const connectSquare = async () => {
         setConnecting(true);
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/payments/square/connect?userId=${currentUser.uid}`);
+            const res = await fetch(`${API_BASE_URL}/api/payments/square/connect?userId=${currentUser.uid}`);
+
             const data = await res.json();
 
             if (data.url) {
