@@ -52,7 +52,7 @@ export function SponsorshipProvider({ children }) {
         addToCart,
         removeFromCart,
         clearCart,
-        clearCart,
+
         cartSubtotal,
         processingFee,
         coverFees,
