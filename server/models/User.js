@@ -30,6 +30,7 @@ const UserSchema = new mongoose.Schema({
     firstName: String,
     lastName: String,
     teamName: String,
+    slug: { type: String, unique: true, sparse: true }, // Custom URL handle for public page
     role: { type: String, default: 'organizer' }, // organizer, admin
     createdAt: { type: Date, default: Date.now },
     payoutMethod: String,
@@ -43,7 +44,6 @@ const UserSchema = new mongoose.Schema({
         logoUrl: String,
         primaryColor: String,
         description: String,
-        slug: String, // Custom URL handle for public page
         heroSettings: {
             showBadge: { type: Boolean, default: true },
             badgeText: { type: String, default: 'Official Sponsorship Portal' },

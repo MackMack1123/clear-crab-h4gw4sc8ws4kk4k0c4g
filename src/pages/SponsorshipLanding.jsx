@@ -58,7 +58,8 @@ export default function SponsorshipLanding() {
             // Or simpler: If the userData.organizationProfile.slug exists and valid, AND it doesn't match the current param.
 
             const profile = userData.organizationProfile || {};
-            const currentSlug = profile.slug;
+            // Use root slug if available
+            const currentSlug = userData.slug || profile.slug;
             const isVisitingById = organizerId !== currentSlug; // If param is ID, it won't match the slug.
 
             if (isVisitingById) {
@@ -80,8 +81,8 @@ export default function SponsorshipLanding() {
                         counter++;
                     }
 
-                    // Save the new slug
-                    await userService.updateOrganizationProfile(userData._id, { ...profile, slug: finalSlug });
+                    // Save the new slug to the root user object
+                    await userService.updateUser(userData._id, { slug: finalSlug });
 
                     // Redirect
                     navigate(`/org/${finalSlug}`, { replace: true });

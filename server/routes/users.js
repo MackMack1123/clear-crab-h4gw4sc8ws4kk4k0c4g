@@ -8,17 +8,21 @@ router.get('/check-slug/:slug', async (req, res) => {
         const { slug } = req.params;
         const userId = req.query.userId; // Exclude current user from check
 
-        const query = { 'organizationProfile.slug': slug };
-        if (userId) {
-            query._id = { $ne: userId };
-        }
+        try {
+            const { slug } = req.params;
+            const userId = req.query.userId; // Exclude current user from check
 
-        const existing = await User.findOne(query);
-        res.json({ available: !existing });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+            const query = { slug: slug };
+            if (userId) {
+                query._id = { $ne: userId };
+            }
+
+            const existing = await User.findOne(query);
+            res.json({ available: !existing });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
 
 // Get User (by ID or Slug)
 router.get('/:id', async (req, res) => {
@@ -31,7 +35,7 @@ router.get('/:id', async (req, res) => {
 
         // If not found by ID, try to find by slug
         if (!user) {
-            user = await User.findOne({ 'organizationProfile.slug': idOrSlug });
+            user = await User.findOne({ slug: idOrSlug });
         }
 
         if (!user) {
@@ -42,7 +46,7 @@ router.get('/:id', async (req, res) => {
         // If findById throws a CastError (invalid ObjectId format), try slug lookup
         if (err.name === 'CastError') {
             try {
-                const user = await User.findOne({ 'organizationProfile.slug': idOrSlug });
+                const user = await User.findOne({ slug: idOrSlug });
                 if (!user) {
                     return res.status(404).json({ message: 'User not found' });
                 }

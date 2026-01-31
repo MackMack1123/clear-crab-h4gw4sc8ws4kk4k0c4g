@@ -61,9 +61,11 @@ export default function OrgBranding() {
                         ...prev,
                         ...freshProfile.organizationProfile
                     }));
-                    // Track the saved slug to know if editing should be locked
-                    if (freshProfile.organizationProfile.slug) {
-                        setSavedSlug(freshProfile.organizationProfile.slug);
+                    // Prefer root slug
+                    const rootSlug = freshProfile.slug || freshProfile.organizationProfile.slug;
+                    if (rootSlug) {
+                        setProfile(prev => ({ ...prev, slug: rootSlug }));
+                        setSavedSlug(rootSlug);
                         setSlugEditing(false); // Lock by default if slug exists
                     }
                 }
@@ -75,8 +77,10 @@ export default function OrgBranding() {
                         ...prev,
                         ...initialProfile.organizationProfile
                     }));
-                    if (initialProfile.organizationProfile.slug) {
-                        setSavedSlug(initialProfile.organizationProfile.slug);
+                    if (initialProfile.slug || initialProfile.organizationProfile.slug) {
+                        const rootSlug = initialProfile.slug || initialProfile.organizationProfile.slug;
+                        setProfile(prev => ({ ...prev, slug: rootSlug }));
+                        setSavedSlug(rootSlug);
                         setSlugEditing(false);
                     }
                 }
@@ -164,8 +168,9 @@ export default function OrgBranding() {
                     website: profile.website,
                     primaryColor: profile.primaryColor,
                     logoUrl: profile.logoUrl,
-                    slug: profile.slug
-                }
+                    // slug removed from here
+                },
+                slug: profile.slug // Added to root
             };
 
             await userService.updateUser(currentUser.uid, payload);
