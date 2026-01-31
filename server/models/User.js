@@ -74,6 +74,15 @@ const UserSchema = new mongoose.Schema({
         }
     },
 
+    // GitHub Integration (Automation)
+    githubSettings: {
+        connected: { type: Boolean, default: false },
+        username: String,
+        accessToken: String, // Store securely
+        nodeId: String,
+        connectedAt: Date
+    },
+
     // Payment Gateway Settings
     paymentSettings: {
         sandboxMode: { type: Boolean, default: false }, // Sandbox Toggle

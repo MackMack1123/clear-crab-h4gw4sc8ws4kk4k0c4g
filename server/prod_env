@@ -3,19 +3,22 @@ MONGO_URI=mongodb://brett-pnom-mdb:Q2vIdgNQArcE2YmVfSrr8kMPwxm6XhoLu8aRLiHXKRib5
 # Slack Integration Keys (Get these from api.slack.com)
 SLACK_CLIENT_ID=8700343060726.10372233467972
 SLACK_CLIENT_SECRET=02e8309932ffd28a5fab54edb9829462
-SLACK_REDIRECT_URI=https://69366fb7c584fa.lhr.life/api/slack/callback
+# Update this in your Slack App settings to match your production domain
+SLACK_REDIRECT_URI=https://getfundraisr.io/api/slack/callback
 
 # Stripe (Dummy Keys for Development)
 STRIPE_SECRET_KEY=sk_test_dummy12345
 STRIPE_CLIENT_ID=ca_test_dummy12345
-FRONTEND_URL=http://localhost:5173
-API_URL=http://localhost:3001
+
+# Production URLs
+FRONTEND_URL=https://getfundraisr.io
+API_URL=https://getfundraisr.io
 
 # Square
 SQUARE_ACCESS_TOKEN=EAAAl11zv_MOjSxMdoBVl35cdappIUiK6eamGnuo9So08uysXGYGxHJQqE2E9IyX
 SQUARE_APP_ID=sq0idp-cIAmF1iIpgPXFnOab9NTnA
 SQUARE_ENVIRONMENT=production
+
 # GitHub Integration
 GITHUB_CLIENT_ID=Iv23liRvX7R9xEiYwp1S
 GITHUB_CLIENT_SECRET=1c90795a41e039b2970d74f6d050a0f6e4deeb8b
-

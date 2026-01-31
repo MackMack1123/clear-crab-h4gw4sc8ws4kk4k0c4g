@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useNavigate, Link } from 'react-router-dom';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, Github } from 'lucide-react';
 
 export default function OrganizerLogin() {
     const [email, setEmail] = useState('alice@example.com');
@@ -39,6 +39,8 @@ export default function OrganizerLogin() {
             setLoading(false);
         }
     };
+
+
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -92,6 +94,7 @@ export default function OrganizerLogin() {
                         >
                             {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <>Log In <ArrowRight className="w-5 h-5" /></>}
                         </button>
+
                         <div className="mt-6 text-center">
                             <p className="text-sm text-gray-600">
                                 Don't have an account?{' '}
