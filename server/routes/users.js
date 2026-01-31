@@ -29,9 +29,14 @@ router.get('/:id', async (req, res) => {
         // First, try to find by _id (Firebase UID or MongoDB ObjectId)
         user = await User.findById(idOrSlug);
 
-        // If not found by ID, try to find by slug
+        // If not found by ID, try to find by slug (root or nested)
         if (!user) {
-            user = await User.findOne({ slug: idOrSlug });
+            user = await User.findOne({
+                $or: [
+                    { slug: idOrSlug },
+                    { 'organizationProfile.slug': idOrSlug }
+                ]
+            });
         }
 
         if (!user) {
@@ -42,7 +47,12 @@ router.get('/:id', async (req, res) => {
         // If findById throws a CastError (invalid ObjectId format), try slug lookup
         if (err.name === 'CastError') {
             try {
-                const user = await User.findOne({ slug: idOrSlug });
+                const user = await User.findOne({
+                    $or: [
+                        { slug: idOrSlug },
+                        { 'organizationProfile.slug': idOrSlug }
+                    ]
+                });
                 if (!user) {
                     return res.status(404).json({ message: 'User not found' });
                 }
