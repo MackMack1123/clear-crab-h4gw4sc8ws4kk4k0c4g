@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Loader2, DollarSign, TrendingUp, CreditCard, Users, LayoutDashboard, Megaphone, LogOut, BarChart3 } from 'lucide-react';
+import { Loader2, DollarSign, TrendingUp, CreditCard, Users, LayoutDashboard, Megaphone, LogOut, BarChart3, Settings } from 'lucide-react';
 import { payoutService } from '../services/payoutService';
 import { userService } from '../services/userService';
 import { campaignService } from '../services/campaignService';
+import { systemService } from '../services/systemService';
+import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AdminAnalytics from '../components/analytics/AdminAnalytics';
@@ -20,6 +22,7 @@ export default function AdminDashboard() {
     const [payouts, setPayouts] = useState([]);
     const [users, setUsers] = useState([]);
     const [campaigns, setCampaigns] = useState([]);
+    const [systemSettings, setSystemSettings] = useState(null);
 
     // Metrics State
     const [metrics, setMetrics] = useState({
@@ -43,10 +46,11 @@ export default function AdminDashboard() {
                 getDocs(query(collection(db, 'transactions'), orderBy('timestamp', 'desc'), limit(50))),
                 payoutService.getPendingPayouts(),
                 userService.getAllUsers(),
-                campaignService.getAllCampaigns()
+                campaignService.getAllCampaigns(),
+                systemService.getSettings()
             ]);
 
-            const [transResult, payoutsResult, usersResult, campaignsResult] = results;
+            const [transResult, payoutsResult, usersResult, campaignsResult, settingsResult] = results;
 
             // Handle Transactions
             let transData = [];
@@ -82,6 +86,13 @@ export default function AdminDashboard() {
                 console.error("Failed to load campaigns:", campaignsResult.reason);
             }
 
+            // Handle System Settings
+            if (settingsResult.status === 'fulfilled') {
+                setSystemSettings(settingsResult.value);
+            } else {
+                console.error("Failed to load settings:", settingsResult.reason);
+            }
+
             // Calculate Metrics
             const stats = transData.reduce((acc, t) => {
                 acc.grossVolume += (t.amount || 0);
@@ -111,6 +122,28 @@ export default function AdminDashboard() {
             navigate('/login');
         } catch (error) {
             console.error("Failed to log out", error);
+        }
+    };
+
+    const handleUpdateSystemSettings = async (section, key, value) => {
+        if (!systemSettings) return;
+
+        const newSettings = {
+            ...systemSettings,
+            [section]: {
+                ...systemSettings[section],
+                [key]: value
+            }
+        };
+
+        setSystemSettings(newSettings); // Optimistic update
+        try {
+            await systemService.updateSettings(newSettings);
+            toast.success("System settings updated");
+        } catch (error) {
+            console.error("Failed to update settings:", error);
+            toast.error("Failed to save settings");
+            setSystemSettings(systemSettings); // Revert
         }
     };
 
@@ -147,7 +180,9 @@ export default function AdminDashboard() {
                     <SidebarItem icon={BarChart3} label="Analytics" active={activeTab === 'analytics'} onClick={() => { setActiveTab('analytics'); setIsSidebarOpen(false); }} />
                     <SidebarItem icon={Users} label="User Management" active={activeTab === 'users'} onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} />
                     <SidebarItem icon={Megaphone} label="Campaigns" active={activeTab === 'campaigns'} onClick={() => { setActiveTab('campaigns'); setIsSidebarOpen(false); }} />
+
                     <SidebarItem icon={DollarSign} label="Financials" active={activeTab === 'financials'} onClick={() => { setActiveTab('financials'); setIsSidebarOpen(false); }} />
+                    <SidebarItem icon={Settings} label="System" active={activeTab === 'system'} onClick={() => { setActiveTab('system'); setIsSidebarOpen(false); }} />
                 </nav>
 
                 <div className="p-4 border-t border-gray-100">
@@ -166,7 +201,9 @@ export default function AdminDashboard() {
                         {activeTab === 'analytics' && 'Platform Analytics'}
                         {activeTab === 'users' && 'User Management'}
                         {activeTab === 'campaigns' && 'Campaign Management'}
+
                         {activeTab === 'financials' && 'Financial Reports'}
+                        {activeTab === 'system' && 'System Controls'}
                     </h1>
                 </header>
 
@@ -308,6 +345,71 @@ export default function AdminDashboard() {
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {activeTab === 'system' && systemSettings && (
+                    <div className="space-y-8 animate-fadeIn">
+                        {/* Global Payment Controls */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                            <div className="flex items-start gap-4 mb-6">
+                                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                                    <CreditCard className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">Global Payment Methods</h2>
+                                    <p className="text-gray-500">Enable or disable specific payment gateways across the entire platform. This overrides individual organizer settings.</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <ToggleCard
+                                    label="Stripe Payments"
+                                    description="Allow credit card processing via Stripe."
+                                    checked={systemSettings.payments?.stripe}
+                                    onChange={(checked) => handleUpdateSystemSettings('payments', 'stripe', checked)}
+                                />
+                                <ToggleCard
+                                    label="Square Payments"
+                                    description="Allow payments via Square integration."
+                                    checked={systemSettings.payments?.square}
+                                    onChange={(checked) => handleUpdateSystemSettings('payments', 'square', checked)}
+                                />
+                                <ToggleCard
+                                    label="PayPal"
+                                    description="Allow PayPal checkout flow."
+                                    checked={systemSettings.payments?.paypal}
+                                    onChange={(checked) => handleUpdateSystemSettings('payments', 'paypal', checked)}
+                                />
+                                <ToggleCard
+                                    label="Pay by Check"
+                                    description="Allow manual check verification flow."
+                                    checked={systemSettings.payments?.check}
+                                    onChange={(checked) => handleUpdateSystemSettings('payments', 'check', checked)}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Registration Controls */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                            <div className="flex items-start gap-4 mb-6">
+                                <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+                                    <Users className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">Registration Controls</h2>
+                                    <p className="text-gray-500">Manage new user signups and organization onboarding.</p>
+                                </div>
+                            </div>
+
+                            <div className="max-w-xl">
+                                <ToggleCard
+                                    label="Allow New Organization Signups"
+                                    description="If disabled, the /signup page will show a closed message. Existing users can still log in."
+                                    checked={systemSettings.registrations?.organizationsEnabled}
+                                    onChange={(checked) => handleUpdateSystemSettings('registrations', 'organizationsEnabled', checked)}
+                                />
                             </div>
                         </div>
                     </div>

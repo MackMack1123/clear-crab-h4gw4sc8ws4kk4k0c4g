@@ -18,19 +18,22 @@ import {
   Wallet,
   Users,
   Settings,
+  Github,
+  ArrowRight,
   LogOut,
+  Lock,
+  Shield,
+  User,
   Plus,
   ExternalLink,
   Copy,
   Trophy,
   TrendingUp,
-  ArrowRight,
-  HeartHandshake,
-  Github
+  HeartHandshake
 } from 'lucide-react';
 
 export default function Dashboard() {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, updateUserEmail, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [payoutMethod, setPayoutMethod] = useState('');
   const [isEditingPayout, setIsEditingPayout] = useState(false);
@@ -40,6 +43,102 @@ export default function Dashboard() {
   const [selectedCampaignId, setSelectedCampaignId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'campaigns', 'settings', 'sponsorships'
   const [sponsorshipTab, setSponsorshipTab] = useState('sales'); // 'sales', 'packages', 'content', 'settings'
+
+  // Email Update State
+  const [newEmail, setNewEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+
+  // Profile Update State
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [teamName, setTeamName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [slugError, setSlugError] = useState('');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  useEffect(() => {
+    if (userProfile?.email) {
+      setNewEmail(userProfile.email);
+    }
+    if (userProfile) {
+      setFirstName(userProfile.firstName || '');
+      setLastName(userProfile.lastName || '');
+      setTeamName(userProfile.teamName || '');
+      setSlug(userProfile.slug || '');
+    }
+  }, [userProfile]);
+
+  const handleUpdateEmail = async (e) => {
+    e.preventDefault();
+    if (!currentPassword) {
+      toast.error('Current password is required to verify identity');
+      return;
+    }
+
+    setIsUpdatingEmail(true);
+    try {
+      await updateUserEmail(newEmail, currentPassword);
+      toast.success('Email updated successfully!');
+      setCurrentPassword(''); // Clear password
+    } catch (error) {
+      console.error("Email update failed:", error);
+      if (error.code === 'auth/wrong-password') {
+        toast.error('Incorrect password');
+      } else if (error.code === 'auth/email-already-in-use') {
+        toast.error('This email is already associated with another account');
+      } else {
+        toast.error('Failed to update email: ' + error.message);
+      }
+    } finally {
+      setIsUpdatingEmail(false);
+    }
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setSlugError('');
+    setIsUpdatingProfile(true);
+
+    try {
+      // Validate Slug
+      if (slug && slug !== userProfile?.slug) {
+        // Basic format check
+        if (!/^[a-z0-9-]+$/.test(slug)) {
+          setSlugError('Slug can only contain lowercase letters, numbers, and hyphens.');
+          setIsUpdatingProfile(false);
+          return;
+        }
+
+        // Check availability
+        const { userService } = await import('../services/userService');
+        const isAvailable = await userService.checkSlugAvailability(slug, currentUser.uid);
+
+        if (!isAvailable) {
+          setSlugError('This URL is already taken. Please choose another.');
+          setIsUpdatingProfile(false);
+          return;
+        }
+      }
+
+      await import('../services/userService').then(m => m.userService.updateUser(currentUser.uid, {
+        firstName,
+        lastName,
+        teamName,
+        slug: slug || undefined // Only update if set
+      }));
+      // Update local profile immediately for better UX
+      if (refreshProfile) {
+        await refreshProfile();
+      }
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error('Failed to update profile');
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
 
   useEffect(() => {
     if (currentUser) {
@@ -507,38 +606,144 @@ export default function Dashboard() {
                   <h2 className="font-heading text-2xl font-bold text-gray-900 mb-6">Settings & Integrations</h2>
 
                   <div className="space-y-8">
-                    {/* GitHub Integration */}
+                    {/* Personal Information (New) */}
                     <div className="border border-gray-200 rounded-2xl p-6">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-gray-900 rounded-xl flex items-center justify-center text-white">
-                            <Github className="w-7 h-7" />
+                      <div className="flex items-start gap-4 mb-6">
+                        <div className="w-12 h-12 bg-gray-50 text-gray-900 rounded-xl flex items-center justify-center">
+                          <User className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg text-gray-900">Personal Information</h3>
+                          <p className="text-gray-500 text-sm">Update your personal details and team name.</p>
+                        </div>
+                      </div>
+
+                      <form onSubmit={handleUpdateProfile} className="max-w-2xl space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                            <input
+                              type="text"
+                              value={firstName}
+                              onChange={(e) => setFirstName(e.target.value)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                            />
                           </div>
                           <div>
-                            <h3 className="font-bold text-lg text-gray-900">GitHub Automation</h3>
-                            <p className="text-gray-500 text-sm">Connect your GitHub account to automate repository creation for new campaigns.</p>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                            <input
+                              type="text"
+                              value={lastName}
+                              onChange={(e) => setLastName(e.target.value)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                            />
                           </div>
                         </div>
 
-                        {userProfile?.githubSettings?.connected ? (
-                          <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg border border-green-100">
-                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span className="font-bold text-sm">Connected as {userProfile.githubSettings.username}</span>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              // Pass the current user ID to the server so it knows who to link
-                              window.location.href = `${API_BASE_URL}/api/auth/github?userId=${currentUser?.uid}`;
-                            }}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Team Name</label>
+                          <input
+                            type="text"
+                            value={teamName}
+                            onChange={(e) => setTeamName(e.target.value)}
+                            placeholder="e.g. Westside Soccer Club"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                          />
+                        </div>
 
-                            className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition shadow-lg shadow-gray-900/10 hover:-translate-y-0.5 flex items-center gap-2"
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Public Page URL</label>
+                          <div className="flex items-center">
+                            <span className="text-gray-500 bg-gray-50 border border-r-0 border-gray-300 rounded-l-xl px-4 py-2 text-sm">
+                              getfundraisr.io/sponsor/
+                            </span>
+                            <input
+                              type="text"
+                              value={slug}
+                              onChange={(e) => {
+                                setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'));
+                                setSlugError('');
+                              }}
+                              placeholder="my-team-name"
+                              className={`flex-1 min-w-0 w-full px-4 py-2 border rounded-r-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition ${slugError ? 'border-red-300' : 'border-gray-300'}`}
+                            />
+                          </div>
+                          {slugError && <p className="text-xs text-red-600 mt-1 font-medium">{slugError}</p>}
+                          <p className="text-xs text-gray-500 mt-1">This is the link you share with sponsors.</p>
+                        </div>
+
+                        <div className="pt-2">
+                          <button
+                            type="submit"
+                            disabled={isUpdatingProfile}
+                            className="px-6 py-2 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                           >
-                            Connect GitHub <ArrowRight className="w-4 h-4" />
+                            {isUpdatingProfile ? 'Saving...' : 'Save Changes'}
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      </form>
                     </div>
+                    {/* Account Security (New) */}
+                    <div className="border border-gray-200 rounded-2xl p-6">
+                      <div className="flex items-start gap-4 mb-6">
+                        <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+                          <Shield className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg text-gray-900">Account Security</h3>
+                          <p className="text-gray-500 text-sm">Manage your login credentials and sensitive information.</p>
+                        </div>
+                      </div>
+
+                      <form onSubmit={handleUpdateEmail} className="max-w-md space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                          <input
+                            type="email"
+                            required
+                            value={newEmail}
+                            onChange={(e) => setNewEmail(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                          />
+                        </div>
+
+                        {/* Only show password field if email is different */}
+                        {userProfile?.email !== newEmail && (
+                          <div className="animate-in fade-in slide-in-from-top-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Current Password <span className="text-xs text-gray-500 font-normal">(required to verify identity)</span>
+                            </label>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                              <input
+                                type="password"
+                                required
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                placeholder="Enter current password"
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="pt-2">
+                          <button
+                            type="submit"
+                            disabled={userProfile?.email === newEmail || isUpdatingEmail || !newEmail}
+                            className="px-6 py-2 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {isUpdatingEmail ? (
+                              <>Updating...</>
+                            ) : (
+                              <>Update Email</>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+
+
 
                     {/* Other Settings (Placeholder) */}
                     <div className="opacity-50 pointer-events-none">

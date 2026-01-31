@@ -42,7 +42,11 @@ router.post('/', upload.single('file'), (req, res) => {
         fs.renameSync(oldPath, newPath);
 
         // Generate Public URL
-        const baseUrl = process.env.API_URL || 'http://localhost:3001';
+        // Generate Public URL
+        // dynamically determine the base URL from the request
+        const protocol = req.protocol;
+        const host = req.get('host');
+        const baseUrl = `${protocol}://${host}`;
         const fileUrl = `${baseUrl}/uploads/${newFilename}`;
 
         console.log('Local Upload Success:', fileUrl);

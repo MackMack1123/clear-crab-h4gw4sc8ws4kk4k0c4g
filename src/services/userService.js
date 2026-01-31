@@ -58,5 +58,15 @@ export const userService = {
             body: JSON.stringify({ "organizationProfile.heroSettings": heroSettings })
         });
         if (!res.ok) throw new Error('Failed to update hero settings');
+    },
+
+    // Check slug availability
+    checkSlugAvailability: async (slug, userId) => {
+        let url = `${API_URL}/check-slug/${slug}`;
+        if (userId) url += `?userId=${userId}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Failed to check slug availability');
+        const data = await res.json();
+        return data.available;
     }
 };

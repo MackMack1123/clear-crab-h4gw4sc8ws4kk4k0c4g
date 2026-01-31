@@ -1,5 +1,6 @@
 import { db } from '../firebase';
 import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
+import { userService } from '../services/userService';
 
 export const seedData = async () => {
     console.log("Starting seed data...");
@@ -84,10 +85,14 @@ export const seedData = async () => {
     }
 };
 
+
+
+// ... (keep existing imports if needed, but we might not need firestore ones for this function anymore, though seedData main function uses them)
+
 export const promoteToAdmin = async (userId) => {
     if (!userId) return;
     try {
-        await setDoc(doc(db, 'users', userId), { role: 'admin' }, { merge: true });
+        await userService.updateUser(userId, { role: 'admin' });
         alert("User promoted to admin! Refresh the page.");
     } catch (error) {
         console.error("Error promoting user:", error);

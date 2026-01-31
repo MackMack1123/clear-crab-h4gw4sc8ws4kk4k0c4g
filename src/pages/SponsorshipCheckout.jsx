@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { sponsorshipService } from '../services/sponsorshipService';
 import { userService } from '../services/userService';
+import { systemService } from '../services/systemService';
 import { PayPalButtons } from "@paypal/react-paypal-js";
 import { ArrowLeft, ShieldCheck, CreditCard, Loader2 } from 'lucide-react';
 import { useSponsorship } from '../context/SponsorshipContext';
@@ -22,6 +23,7 @@ export default function SponsorshipCheckout() {
     const [singlePkg, setSinglePkg] = useState(null);
     const [loading, setLoading] = useState(true);
     const [organizerProfile, setOrganizerProfile] = useState(null);
+    const [systemSettings, setSystemSettings] = useState(null);
     const [initializingPayment, setInitializingPayment] = useState(false);
     const [isFinished, setIsFinished] = useState(false);
 
@@ -42,6 +44,7 @@ export default function SponsorshipCheckout() {
     const organizerId = checkoutItems.length > 0 ? checkoutItems[0].organizerId : null;
 
     useEffect(() => {
+        systemService.getSettings().then(setSystemSettings);
         if (isFinished) return;
         if (packageId) {
             loadSinglePackage();
@@ -300,7 +303,7 @@ export default function SponsorshipCheckout() {
                                 <>
                                     {/* SQUARE CHECKOUT */}
                                     {
-                                        activeGateway === 'square' && (
+                                        activeGateway === 'square' && systemSettings?.payments?.square !== false && (
                                             <div className="mt-4">
                                                 <SquarePaymentForm
                                                     amount={displayTotal}
@@ -313,7 +316,7 @@ export default function SponsorshipCheckout() {
 
                                     {/* STRIPE CHECKOUT (Real) */}
                                     {
-                                        activeGateway === 'stripe' && (
+                                        activeGateway === 'stripe' && systemSettings?.payments?.stripe !== false && (
                                             <button
                                                 onClick={handleStripeCheckout}
                                                 disabled={initializingPayment}
@@ -326,7 +329,7 @@ export default function SponsorshipCheckout() {
                                     }
 
                                     {/* PAY BY CHECK OPTION */}
-                                    {organizerProfile?.checkSettings?.enabled && (
+                                    {organizerProfile?.checkSettings?.enabled && systemSettings?.payments?.check !== false && (
                                         <button
                                             onClick={async () => {
                                                 if (window.confirm(`You are pledging to pay $${totalAmount} by check. Proceed?`)) {
@@ -368,7 +371,7 @@ export default function SponsorshipCheckout() {
                                     )}
 
                                     {/* PAYPAL CHECKOUT (Fallback or Explicit) */}
-                                    {(!activeGateway || activeGateway === 'paypal') && (
+                                    {(!activeGateway || activeGateway === 'paypal') && systemSettings?.payments?.paypal !== false && (
                                         <div className="space-y-4 pt-4">
                                             {/* Default/Legacy PayPal Flow */}
                                             <PayPalButtons

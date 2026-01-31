@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Security
+.env
+server/.env
+server/prod_env
+

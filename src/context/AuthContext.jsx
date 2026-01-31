@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, reauthenticateWithCredential, EmailAuthProvider, updateEmail } from 'firebase/auth';
 import { userService } from '../services/userService';
 
 const AuthContext = createContext();
@@ -71,12 +71,30 @@ export function AuthProvider({ children }) {
         }
     };
 
+    const updateUserEmail = async (newEmail, password) => {
+        if (!currentUser) throw new Error('No user logged in');
+
+        // 1. Re-authenticate
+        const credential = EmailAuthProvider.credential(currentUser.email, password);
+        await reauthenticateWithCredential(currentUser, credential);
+
+        // 2. Update Firebase Auth (this verifies the email format too)
+        await updateEmail(currentUser, newEmail);
+
+        // 3. Update Backend Profile
+        await userService.updateUser(currentUser.uid, { email: newEmail });
+
+        // 4. Update Local State
+        setUserProfile(prev => ({ ...prev, email: newEmail }));
+    };
+
     const value = {
         currentUser,
         userProfile,
         isAdmin: userProfile?.role === 'admin',
         loading,
-        refreshProfile
+        refreshProfile,
+        updateUserEmail
     };
 
     return (

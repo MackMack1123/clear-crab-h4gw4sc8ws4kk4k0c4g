@@ -3,7 +3,8 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useNavigate, Link } from 'react-router-dom';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, Lock } from 'lucide-react';
+import { systemService } from '../services/systemService';
 
 export default function OrganizerSignup() {
     const [email, setEmail] = useState('');
@@ -12,6 +13,26 @@ export default function OrganizerSignup() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+
+    const [registrationsEnabled, setRegistrationsEnabled] = useState(true);
+    const [checkingSettings, setCheckingSettings] = useState(true);
+
+    useEffect(() => {
+        checkRegistrationStatus();
+    }, []);
+
+    const checkRegistrationStatus = async () => {
+        try {
+            const settings = await systemService.getSettings();
+            if (settings?.registrations?.organizationsEnabled === false) {
+                setRegistrationsEnabled(false);
+            }
+        } catch (error) {
+            console.error("Failed to check registration settings:", error);
+        } finally {
+            setCheckingSettings(false);
+        }
+    };
 
     const handleSignup = async (e) => {
         e.preventDefault();
@@ -37,6 +58,25 @@ export default function OrganizerSignup() {
             setLoading(false);
         }
     };
+
+    if (checkingSettings) {
+        return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    }
+
+    if (!registrationsEnabled) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+                <div className="w-full max-w-md text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-200 rounded-full mb-6">
+                        <Lock className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Registrations Closed</h2>
+                    <p className="text-gray-500 mb-8">New organization signups are currently disabled by the administrator.</p>
+                    <Link to="/" className="text-primary font-bold hover:underline">Return Home</Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">

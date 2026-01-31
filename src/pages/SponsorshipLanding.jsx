@@ -43,16 +43,56 @@ export default function SponsorshipLanding() {
     const loadData = async () => {
         try {
             // First get the user to resolve the ID (if slug was provided)
+            // Note: userService.getUser handles both ID and Slug
             const userData = await userService.getUser(organizerId);
 
             if (!userData) {
                 // specific error handling
+                setLoading(false);
                 return;
             }
+
+            // --- REDIRECT LOGIC ---
+            // If the current URL param looks like a MongoID (24 hex chars) or Firebase UID (typically ~28 chars, mixed case), 
+            // and we have a slug, we should redirect.
+            // Or simpler: If the userData.organizationProfile.slug exists and valid, AND it doesn't match the current param.
+
+            const profile = userData.organizationProfile || {};
+            const currentSlug = profile.slug;
+            const isVisitingById = organizerId !== currentSlug; // If param is ID, it won't match the slug.
+
+            if (isVisitingById) {
+                // CASE 1: Organizer has a slug, but user visited by ID. Redirect to Slug.
+                if (currentSlug) {
+                    navigate(`/org/${currentSlug}`, { replace: true });
+                    return;
+                }
+
+                // CASE 2: Organizer does NOT have a slug (Legacy). Generate one, save it, then redirect.
+                if (!currentSlug && profile.orgName) {
+                    let baseSlug = profile.orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                    let finalSlug = baseSlug;
+                    let counter = 1;
+
+                    // Check availability (simple loop, usually 0 or 1 iteration)
+                    while (!(await userService.checkSlugAvailability(finalSlug, userData._id))) {
+                        finalSlug = `${baseSlug}-${counter}`;
+                        counter++;
+                    }
+
+                    // Save the new slug
+                    await userService.updateOrganizationProfile(userData._id, { ...profile, slug: finalSlug });
+
+                    // Redirect
+                    navigate(`/org/${finalSlug}`, { replace: true });
+                    return;
+                }
+            }
+            // ----------------------
+
             setOrganizer(userData);
 
             // Now that we have the real ID (userData._id), fetch packages
-            // Note: getActivePackages expects a real ID
             const pkgData = await sponsorshipService.getActivePackages(userData._id);
             setPackages(pkgData);
         } catch (error) {
