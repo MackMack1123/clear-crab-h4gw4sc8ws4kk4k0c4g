@@ -22,8 +22,8 @@ router.get('/check-slug/:slug', async (req, res) => {
 
 // Get User (by ID or Slug)
 router.get('/:id', async (req, res) => {
+    const idOrSlug = req.params.id;
     try {
-        const idOrSlug = req.params.id;
         let user;
 
         // First, try to find by _id (Firebase UID or MongoDB ObjectId)
