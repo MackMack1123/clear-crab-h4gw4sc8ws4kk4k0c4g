@@ -160,17 +160,14 @@ export default function OrgBranding() {
 
         setSaving(true);
         try {
-            // All organization data consolidated into organizationProfile
+            // Use dot notation to avoid overwriting entire organizationProfile object
             const payload = {
-                organizationProfile: {
-                    orgName: profile.orgName,
-                    contactEmail: profile.contactEmail,
-                    website: profile.website,
-                    primaryColor: profile.primaryColor,
-                    logoUrl: profile.logoUrl,
-                    // slug removed from here
-                },
-                slug: profile.slug // Added to root
+                'organizationProfile.orgName': profile.orgName,
+                'organizationProfile.contactEmail': profile.contactEmail,
+                'organizationProfile.website': profile.website,
+                'organizationProfile.primaryColor': profile.primaryColor,
+                'organizationProfile.logoUrl': profile.logoUrl,
+                'organizationProfile.slug': profile.slug
             };
 
             await userService.updateUser(currentUser.uid, payload);

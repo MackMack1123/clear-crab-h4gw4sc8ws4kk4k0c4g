@@ -8,9 +8,19 @@ router.get('/check-slug/:slug', async (req, res) => {
         const { slug } = req.params;
         const userId = req.query.userId; // Exclude current user from check
 
-        const query = { slug: slug };
+        const query = {
+            $and: [
+                {
+                    $or: [
+                        { slug: slug },
+                        { 'organizationProfile.slug': slug }
+                    ]
+                }
+            ]
+        };
+
         if (userId) {
-            query._id = { $ne: userId };
+            query.$and.push({ _id: { $ne: userId } });
         }
 
         const existing = await User.findOne(query);
@@ -27,7 +37,7 @@ router.get('/:id', async (req, res) => {
         let user;
 
         // First, try to find by _id (Firebase UID or MongoDB ObjectId)
-        user = await User.findById(idOrSlug);
+        user = await User.findById(idOrSlug).lean();
 
         // If not found by ID, try to find by slug (root or nested)
         if (!user) {
@@ -36,7 +46,7 @@ router.get('/:id', async (req, res) => {
                     { slug: idOrSlug },
                     { 'organizationProfile.slug': idOrSlug }
                 ]
-            });
+            }).lean();
         }
 
         if (!user) {

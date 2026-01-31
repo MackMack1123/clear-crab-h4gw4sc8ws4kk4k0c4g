@@ -30,7 +30,7 @@ const UserSchema = new mongoose.Schema({
     firstName: String,
     lastName: String,
     teamName: String,
-    slug: { type: String, unique: true, sparse: true }, // Custom URL handle for public page
+    // slug moved to organizationProfile
     role: { type: String, default: 'organizer' }, // organizer, admin
     createdAt: { type: Date, default: Date.now },
     payoutMethod: String,
@@ -39,7 +39,7 @@ const UserSchema = new mongoose.Schema({
     // embedded organization profile
     organizationProfile: {
         orgName: String,
-        slug: String, // Public handle for this organization
+        slug: { type: String, unique: true, sparse: true }, // Public handle for this organization
         contactEmail: String,
         website: String, // Matched to frontend "website"
         logoUrl: String,
