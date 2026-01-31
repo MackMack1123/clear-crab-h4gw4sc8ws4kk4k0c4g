@@ -112,6 +112,21 @@ export default function SponsorshipLanding() {
         </div>
     );
 
+    if (!organizer) return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+            <div className="text-center max-w-md">
+                <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span className="text-2xl font-bold text-gray-400">?</span>
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Organization Not Found</h1>
+                <p className="text-gray-600 mb-8">We couldn't find the organization you're looking for. The link might be incorrect or the page is no longer active.</p>
+                <a href="/" className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 shadow-sm text-base font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition">
+                    Return Home
+                </a>
+            </div>
+        </div>
+    );
+
     const orgProfile = organizer?.organizationProfile || {};
     const primaryColor = orgProfile.primaryColor || '#0f172a'; // Default to Slate-900 if missing
 
