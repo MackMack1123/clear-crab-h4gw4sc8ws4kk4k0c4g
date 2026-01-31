@@ -166,9 +166,14 @@ router.post('/create-checkout', async (req, res) => {
             });
         }
 
+        // Check for fee waiver
+        const feesWaived = organizer?.organizationProfile?.waiveFees === true;
+
         // Calculate totals
         const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        let applicationFee = Math.round(subtotal * (PLATFORM_FEE_PERCENT / 100) * 100); // Default fee
+
+        // Default fee is 5% unless waived
+        let applicationFee = feesWaived ? 0 : Math.round(subtotal * (PLATFORM_FEE_PERCENT / 100) * 100);
 
         // Line Items
         const line_items = items.map(item => ({
@@ -184,7 +189,7 @@ router.post('/create-checkout', async (req, res) => {
         }));
 
         // Handle Fee Coverage
-        if (req.body.coverFees) {
+        if (req.body.coverFees && !feesWaived) {
             // User pays the fee. Add it as a line item.
             // Fee is calculated as 5% of subtotal.
             const feeAmountCents = Math.round(subtotal * (PLATFORM_FEE_PERCENT / 100) * 100);
@@ -203,16 +208,10 @@ router.post('/create-checkout', async (req, res) => {
 
             // IMPORTANT: If user covers fee, the application fee (what we take) is equal to this extra amount.
             // The organizer gets the full subtotal.
-            // Stripe logic:
-            // Total Paid = Subtotal + Fee
-            // App Fee = Fee
-            // Transfer to Org = Total Paid - App Fee = Subtotal. (Correct)
             applicationFee = feeAmountCents;
         }
-        // Else (default):
-        // Total Paid = Subtotal
-        // App Fee = 5% of Subtotal
-        // Transfer to Org = Subtotal - 5%. (Correct)
+        // If feesWaived is true, applicationFee remains 0.
+        // If feesWaived is false and not covered, applicationFee is 5% (deducted from subtotal).
 
         // Create Checkout Session
         const session = await stripe.checkout.sessions.create({

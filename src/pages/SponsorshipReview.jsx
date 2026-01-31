@@ -5,7 +5,7 @@ import { ArrowLeft, Trash2, ShieldCheck, LogIn, UserPlus, ArrowRight } from 'luc
 import { useAuth } from '../context/AuthContext';
 
 export default function SponsorshipReview() {
-    const { cart, removeFromCart, cartTotal, cartSubtotal, processingFee, coverFees, toggleCoverFees } = useSponsorship();
+    const { cart, removeFromCart, cartTotal, cartSubtotal, processingFee, coverFees, toggleCoverFees, feesWaived } = useSponsorship();
     const { currentUser } = useAuth();
     const navigate = useNavigate();
 
@@ -63,13 +63,9 @@ export default function SponsorshipReview() {
                     <div className="lg:col-span-2 space-y-4">
                         {cart.map((item, index) => (
                             <div key={`${item.id}-${index}`} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-6 items-start sm:items-center">
-                                {item.imageUrl ? (
+                                {item.imageUrl && (
                                     <div className="w-24 h-24 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
                                         <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
-                                    </div>
-                                ) : (
-                                    <div className="w-24 h-24 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-bold text-xs flex-shrink-0">
-                                        No Image
                                     </div>
                                 )}
                                 <div className="flex-1">
@@ -105,19 +101,21 @@ export default function SponsorshipReview() {
                                     <span>${processingFee.toFixed(2)}</span>
                                 </div>
 
-                                <label className="flex items-start gap-2 pt-2 cursor-pointer group">
-                                    <div className="relative flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            checked={coverFees}
-                                            onChange={toggleCoverFees}
-                                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary mt-0.5"
-                                        />
-                                    </div>
-                                    <span className="text-xs text-gray-500 group-hover:text-gray-700 transition">
-                                        I'd like to cover the 5% processing fee so the organization receives the full amount.
-                                    </span>
-                                </label>
+                                {!feesWaived && (
+                                    <label className="flex items-start gap-2 pt-2 cursor-pointer group">
+                                        <div className="relative flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={coverFees}
+                                                onChange={toggleCoverFees}
+                                                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary mt-0.5"
+                                            />
+                                        </div>
+                                        <span className="text-xs text-gray-500 group-hover:text-gray-700 transition">
+                                            I'd like to cover the 5% processing fee so the organization receives the full amount.
+                                        </span>
+                                    </label>
+                                )}
 
                                 <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-lg text-gray-900">
                                     <span>Total</span>

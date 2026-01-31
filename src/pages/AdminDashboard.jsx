@@ -147,6 +147,29 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleToggleFeeWaiver = async (user) => {
+        const currentVal = user.organizationProfile?.waiveFees || false;
+        const newVal = !currentVal;
+
+        // Optimistic Update
+        const updatedUsers = users.map(u =>
+            u.id === user.id
+                ? { ...u, organizationProfile: { ...u.organizationProfile, waiveFees: newVal } }
+                : u
+        );
+        setUsers(updatedUsers);
+
+        try {
+            // Use dot notation to update only the specific field
+            await userService.updateUser(user.id, { "organizationProfile.waiveFees": newVal });
+            toast.success(`Fee waiver ${newVal ? 'enabled' : 'disabled'} for ${user.email}`);
+        } catch (error) {
+            console.error("Failed to update fee waiver:", error);
+            toast.error("Failed to update status");
+            setUsers(users); // Revert
+        }
+    };
+
     if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
     return (
@@ -262,6 +285,7 @@ export default function AdminDashboard() {
                                     <th className="p-4">User ID</th>
                                     <th className="p-4">Email</th>
                                     <th className="p-4">Role</th>
+                                    <th className="p-4">Fee Waiver</th>
                                     <th className="p-4">Joined</th>
                                 </tr>
                             </thead>
@@ -271,6 +295,17 @@ export default function AdminDashboard() {
                                         <td className="p-4 font-mono text-xs text-gray-500">{u.id}</td>
                                         <td className="p-4 font-medium text-gray-900">{u.email}</td>
                                         <td className="p-4"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">{u.role || 'Organizer'}</span></td>
+                                        <td className="p-4">
+                                            <button
+                                                onClick={() => handleToggleFeeWaiver(u)}
+                                                className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${u.organizationProfile?.waiveFees
+                                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                    }`}
+                                            >
+                                                {u.organizationProfile?.waiveFees ? 'Waived' : 'Standard'}
+                                            </button>
+                                        </td>
                                         <td className="p-4 text-gray-500">{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}</td>
                                     </tr>
                                 ))}

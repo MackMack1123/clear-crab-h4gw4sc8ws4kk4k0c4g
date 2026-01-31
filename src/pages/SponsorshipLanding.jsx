@@ -539,8 +539,8 @@ export default function SponsorshipLanding() {
                                                         <img src={getImageUrl(pkg.imageUrl)} alt={pkg.title} className="w-full h-full object-cover" />
                                                     </div>
                                                 )}
-                                                <div className="flex-1 w-full text-center lg:text-left">
-                                                    <div className="flex flex-col lg:flex-row justify-between items-center lg:items-start mb-6 gap-4">
+                                                <div className="flex-1 w-full text-left">
+                                                    <div className="flex flex-col lg:flex-row justify-between items-start mb-6 gap-4">
                                                         <div>
                                                             <h3 className="text-2xl font-bold text-gray-900 mb-2">{pkg.title}</h3>
                                                             <p className="text-gray-600 max-w-xl">{pkg.description}</p>
@@ -548,7 +548,7 @@ export default function SponsorshipLanding() {
                                                         <div className="text-4xl font-heading font-bold text-gray-900 whitespace-nowrap">${pkg.price}</div>
                                                     </div>
 
-                                                    <div className="flex flex-wrap gap-x-6 gap-y-3 mb-8 justify-center lg:justify-start">
+                                                    <div className="flex flex-wrap gap-x-6 gap-y-3 mb-8 justify-start">
                                                         {pkg.features?.slice(0, 4).map((f, i) => (
                                                             <div key={i} className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
                                                                 <Check className="w-4 h-4 text-green-500" />

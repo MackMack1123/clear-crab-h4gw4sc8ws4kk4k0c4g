@@ -156,22 +156,29 @@ router.post('/process-payment', async (req, res) => {
 
         const idempotencyKey = require('crypto').randomUUID();
 
-        // Create Payment
-        const paymentResponse = await merchantClient.paymentsApi.createPayment({
+        // Create Payment Object
+        const paymentReq = {
             sourceId: sourceId,
             idempotencyKey: idempotencyKey,
             amountMoney: amountMoney,
             autocomplete: true, // Capture immediately
             buyerEmailAddress: payerEmail,
-            note: `Sponsorship Payment`,
-            appFeeMoney: {
-                // Platform Fee: 5%
-                // If coverFees is TRUE, we assume the amount passed ALREADY includes the fee override logic from frontend
-                // e.g. Frontend sent $105. We take $5. Organizer gets $100.
+            note: `Sponsorship Payment`
+        };
+
+        // Check fee waiver - only add app fee if NOT waived
+        const feesWaived = organizer?.organizationProfile?.waiveFees === true;
+
+        if (!feesWaived) {
+            paymentReq.appFeeMoney = {
+                // Platform Fee: 5% (Simplification: We take 5% of gross. 
+                // Improvements needed to match exact coverFee logic if strict accounting required)
                 amount: BigInt(Math.round(amount * 0.05 * 100)),
                 currency: 'USD'
-            }
-        });
+            };
+        }
+
+        const paymentResponse = await merchantClient.paymentsApi.createPayment(paymentReq);
 
         const payment = paymentResponse.result.payment;
 
