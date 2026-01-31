@@ -1,16 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { SquareClient, SquareEnvironment } = require('square');
+const { Client, Environment } = require('square');
 const User = require('../../models/User');
 const Sponsorship = require('../../models/Sponsorship');
 
 // Initialize Square Client
 // Note: We use the platform credentials (your app creds) for these operations
-const client = new SquareClient({
-    environment: process.env.SQUARE_ENVIRONMENT === 'production' ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
-    token: process.env.SQUARE_ACCESS_TOKEN, // 'token' instead of 'accessToken' for new SDK?
+const client = new Client({
+    environment: process.env.SQUARE_ENVIRONMENT === 'production' ? Environment.Production : Environment.Sandbox,
+    accessToken: process.env.SQUARE_ACCESS_TOKEN,
 });
-
 const SQUARE_APP_ID = process.env.SQUARE_APP_ID;
 const API_URL = process.env.API_URL || 'http://localhost:3001';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
