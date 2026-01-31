@@ -5,6 +5,7 @@ import { userService } from '../services/userService';
 import { Check, ArrowRight, HeartHandshake, Star, ShoppingCart, Loader2 } from 'lucide-react';
 import ContactModal from '../components/public/ContactModal';
 import { useSponsorship } from '../context/SponsorshipContext';
+import { API_BASE_URL } from '../config';
 
 export default function SponsorshipLanding() {
     const { organizerId } = useParams(); // Note: Route param might strictly be 'organizerId' in App.jsx, but we treat it as idOrSlug
@@ -23,6 +24,14 @@ export default function SponsorshipLanding() {
             addToCart(pkg, organizer);
             setAddingId(null);
         }, 500);
+    };
+
+    const getImageUrl = (url) => {
+        if (!url) return null;
+        if (url.startsWith('http://localhost:3001')) {
+            return url.replace('http://localhost:3001', API_BASE_URL);
+        }
+        return url;
     };
 
     useEffect(() => {
@@ -74,7 +83,7 @@ export default function SponsorshipLanding() {
                     {/* Logo Only */}
                     <div className="flex items-center">
                         {orgProfile.logoUrl ? (
-                            <img src={orgProfile.logoUrl} alt="Logo" className="h-10 w-auto object-contain" />
+                            <img src={getImageUrl(orgProfile.logoUrl)} alt="Logo" className="h-10 w-auto object-contain" />
                         ) : (
                             <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center text-white font-bold">
                                 {orgProfile.orgName?.charAt(0) || 'F'}
@@ -185,7 +194,7 @@ export default function SponsorshipLanding() {
                                         /* Background Image */
                                         block.imageUrl && (
                                             <img
-                                                src={block.imageUrl}
+                                                src={getImageUrl(block.imageUrl)}
                                                 alt="Hero"
                                                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                                                 style={{ filter: block.blurAmount ? `blur(${block.blurAmount}px)` : 'none' }}
@@ -357,7 +366,7 @@ export default function SponsorshipLanding() {
                                     <div id="packages-section" className="bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-xl shadow-gray-200/50 flex flex-col lg:flex-row group">
                                         <div className="lg:w-1/2 relative min-h-[400px] overflow-hidden">
                                             {pkg.imageUrl ? (
-                                                <img src={pkg.imageUrl} alt={pkg.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                                <img src={getImageUrl(pkg.imageUrl)} alt={pkg.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                             ) : (
                                                 <div className="w-full h-full bg-slate-50 flex items-center justify-center">
                                                     <HeartHandshake className="w-16 h-16 text-slate-200" />
@@ -486,7 +495,7 @@ export default function SponsorshipLanding() {
                                             <div key={pkg.id} className={`relative bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-8 items-center ${block.listStyle === 'image_left' ? '' : 'lg:flex-row-reverse'}`}>
                                                 {block.showImages !== false && block.showImages !== 'false' && pkg.imageUrl && (
                                                     <div className="w-full lg:w-1/3 aspect-[4/3] rounded-2xl overflow-hidden shadow-inner">
-                                                        <img src={pkg.imageUrl} alt={pkg.title} className="w-full h-full object-cover" />
+                                                        <img src={getImageUrl(pkg.imageUrl)} alt={pkg.title} className="w-full h-full object-cover" />
                                                     </div>
                                                 )}
                                                 <div className="flex-1 w-full text-center lg:text-left">
