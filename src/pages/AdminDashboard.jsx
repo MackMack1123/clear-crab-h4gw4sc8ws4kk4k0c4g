@@ -477,3 +477,22 @@ function MetricCard({ title, value, icon: Icon, color, bg = "bg-white" }) {
         </div>
     );
 }
+
+function ToggleCard({ label, description, checked, onChange }) {
+    return (
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <div>
+                <p className="font-bold text-gray-900 text-sm">{label}</p>
+                <p className="text-xs text-gray-500">{description}</p>
+            </div>
+            <button
+                onClick={() => onChange(!checked)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-gray-300'}`}
+            >
+                <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`}
+                />
+            </button>
+        </div>
+    );
+}
