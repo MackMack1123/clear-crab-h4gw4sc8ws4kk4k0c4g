@@ -89,13 +89,16 @@ export const seedData = async () => {
 
 // ... (keep existing imports if needed, but we might not need firestore ones for this function anymore, though seedData main function uses them)
 
-export const promoteToAdmin = async (userId) => {
+export const promoteToAdmin = async (userId, userEmail) => {
     if (!userId) return;
     try {
-        await userService.updateUser(userId, { role: 'admin' });
+        const updates = { role: 'admin' };
+        if (userEmail) updates.email = userEmail; // Required for upsert if user doesn't exist
+
+        await userService.updateUser(userId, updates);
         alert("User promoted to admin! Refresh the page.");
     } catch (error) {
         console.error("Error promoting user:", error);
-        alert("Error promoting user.");
+        alert("Error promoting user: " + error.message);
     }
 };

@@ -66,7 +66,7 @@ export default function Dashboard() {
       setFirstName(userProfile.firstName || '');
       setLastName(userProfile.lastName || '');
       setTeamName(userProfile.teamName || '');
-      setSlug(userProfile.slug || '');
+      setSlug(userProfile.organizationProfile?.slug || userProfile.slug || '');
       setEnableFundraising(userProfile.organizationProfile?.enableFundraising !== false);
     }
   }, [userProfile]);
@@ -127,7 +127,7 @@ export default function Dashboard() {
         firstName,
         lastName,
         teamName,
-        slug: slug || undefined, // Only update if set
+        "organizationProfile.slug": slug || undefined, // Update nested field
         "organizationProfile.enableFundraising": enableFundraising
       };
 
@@ -368,7 +368,7 @@ export default function Dashboard() {
                   <div>
                     <h1 className="text-2xl font-bold text-gray-900">Welcome back, {userProfile?.firstName || 'Organizer'}!</h1>
                     <p className="text-gray-600">Here's what's happening with your campaigns.</p>
-                    <button onClick={() => promoteToAdmin(currentUser?.uid)} className="text-xs text-gray-400 hover:text-primary underline mt-1">
+                    <button onClick={() => promoteToAdmin(currentUser?.uid, currentUser?.email)} className="text-xs text-gray-400 hover:text-primary underline mt-1">
                       (Dev) Make Me Admin
                     </button>
                   </div>

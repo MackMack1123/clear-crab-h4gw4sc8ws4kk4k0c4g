@@ -81,8 +81,8 @@ export default function SponsorshipLanding() {
                         counter++;
                     }
 
-                    // Save the new slug to the root user object
-                    await userService.updateUser(userData._id, { slug: finalSlug });
+                    // Save the new slug to the organization profile
+                    await userService.updateUser(userData._id, { "organizationProfile.slug": finalSlug });
 
                     // Redirect
                     navigate(`/org/${finalSlug}`, { replace: true });

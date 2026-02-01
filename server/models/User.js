@@ -46,6 +46,7 @@ const UserSchema = new mongoose.Schema({
         primaryColor: String,
         description: String,
         waiveFees: { type: Boolean, default: false }, // Admin override to waive fees
+        enableFundraising: { type: Boolean, default: true }, // Feature toggle for fundraising tabs
         heroSettings: {
             showBadge: { type: Boolean, default: true },
             badgeText: { type: String, default: 'Official Sponsorship Portal' },
