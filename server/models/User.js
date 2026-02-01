@@ -51,6 +51,18 @@ const UserSchema = new mongoose.Schema({
             badgeText: { type: String, default: 'Official Sponsorship Portal' },
             title: { type: String, default: 'Support Our Mission' }, // If empty, falls back to "Support [OrgName]"
             description: { type: String, default: 'Connect your brand with our community. Choose a package below to make an impact today.' }
+        },
+        emailTemplates: {
+            receipt: {
+                subject: { type: String, default: 'Receipt: Your contribution to {{orgName}}' },
+                body: { type: String, default: '<p>Dear {{donorName}},</p><p>Thank you for your generous contribution of <strong>{{amount}}</strong> to <strong>{{orgName}}</strong>.</p><p>Your support makes a real difference.</p><p>Transaction ID: {{transactionId}}</p><p>Sincerely,<br>{{orgName}}</p>' },
+                enabled: { type: Boolean, default: true }
+            },
+            welcome: { // For new sponsors/users
+                subject: { type: String, default: 'Welcome to {{orgName}}' },
+                body: { type: String, default: '<p>Hi {{userName}},</p><p>Welcome to <strong>{{orgName}}</strong>! We are thrilled to have you with us.</p>' },
+                enabled: { type: Boolean, default: true }
+            }
         }
     },
 

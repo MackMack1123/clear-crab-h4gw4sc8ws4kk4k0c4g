@@ -293,6 +293,12 @@ export default function Dashboard() {
                   >
                     📊 Analytics
                   </button>
+                  <button
+                    onClick={() => { setActiveTab('sponsorships'); setSponsorshipTab('emails'); }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'sponsorships' && sponsorshipTab === 'emails' ? 'text-purple-400 bg-purple-500/10' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    📧 Email Templates
+                  </button>
                   <a
                     href={`/org/${userProfile?.slug || currentUser.uid}`}
                     target="_blank"

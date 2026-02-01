@@ -3,9 +3,10 @@ import ManagePackages from './sponsorships/ManagePackages';
 import SponsorshipList from './sponsorships/SponsorshipList';
 import SponsorshipSettings from './sponsorships/SponsorshipSettings';
 import PageContentBuilder from './sponsorships/PageContentBuilder';
+import EmailTemplates from './sponsorships/EmailTemplates';
 import OrgAnalytics from '../analytics/OrgAnalytics';
 import { useAuth } from '../../context/AuthContext';
-import { Package, Users, Settings, Share2, Copy, ExternalLink, Check, LayoutTemplate, BarChart3 } from 'lucide-react';
+import { Package, Users, Settings, Share2, Copy, ExternalLink, Check, LayoutTemplate, BarChart3, Mail } from 'lucide-react';
 
 export default function SponsorshipView({ currentTab = 'sales', onTabChange }) {
     const { currentUser } = useAuth();
@@ -92,6 +93,12 @@ export default function SponsorshipView({ currentTab = 'sales', onTabChange }) {
                 >
                     <BarChart3 className="w-4 h-4" /> Analytics
                 </button>
+                <button
+                    onClick={() => handleTabChange('emails')}
+                    className={`flex items-center gap-2 px-6 py-3 border-b-2 font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'emails' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'}`}
+                >
+                    <Mail className="w-4 h-4" /> Emails
+                </button>
             </div>
 
             {/* Content Area */}
@@ -100,6 +107,7 @@ export default function SponsorshipView({ currentTab = 'sales', onTabChange }) {
             {activeTab === 'content' && <PageContentBuilder setActiveTab={handleTabChange} />}
             {activeTab === 'settings' && <SponsorshipSettings />}
             {activeTab === 'analytics' && <OrgAnalytics orgId={currentUser?.uid} />}
+            {activeTab === 'emails' && <EmailTemplates />}
         </div>
     );
 }

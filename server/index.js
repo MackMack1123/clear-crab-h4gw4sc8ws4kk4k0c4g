@@ -33,6 +33,7 @@ app.use('/api/payments/stripe', require('./routes/payments/stripe'));
 app.use('/api/payments/square', require('./routes/payments/square'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/auth/github', require('./routes/auth/github'));
+app.use('/api/email', require('./routes/email'));
 
 app.get('/', (req, res) => {
     res.send('Fundraisr API is running');
