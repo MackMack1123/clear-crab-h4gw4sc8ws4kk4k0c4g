@@ -275,7 +275,7 @@ export default function SponsorshipLanding() {
                 )}
 
                 {/* Dynamic Content Blocks (when publicContent exists) */}
-                {organizer?.publicContent?.length > 0 && (
+                {organizer?.publicContent?.length > 0 && Array.isArray(organizer.publicContent) && (
                     <div className="space-y-32">
                         {organizer.publicContent.map((block, index) => {
                             // WRAPPER FOR CONSTRAINED BLOCKS (Everything except full-width heroes)
@@ -482,7 +482,7 @@ export default function SponsorshipLanding() {
                                     <Wrapper key={block.id}>
                                         <div className="max-w-7xl mx-auto px-4">
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 py-12 border-y border-gray-100">
-                                                {(block.stats && block.stats.length > 0 ? block.stats : [
+                                                {(Array.isArray(block.stats) && block.stats.length > 0 ? block.stats : [
                                                     { value: '500+', label: 'Local Families' },
                                                     { value: '50+', label: 'Active Teams' },
                                                     { value: '12k', label: 'Annual Visitors' },
