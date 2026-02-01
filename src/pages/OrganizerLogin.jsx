@@ -5,8 +5,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Loader2, ArrowRight, Github } from 'lucide-react';
 
 export default function OrganizerLogin() {
-    const [email, setEmail] = useState('alice@example.com');
-    const [password, setPassword] = useState('password123');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
