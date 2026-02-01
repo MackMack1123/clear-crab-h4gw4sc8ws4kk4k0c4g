@@ -185,7 +185,7 @@ export default function SponsorshipLanding() {
             {/* Spacer for fixed header */}
             <div className="h-16"></div>
 
-            <main className="space-y-24 pb-24">
+            <main className="space-y-24 pb-32 md:pb-24">
 
 
 
@@ -209,10 +209,10 @@ export default function SponsorshipLanding() {
                                                     {block.badgeText || 'Official Sponsorship Portal'}
                                                 </div>
                                             )}
-                                            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-gray-900 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 mb-6">
+                                            <h1 className="text-3xl sm:text-5xl md:text-7xl font-bold tracking-tight text-gray-900 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 mb-6">
                                                 {block.title || <>Support <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/60">{orgProfile.orgName || 'Our Mission'}</span></>}
                                             </h1>
-                                            <p className="text-xl md:text-2xl text-gray-600 max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+                                            <p className="text-base sm:text-xl md:text-2xl text-gray-600 max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
                                                 {block.body || 'Connect your brand with our community. Choose a package below to make an impact today.'}
                                             </p>
                                         </div>
@@ -311,8 +311,8 @@ export default function SponsorshipLanding() {
                                                     : `0 25px 80px -12px ${overlayColor}40, 0 8px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.1)`
                                             }}
                                         >
-                                            <h2 className="text-4xl md:text-7xl font-bold text-white drop-shadow-lg tracking-tight">{block.title}</h2>
-                                            {block.body && <p className="text-xl md:text-2xl text-white/90 font-medium leading-relaxed drop-shadow-md mt-6">{block.body}</p>}
+                                            <h2 className="text-3xl md:text-7xl font-bold text-white drop-shadow-lg tracking-tight">{block.title}</h2>
+                                            {block.body && <p className="text-lg md:text-2xl text-white/90 font-medium leading-relaxed drop-shadow-md mt-6">{block.body}</p>}
                                         </div>
                                     </div>
 
@@ -597,11 +597,16 @@ export default function SponsorshipLanding() {
                 </div>
             </main>
 
-            {/* Static Footer Actions */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-6 border-t border-gray-200 mt-20">
+            {/* Footer Actions: Sticky Bar on Mobile, Floating Buttons on Desktop */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] flex items-center justify-between gap-4 md:contents">
+
                 {/* Powered By Badge */}
-                <a href="/" target="_blank" className="bg-white border border-gray-200 shadow-sm px-4 py-2 rounded-full flex items-center gap-2.5 hover:bg-gray-50 transition-colors group">
-                    <span className="text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">Powered by</span>
+                <a
+                    href="/"
+                    target="_blank"
+                    className="shrink-0 bg-white border border-gray-200 shadow-sm px-4 py-2 rounded-full flex items-center gap-2.5 hover:bg-gray-50 transition-colors group md:fixed md:bottom-6 md:left-6 md:z-40 md:bg-white/90 md:backdrop-blur-md md:shadow-xl md:hover:scale-105 md:transition-all"
+                >
+                    <span className="text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors hidden xs:inline md:inline">Powered by</span>
                     <div className="flex items-center gap-1.5">
                         <div className="w-5 h-5 bg-gray-900 rounded flex items-center justify-center text-white text-[10px] font-bold">F</div>
                         <span className="font-bold text-gray-900 text-sm tracking-tight">Fundraisr</span>
@@ -612,14 +617,14 @@ export default function SponsorshipLanding() {
                 {cart.length > 0 && (
                     <button
                         onClick={() => navigate('/sponsorship/review')}
-                        className="bg-gray-900 text-white shadow-xl px-8 py-4 rounded-full flex items-center gap-3 hover:scale-105 transition-all w-full md:w-auto justify-center"
+                        className="bg-gray-900 text-white shadow-xl px-6 py-3 rounded-full flex items-center gap-3 hover:scale-105 transition-all flex-1 justify-center md:fixed md:bottom-6 md:right-6 md:z-50 md:flex-none md:w-auto md:px-6 md:py-4 md:shadow-2xl md:outline md:outline-4 md:outline-white"
                     >
                         <div className="relative">
                             <ShoppingCart className="w-5 h-5" />
                             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{cart.length}</span>
                         </div>
-                        <span className="font-bold pr-1">Review Selection</span>
-                        <ArrowRight className="w-4 h-4" />
+                        <span className="font-bold pr-1 text-sm md:text-base">Review Selection</span>
+                        <ArrowRight className="w-4 h-4 hidden xs:block" />
                     </button>
                 )}
             </div>
