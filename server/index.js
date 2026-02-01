@@ -12,6 +12,11 @@ const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 
+const userRoutes = require('./routes/users');
+const sponsorshipRoutes = require('./routes/sponsorships');
+const campaignRoutes = require('./routes/campaigns');
+const uploadRoutes = require('./routes/upload');
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -21,18 +26,7 @@ const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, 'public/uploads
 console.log(`[Storage] Serving uploads from: ${uploadDir}`);
 app.use('/uploads', express.static(uploadDir));
 
-const userRoutes = require('./routes/users');
-const sponsorshipRoutes = require('./routes/sponsorships');
-const campaignRoutes = require('./routes/campaigns');
-const uploadRoutes = require('./routes/upload');
-
 // Routes
-app.use('/api/users', userRoutes);
-app.use('/api/sponsorships', sponsorshipRoutes);
-app.use('/api/campaigns', campaignRoutes);
-app.use('/api/packages', require('./routes/packages'));
-app.use('/api/upload', uploadRoutes);
-const systemRoutes = require('./routes/system');
 const contactRoutes = require('./routes/contact');
 const waitlistRoutes = require('./routes/waitlist');
 
