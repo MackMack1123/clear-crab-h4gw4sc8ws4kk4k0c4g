@@ -2,15 +2,15 @@ const express = require('express');
 const router = express.Router();
 const nodemailer = require('nodemailer');
 
-// Create reusable transporter
+// Create reusable transporter using MXRoute
 const createTransporter = () => {
     return nodemailer.createTransporter({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT) || 587,
+        host: process.env.MXROUTE_SERVER || 'smtp.gmail.com',
+        port: parseInt(process.env.MXROUTE_PORT) || 587,
         secure: false,
         auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
+            user: process.env.MXROUTE_USER,
+            pass: process.env.MXROUTE_PASSWORD
         }
     });
 };
@@ -25,8 +25,8 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // Check if SMTP is configured
-        if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        // Check if MXRoute is configured
+        if (!process.env.MXROUTE_USER || !process.env.MXROUTE_PASSWORD) {
             console.warn('SMTP not configured - logging contact request instead');
             console.log('Contact Request:', { name, email, subject, message, toEmail });
             return res.json({

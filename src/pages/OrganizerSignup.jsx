@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useNavigate, Link } from 'react-router-dom';
 import { Loader2, ArrowRight, Lock } from 'lucide-react';
 import { systemService } from '../services/systemService';
+import { API_BASE_URL } from '../config';
 
 export default function OrganizerSignup() {
     const [email, setEmail] = useState('');
@@ -82,8 +83,7 @@ export default function OrganizerSignup() {
         e.preventDefault();
         setWaitlistLoading(true);
         try {
-            const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '/api'; // Quick fix, ideally import from config
-            const response = await fetch(`${API_BASE_URL}/waitlist`, {
+            const response = await fetch(`${API_BASE_URL}/api/waitlist`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(waitlistData)
