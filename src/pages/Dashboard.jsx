@@ -5,6 +5,7 @@ import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { campaignService } from '../services/campaignService';
+import { sponsorshipService } from '../services/sponsorshipService';
 import { promoteToAdmin } from '../utils/seedData';
 import { API_BASE_URL } from '../config';
 
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const [isEditingPayout, setIsEditingPayout] = useState(false);
   const [savingPayout, setSavingPayout] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
+  const [sponsorships, setSponsorships] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCampaignId, setSelectedCampaignId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'campaigns', 'settings', 'sponsorships'
@@ -151,22 +153,27 @@ export default function Dashboard() {
         navigate('/sponsor/dashboard');
         return;
       }
-      loadCampaigns();
+      loadDashboardData();
     }
     if (userProfile?.payoutMethod) {
       setPayoutMethod(userProfile.payoutMethod);
     }
   }, [currentUser, userProfile]);
 
-  async function loadCampaigns() {
+  async function loadDashboardData() {
     try {
-      const data = await campaignService.getOrganizerCampaigns(currentUser.uid);
-      setCampaigns(data);
-      if (data.length > 0 && !selectedCampaignId) {
-        setSelectedCampaignId(data[0].id);
+      const [campaignData, sponsorshipData] = await Promise.all([
+        campaignService.getOrganizerCampaigns(currentUser.uid),
+        sponsorshipService.getOrganizerSponsorships(currentUser.uid)
+      ]);
+      setCampaigns(campaignData);
+      setSponsorships(sponsorshipData || []);
+
+      if (campaignData.length > 0 && !selectedCampaignId) {
+        setSelectedCampaignId(campaignData[0].id);
       }
     } catch (error) {
-      console.error("Failed to load campaigns", error);
+      console.error("Failed to load dashboard data", error);
     } finally {
       setLoading(false);
     }
@@ -218,37 +225,16 @@ export default function Dashboard() {
               <LayoutDashboard className={`w-5 h-5 ${activeTab === 'overview' ? 'text-white' : 'text-slate-500 group-hover:text-white transition-colors'}`} />
               Overview
             </button>
+            {userProfile?.role === 'admin' && (
+              <Link
+                to="/admin"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-amber-500 hover:text-amber-400 hover:bg-white/5 transition-all duration-200 mt-1"
+              >
+                <Shield className="w-5 h-5" />
+                Admin Dashboard
+              </Link>
+            )}
           </div>
-
-          {/* Team Fundraising */}
-          {enableFundraising && (
-            <div className="relative">
-              <div className="px-4 mb-3 flex items-center gap-2">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Team Fundraising</span>
-                <div className="h-px bg-slate-800 flex-1"></div>
-              </div>
-              <div className="space-y-1">
-                <button
-                  onClick={() => setActiveTab('campaigns')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${activeTab === 'campaigns' ? 'bg-white/10 text-white border border-white/5' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                >
-                  <div className={`p-1.5 rounded-lg transition-colors ${activeTab === 'campaigns' ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white'}`}>
-                    <Trophy className="w-4 h-4" />
-                  </div>
-                  Campaigns
-                </button>
-                <button
-                  onClick={() => setActiveTab('payouts')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${activeTab === 'payouts' ? 'bg-white/10 text-white border border-white/5' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                >
-                  <div className={`p-1.5 rounded-lg transition-colors ${activeTab === 'payouts' ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white'}`}>
-                    <Wallet className="w-4 h-4" />
-                  </div>
-                  Funds & Payouts
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Organization Sponsorships */}
           <div className="relative">
@@ -318,6 +304,36 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* Team Fundraising */}
+          {enableFundraising && (
+            <div className="relative mt-2">
+              <div className="px-4 mb-3 flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Team Fundraising</span>
+                <div className="h-px bg-slate-800 flex-1"></div>
+              </div>
+              <div className="space-y-1">
+                <button
+                  onClick={() => setActiveTab('campaigns')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${activeTab === 'campaigns' ? 'bg-white/10 text-white border border-white/5' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                >
+                  <div className={`p-1.5 rounded-lg transition-colors ${activeTab === 'campaigns' ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white'}`}>
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  Campaigns
+                </button>
+                <button
+                  onClick={() => setActiveTab('payouts')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${activeTab === 'payouts' ? 'bg-white/10 text-white border border-white/5' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                >
+                  <div className={`p-1.5 rounded-lg transition-colors ${activeTab === 'payouts' ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white'}`}>
+                    <Wallet className="w-4 h-4" />
+                  </div>
+                  Funds & Payouts
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Settings */}
@@ -385,56 +401,77 @@ export default function Dashboard() {
           )}
 
           {/* Empty State Hero */}
-          {campaigns.length === 0 && !loading && activeTab !== 'sponsorships' && (
+          {campaigns.length === 0 && sponsorships.length === 0 && !loading && activeTab !== 'sponsorships' && (
             <div className="bg-white rounded-3xl shadow-glow border border-gray-100 p-12 text-center relative overflow-hidden">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-purple-600/5 to-transparent pointer-events-none"></div>
               <div className="relative z-10 max-w-lg mx-auto">
-                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
-                  <Trophy className="w-10 h-10" />
+                <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6 text-purple-600">
+                  <HeartHandshake className="w-10 h-10" />
                 </div>
-                <h2 className="font-heading text-3xl font-bold text-gray-900 mb-4">Start Your First Fundraiser</h2>
-                <p className="text-gray-500 mb-8 text-lg">Launch a professional fundraising campaign for your team in minutes. Choose from 50/50 splits or contribution grids.</p>
-                <Link
-                  to="/campaign/new"
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-xl font-bold text-lg hover:bg-blue-600 transition shadow-xl shadow-primary/30 hover:-translate-y-1"
-                >
-                  Create Campaign <ArrowRight className="w-5 h-5" />
-                </Link>
+                <h2 className="font-heading text-3xl font-bold text-gray-900 mb-4">Start Accepting Sponsorships</h2>
+                <p className="text-gray-500 mb-8 text-lg">Create packages and share your page with local businesses to raise funds effortlessly.</p>
+                <div className="flex justify-center gap-4">
+                  <button
+                    onClick={() => { setActiveTab('sponsorships'); setSponsorshipTab('packages'); }}
+                    className="inline-flex items-center gap-2 px-8 py-4 bg-purple-600 text-white rounded-xl font-bold text-lg hover:bg-purple-700 transition shadow-xl shadow-purple-600/30 hover:-translate-y-1"
+                  >
+                    Create Package
+                  </button>
+                  <Link
+                    to="/campaign/new"
+                    className="inline-flex items-center gap-2 px-8 py-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-50 transition"
+                  >
+                    Start Fundraiser
+                  </Link>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Stats Cards (Only show if campaigns exist and NOT in sponsorships tab) */}
-          {campaigns.length > 0 && activeTab !== 'sponsorships' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white p-6 rounded-2xl shadow-soft border border-gray-100">
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="p-3 bg-green-50 text-green-600 rounded-xl">
-                    <Wallet className="w-6 h-6" />
+          {/* Stats Cards: Sponsorships (Priority) */}
+          {(campaigns.length > 0 || sponsorships.length > 0) && activeTab !== 'sponsorships' && (
+            <div className="space-y-6">
+              {/* Sponsorship Stats Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-2xl shadow-soft border border-gray-100 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <HeartHandshake className="w-24 h-24 text-purple-600" />
                   </div>
-                  <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Total Raised</span>
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+                      <HeartHandshake className="w-6 h-6" />
+                    </div>
+                    <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Sponsorship Revenue</span>
+                  </div>
+                  <p className="text-3xl font-heading font-bold text-gray-900">
+                    ${sponsorships.reduce((acc, s) => acc + (['active', 'approved'].includes(s.status) ? (s.packageId?.price || s.amount || 0) : 0), 0).toFixed(2)}
+                  </p>
+                  <div className="mt-2 text-xs text-gray-400 font-bold flex items-center gap-1">
+                    <span className="text-green-600">{sponsorships.filter(s => s.status === 'active').length} Active</span>
+                    <span>•</span>
+                    <span className="text-amber-500">{sponsorships.filter(s => ['pending', 'pending_approval'].includes(s.status)).length} Pending</span>
+                  </div>
                 </div>
-                <p className="text-3xl font-heading font-bold text-gray-900">${(userProfile?.balance || 0).toFixed(2)}</p>
-              </div>
 
-              <div className="bg-white p-6 rounded-2xl shadow-soft border border-gray-100">
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="p-3 bg-primary/10 text-primary rounded-xl">
-                    <Trophy className="w-6 h-6" />
+                <div className="bg-white p-6 rounded-2xl shadow-soft border border-gray-100">
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="p-3 bg-green-50 text-green-600 rounded-xl">
+                      <Wallet className="w-6 h-6" />
+                    </div>
+                    <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Campaign Raised</span>
                   </div>
-                  <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Active Campaigns</span>
+                  <p className="text-3xl font-heading font-bold text-gray-900">${(userProfile?.balance || 0).toFixed(2)}</p>
                 </div>
-                <p className="text-3xl font-heading font-bold text-gray-900">{campaigns.length}</p>
-              </div>
 
-              <div className="bg-white p-6 rounded-2xl shadow-soft border border-gray-100">
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="p-3 bg-accent/10 text-accent rounded-xl">
-                    <TrendingUp className="w-6 h-6" />
+                <div className="bg-white p-6 rounded-2xl shadow-soft border border-gray-100">
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="p-3 bg-primary/10 text-primary rounded-xl">
+                      <Trophy className="w-6 h-6" />
+                    </div>
+                    <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Active Campaigns</span>
                   </div>
-                  <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Growth</span>
+                  <p className="text-3xl font-heading font-bold text-gray-900">{campaigns.length}</p>
                 </div>
-                <p className="text-3xl font-heading font-bold text-gray-900">+12% <span className="text-sm font-normal text-gray-400">this week</span></p>
               </div>
             </div>
           )}
