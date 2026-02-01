@@ -17,6 +17,21 @@ export default function OrganizerSignup() {
     const [registrationsEnabled, setRegistrationsEnabled] = useState(true);
     const [checkingSettings, setCheckingSettings] = useState(true);
 
+    // Waitlist Form State - must be declared before any conditional returns
+    const [waitlistData, setWaitlistData] = useState({
+        orgName: '',
+        contactName: '',
+        email: '',
+        phone: '',
+        website: '',
+        orgType: 'Club',
+        sport: '',
+        teamCount: '',
+        fundraisingGoals: ''
+    });
+    const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
+    const [waitlistLoading, setWaitlistLoading] = useState(false);
+
     useEffect(() => {
         checkRegistrationStatus();
     }, []);
@@ -65,21 +80,6 @@ export default function OrganizerSignup() {
     if (checkingSettings) {
         return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
     }
-
-    // Waitlist Form State
-    const [waitlistData, setWaitlistData] = useState({
-        orgName: '',
-        contactName: '',
-        email: '',
-        phone: '',
-        website: '',
-        orgType: 'Club',
-        sport: '',
-        teamCount: '',
-        fundraisingGoals: ''
-    });
-    const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
-    const [waitlistLoading, setWaitlistLoading] = useState(false);
 
     const handleWaitlistSubmit = async (e) => {
         e.preventDefault();
