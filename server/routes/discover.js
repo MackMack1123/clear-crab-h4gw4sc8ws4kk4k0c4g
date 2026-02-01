@@ -8,9 +8,8 @@ router.get('/organizations', async (req, res) => {
     try {
         const { search, limit = 20, offset = 0 } = req.query;
 
-        // Find all organizers with organization profiles
+        // Find all users with organization profiles (don't filter by role - admins can also have orgs)
         let query = {
-            role: 'organizer',
             'organizationProfile.orgName': { $exists: true, $ne: '' },
             'organizationProfile.slug': { $exists: true, $ne: '' }
         };
