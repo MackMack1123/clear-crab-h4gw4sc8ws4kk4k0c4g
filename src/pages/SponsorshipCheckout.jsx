@@ -16,7 +16,7 @@ export default function SponsorshipCheckout() {
     const { packageId } = useParams();
 
     const navigate = useNavigate();
-    const { cart, cartTotal, clearCart, cartSubtotal, processingFee, coverFees } = useSponsorship();
+    const { cart, cartTotal, clearCart, cartSubtotal, processingFee, platformFee, originalPlatformFee, feesWaived, coverFees } = useSponsorship();
     const { currentUser, userProfile } = useAuth();
 
     // Local state for single-item fallback (backward compatibility)
@@ -232,9 +232,17 @@ export default function SponsorshipCheckout() {
                         ))}
 
                         {coverFees && (
-                            <div className="flex justify-between items-center text-sm text-gray-500 pt-2 border-t border-gray-200 border-dashed">
-                                <span>Processing Fee (Covered)</span>
-                                <span>${displayFee.toFixed(2)}</span>
+                            <div className="pt-2 border-t border-gray-200 border-dashed space-y-1">
+                                <div className="flex justify-between items-center text-sm text-gray-500">
+                                    <span>Processing Fee</span>
+                                    <span>${processingFee.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm text-gray-500">
+                                    <span>Platform Fee {feesWaived && <span className="text-green-600 font-bold text-xs ml-1">(Waived)</span>}</span>
+                                    <span className={feesWaived ? "line-through text-gray-400" : ""}>
+                                        ${(feesWaived ? originalPlatformFee : platformFee).toFixed(2)}
+                                    </span>
+                                </div>
                             </div>
                         )}
 

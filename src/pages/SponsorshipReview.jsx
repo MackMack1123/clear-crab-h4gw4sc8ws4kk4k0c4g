@@ -5,7 +5,7 @@ import { ArrowLeft, Trash2, ShieldCheck, LogIn, UserPlus, ArrowRight } from 'luc
 import { useAuth } from '../context/AuthContext';
 
 export default function SponsorshipReview() {
-    const { cart, removeFromCart, cartTotal, cartSubtotal, processingFee, coverFees, toggleCoverFees, feesWaived } = useSponsorship();
+    const { cart, removeFromCart, cartTotal, cartSubtotal, processingFee, platformFee, originalPlatformFee, coverFees, toggleCoverFees, feesWaived } = useSponsorship();
     const { currentUser } = useAuth();
     const navigate = useNavigate();
 
@@ -97,12 +97,25 @@ export default function SponsorshipReview() {
                                     <span>${cartSubtotal.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm text-gray-600">
-                                    <span>Processing Fee</span>
-                                    <span>${processingFee.toFixed(2)}</span>
-                                </div>
+                                    {coverFees && (
+                                        <>
+                                            <div className="flex justify-between text-sm text-gray-600">
+                                                <span>Processing Fee</span>
+                                                <span>${processingFee.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm text-gray-600">
+                                                <span>
+                                                    Platform Fee
+                                                    {feesWaived && <span className="text-green-600 font-bold text-xs ml-1">(Waived)</span>}
+                                                </span>
+                                                <span className={feesWaived ? "line-through text-gray-400" : ""}>
+                                                    ${(feesWaived ? originalPlatformFee : platformFee).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </>
+                                    )}
 
-                                {!feesWaived && (
-                                    <label className="flex items-start gap-2 pt-2 cursor-pointer group">
+                                    <label className="flex items-start gap-2 pt-2 cursor-pointer group border-t border-gray-100 mt-2">
                                         <div className="relative flex items-center">
                                             <input
                                                 type="checkbox"
@@ -112,31 +125,30 @@ export default function SponsorshipReview() {
                                             />
                                         </div>
                                         <span className="text-xs text-gray-500 group-hover:text-gray-700 transition">
-                                            I'd like to cover the 5% processing fee so the organization receives the full amount.
+                                            I'd like to cover the fees <strong>(${(platformFee + processingFee).toFixed(2)})</strong> so the organization receives the full amount.
                                         </span>
                                     </label>
-                                )}
 
-                                <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-lg text-gray-900">
-                                    <span>Total</span>
-                                    <span>${cartTotal.toFixed(2)}</span>
+                                    <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-lg text-gray-900">
+                                        <span>Total</span>
+                                        <span>${cartTotal.toFixed(2)}</span>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <button
-                                onClick={handleProceed}
-                                className="w-full py-4 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition shadow-xl shadow-gray-900/10 flex items-center justify-center gap-2"
-                            >
-                                Proceed to Checkout <ArrowRight className="w-4 h-4" />
-                            </button>
+                                <button
+                                    onClick={handleProceed}
+                                    className="w-full py-4 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition shadow-xl shadow-gray-900/10 flex items-center justify-center gap-2"
+                                >
+                                    Proceed to Checkout <ArrowRight className="w-4 h-4" />
+                                </button>
 
-                            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400">
-                                <ShieldCheck className="w-4 h-4" /> Secure SSL Encryption
+                                <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400">
+                                    <ShieldCheck className="w-4 h-4" /> Secure SSL Encryption
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    );
+            );
 }

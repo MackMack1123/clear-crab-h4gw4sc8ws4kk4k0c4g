@@ -285,7 +285,7 @@ export default function AdminDashboard() {
                                     <th className="p-4">User ID</th>
                                     <th className="p-4">Email</th>
                                     <th className="p-4">Role</th>
-                                    <th className="p-4">Fee Waiver</th>
+                                    <th className="p-4">Platform Fees</th>
                                     <th className="p-4">Joined</th>
                                 </tr>
                             </thead>

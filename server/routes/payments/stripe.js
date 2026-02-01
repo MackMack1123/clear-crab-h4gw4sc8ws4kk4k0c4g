@@ -167,15 +167,28 @@ router.post('/create-checkout', async (req, res) => {
         }
 
         // Check for fee waiver
+        // Check for fee waiver
         const feesWaived = organizer?.organizationProfile?.waiveFees === true;
 
         // Calculate totals
         const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const subtotalCents = Math.round(subtotal * 100);
 
-        // Default fee is 5% unless waived
-        let applicationFee = feesWaived ? 0 : Math.round(subtotal * (PLATFORM_FEE_PERCENT / 100) * 100);
+        // Constants
+        const PLATFORM_RATE = 0.05;
+        const PROC_RATE = 0.029;
+        const PROC_FIXED_CENTS = 30;
 
-        // Line Items
+        // Calculate Fee Components
+        const rawPlatformFeeCents = Math.round(subtotalCents * PLATFORM_RATE);
+        // Match frontend calculation: (Subtotal * 0.029) + 0.30
+        const rawProcFeeCents = Math.round((subtotalCents * PROC_RATE) + PROC_FIXED_CENTS);
+
+        // Base Application Fee (what Platform keeps)
+        // If not covering fees: Platform keeps 5% (deducted from subtotal), unless waived (0).
+        // If covering fees: Platform keeps 5% (added on top), unless waived (0).
+        let applicationFee = feesWaived ? 0 : rawPlatformFeeCents;
+
         const line_items = items.map(item => ({
             price_data: {
                 currency: 'usd',
@@ -183,35 +196,41 @@ router.post('/create-checkout', async (req, res) => {
                     name: item.name,
                     description: item.description,
                 },
-                unit_amount: Math.round(item.price * 100), // Convert to cents
+                unit_amount: Math.round(item.price * 100),
             },
             quantity: item.quantity,
         }));
 
         // Handle Fee Coverage
-        if (req.body.coverFees && !feesWaived) {
-            // User pays the fee. Add it as a line item.
-            // Fee is calculated as 5% of subtotal.
-            const feeAmountCents = Math.round(subtotal * (PLATFORM_FEE_PERCENT / 100) * 100);
-
+        if (req.body.coverFees) {
+            // 1. Processing Fee (Always added if covered)
             line_items.push({
                 price_data: {
                     currency: 'usd',
                     product_data: {
-                        name: 'Processing Fee Coverage',
-                        description: 'Contribution to cover platform costs',
+                        name: 'Processing Fee',
+                        description: 'Transaction processing costs'
                     },
-                    unit_amount: feeAmountCents,
+                    unit_amount: rawProcFeeCents
                 },
-                quantity: 1,
+                quantity: 1
             });
 
-            // IMPORTANT: If user covers fee, the application fee (what we take) is equal to this extra amount.
-            // The organizer gets the full subtotal.
-            applicationFee = feeAmountCents;
+            // 2. Platform Fee (Added if not waived)
+            if (!feesWaived) {
+                line_items.push({
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: 'Platform Fee',
+                            description: 'Fundraisr platform support'
+                        },
+                        unit_amount: rawPlatformFeeCents
+                    },
+                    quantity: 1
+                });
+            }
         }
-        // If feesWaived is true, applicationFee remains 0.
-        // If feesWaived is false and not covered, applicationFee is 5% (deducted from subtotal).
 
         // Create Checkout Session
         const session = await stripe.checkout.sessions.create({
