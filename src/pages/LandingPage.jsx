@@ -71,13 +71,12 @@ export default function LandingPage() {
                         <div className="mt-20 relative max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500">
                             <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10" />
                             <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-2 md:p-4">
-                                <div className="bg-gray-50 rounded-2xl overflow-hidden aspect-[16/9] flex items-center justify-center border border-gray-100">
-                                    <div className="text-center">
-                                        <div className="w-20 h-20 bg-white rounded-2xl shadow-soft flex items-center justify-center mx-auto mb-4">
-                                            <Heart className="w-10 h-10 text-secondary" />
-                                        </div>
-                                        <p className="text-gray-400 font-medium">App Interface Preview</p>
-                                    </div>
+                                <div className="bg-gray-50 rounded-2xl overflow-hidden aspect-[16/9] border border-gray-100">
+                                    <img
+                                        src="/dashboard-preview.png"
+                                        alt="Fundraisr Dashboard - Track campaigns, donations, and team progress"
+                                        className="w-full h-full object-cover"
+                                    />
                                 </div>
                             </div>
                         </div>
