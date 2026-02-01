@@ -15,6 +15,20 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Get active packages for a specific organizer (Public endpoint)
+router.get('/active/:organizerId', async (req, res) => {
+    try {
+        const { organizerId } = req.params;
+        const packages = await Package.find({
+            organizerId,
+            active: { $ne: false }  // Include packages where active is true or not set
+        });
+        res.json(packages);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Create new package
 router.post('/', async (req, res) => {
     try {
