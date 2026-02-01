@@ -430,13 +430,13 @@ export default function SponsorshipLanding() {
                                             )}
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-black/20"></div>
                                         </div>
-                                        <div className="lg:w-1/2 p-12 flex flex-col justify-center relative">
+                                        <div className="lg:w-1/2 p-6 lg:p-12 flex flex-col justify-center relative">
                                             <div className="absolute top-12 right-12">
                                                 <div className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-slate-900 text-white text-sm font-bold rounded-full">
                                                     <Star className="w-3 h-3 fill-white text-white" /> Featured
                                                 </div>
                                             </div>
-                                            <h2 className="text-3xl font-bold text-gray-900 mb-2 mt-8 lg:mt-0">{pkg.title}</h2>
+                                            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2 mt-8 lg:mt-0">{pkg.title}</h2>
                                             <div className="flex items-baseline gap-2 mb-6">
                                                 <span className="text-5xl font-bold text-gray-900 tracking-tight">${pkg.price}</span>
                                                 <span className="text-gray-500 font-medium">/ season</span>
@@ -494,7 +494,7 @@ export default function SponsorshipLanding() {
                                                     className="group relative bg-white rounded-3xl p-8 border border-gray-200 shadow-sm hover:shadow-xl hover:shadow-gray-200/50 hover:border-gray-300 transition-all duration-300 flex flex-col"
                                                 >
                                                     <div className="mb-6">
-                                                        <h3 className="text-xl font-bold text-gray-900 mb-2">{pkg.title}</h3>
+                                                        <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">{pkg.title}</h3>
                                                         <p className="text-sm text-gray-500 line-clamp-2 min-h-[2.5rem]">{pkg.description}</p>
                                                     </div>
 
@@ -557,7 +557,7 @@ export default function SponsorshipLanding() {
                                                 <div className="flex-1 w-full text-left">
                                                     <div className="flex flex-col lg:flex-row justify-between items-start mb-6 gap-4">
                                                         <div>
-                                                            <h3 className="text-2xl font-bold text-gray-900 mb-2">{pkg.title}</h3>
+                                                            <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-2">{pkg.title}</h3>
                                                             <p className="text-gray-600 max-w-xl">{pkg.description}</p>
                                                         </div>
                                                         <div className="text-4xl font-heading font-bold text-gray-900 whitespace-nowrap">${pkg.price}</div>
