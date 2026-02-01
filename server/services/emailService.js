@@ -19,11 +19,51 @@ const replaceVariables = (text, variables) => {
     });
 };
 
+// Helper: Wrap content in branded HTML template
+const wrapEmailBody = (content, orgProfile) => {
+    const primaryColor = orgProfile.primaryColor || '#000000';
+    const logoUrl = orgProfile.logoUrl;
+    const orgName = orgProfile.orgName || 'Fundraisr';
+
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f9fafb; }
+            .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+            .header { background-color: #ffffff; padding: 30px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+            .logo { max-height: 60px; max-width: 200px; }
+            .content { padding: 40px 30px; font-size: 16px; }
+            .footer { background-color: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #f0f0f0; }
+            a.button { display: inline-block; padding: 12px 24px; background-color: ${primaryColor}; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                ${logoUrl ? `<img src="${logoUrl}" alt="${orgName}" class="logo">` : `<h2 style="margin:0; color: ${primaryColor};">${orgName}</h2>`}
+            </div>
+            <div class="content">
+                ${content}
+            </div>
+            <div class="footer">
+                <p>&copy; ${new Date().getFullYear()} ${orgName}. All rights reserved.</p>
+                <p>Powered by <a href="https://getfundraisr.io" style="color: #888; text-decoration: underline;">Fundraisr</a></p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+};
+
 const emailService = {
     /**
      * Send a transactional email using an organization's template fallback
      * @param {Object} organization - The organization User object (with emailTemplates)
-     * @param {string} type - 'receipt' | 'welcome'
+     * @param {string} type - 'sponsorship_confirmation' | 'assets_needed' | 'sponsorship_approved'
      * @param {string} toEmail - Recipient email
      * @param {Object} variables - Variables for replacement (orgName, donorName, amount, etc.)
      */
@@ -33,36 +73,41 @@ const emailService = {
             const orgName = orgProfile.orgName || 'Fundraisr App';
             const fromName = orgName;
 
-            // Get Template (or defaults if missing/disabled? Actually schema defaults handle missing strings, but we should check enabled status)
-            // Note: Schema defaults are only applied if the sub-document exists.
-
             let template = orgProfile.emailTemplates?.[type];
 
-            // Fallback system defaults if org template is missing/disabled (Optional: User might want to disable sending entirely?)
-            // Assuming if enabled=false, we DO NOT send.
+            // Check if disabled
             if (template && template.enabled === false) {
                 console.log(`Email type '${type}' is disabled for org ${organization.slug}`);
                 return false;
             }
 
-            // Fallback defaults if template object is missing (but we want to send)
+            // Fallback defaults if template object is missing (handled by schema mostly, but good for safety)
             if (!template) {
-                template = {
-                    subject: type === 'receipt' ? 'Receipt for your donation' : 'Welcome!',
-                    body: type === 'receipt' ? '<p>Thank you for your donation.</p>' : '<p>Welcome!</p>'
-                };
+                // Map legacy types or potential new ones to hardcoded defaults just in case
+                if (type === 'sponsorship_confirmation' || type === 'receipt') {
+                    template = { subject: `Confirmation: Your sponsorship for ${orgName}`, body: `<p>Thank you for your generous contribution.</p>` };
+                } else if (type === 'assets_needed') {
+                    template = { subject: `Action Required: Upload your logo`, body: `<p>Please upload your logo via the portal.</p>` };
+                } else if (type === 'sponsorship_approved') {
+                    template = { subject: `You are live! Sponsorship approved`, body: `<p>Your sponsorship has been approved.</p>` };
+                } else {
+                    template = { subject: `Notification from ${orgName}`, body: `<p>You have a new notification.</p>` };
+                }
             }
 
             // Merge system variables
             const vars = {
                 orgName,
+                primaryColor: orgProfile.primaryColor || '#000000',
                 companyName: 'Fundraisr',
                 baseUrl: process.env.FRONTEND_URL || 'https://getfundraisr.io',
                 ...variables
             };
 
             const subject = replaceVariables(template.subject, vars);
-            const htmlBody = replaceVariables(template.body, vars);
+            // Replace vars in body FIRST, then wrap it
+            let htmlBody = replaceVariables(template.body, vars);
+            htmlBody = wrapEmailBody(htmlBody, orgProfile);
 
             // Construct Email
             const mailOptions = {

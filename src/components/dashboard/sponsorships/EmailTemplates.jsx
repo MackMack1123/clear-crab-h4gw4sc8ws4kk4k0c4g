@@ -13,19 +13,27 @@ export default function EmailTemplates() {
     const [testEmail, setTestEmail] = useState('');
 
     const [templates, setTemplates] = useState({
-        receipt: {
-            subject: 'Receipt: Your contribution to {{orgName}}',
-            body: 'Dear {{donorName}},\n\nThank you for your generous contribution of {{amount}} to {{orgName}}.\n\nYour support makes a real difference.\n\nSincerely,\n{{orgName}}',
+        sponsorship_confirmation: {
+            trigger: "Sent immediately to the sponsor after a successful checkout.",
+            subject: 'Confirmation: Your sponsorship for {{orgName}}',
+            body: '<p>Dear {{donorName}},</p><p>Thank you for becoming a sponsor of <strong>{{orgName}}</strong>!</p>',
             enabled: true
         },
-        welcome: {
-            subject: 'Welcome to {{orgName}}',
-            body: 'Hi {{userName}},\n\nWelcome to {{orgName}}! We are thrilled to have you with us.',
+        assets_needed: {
+            trigger: "Sent automatically if a sponsor has not uploaded their logo/assets within 24 hours.",
+            subject: 'Action Required: We need your logo for {{orgName}}',
+            body: '<p>Hi {{contactName}},</p><p>Please upload your assets.</p>',
+            enabled: true
+        },
+        sponsorship_approved: {
+            trigger: "Sent when an organization admin reviews and approves the sponsorship assets.",
+            subject: 'You are live! Sponsorship approved for {{orgName}}',
+            body: '<p>Great news, {{donorName}}!</p><p>Your sponsorship is approved.</p>',
             enabled: true
         }
     });
 
-    const [activeTab, setActiveTab] = useState('receipt'); // 'receipt' | 'welcome'
+    const [activeTab, setActiveTab] = useState('sponsorship_confirmation');
 
     useEffect(() => {
         const loadData = async () => {
@@ -33,10 +41,17 @@ export default function EmailTemplates() {
             try {
                 const user = await userService.getUser(currentUser.uid);
                 if (user?.organizationProfile?.emailTemplates) {
-                    setTemplates(prev => ({
-                        ...prev,
-                        ...user.organizationProfile.emailTemplates
-                    }));
+                    setTemplates(prev => {
+                        // Merge server data but keep defaults for missing keys to avoid errors
+                        const serverData = user.organizationProfile.emailTemplates;
+                        return {
+                            ...prev,
+                            // Carefully merge only if the key exists in serverData
+                            ...(serverData.sponsorship_confirmation && { sponsorship_confirmation: serverData.sponsorship_confirmation }),
+                            ...(serverData.assets_needed && { assets_needed: serverData.assets_needed }),
+                            ...(serverData.sponsorship_approved && { sponsorship_approved: serverData.sponsorship_approved })
+                        };
+                    });
                 }
                 setTestEmail(user?.email || '');
             } catch (err) {
@@ -49,51 +64,13 @@ export default function EmailTemplates() {
         loadData();
     }, [currentUser?.uid]);
 
-    const handleSave = async () => {
-        setSaving(true);
-        try {
-            // Update via userService using partial update
-            await userService.updateUser(currentUser.uid, {
-                'organizationProfile.emailTemplates': templates
-            });
-            toast.success("Email templates saved successfully!");
-        } catch (err) {
-            console.error(err);
-            toast.error("Failed to save templates");
-        } finally {
-            setSaving(false);
-        }
-    };
+    // ... handleSave ...
 
-    const handleSendTest = async () => {
-        if (!testEmail) return toast.error("Please enter an email address");
-        setTesting(true);
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/email/send-test`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUser.uid,
-                    to: testEmail,
-                    type: activeTab
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                toast.success(`Test ${activeTab} email sent!`);
-            } else {
-                throw new Error(data.error);
-            }
-        } catch (err) {
-            toast.error("Failed to send test email: " + err.message);
-        } finally {
-            setTesting(false);
-        }
-    };
+    // ... handleSendTest ...
 
     if (loading) return <div className="p-8 text-center text-gray-500">Loading templates...</div>;
 
-    const currentTemplate = templates[activeTab];
+    const currentTemplate = templates[activeTab] || {};
 
     const updateCurrent = (field, value) => {
         setTemplates(prev => ({
@@ -122,21 +99,35 @@ export default function EmailTemplates() {
 
             <div className="flex gap-2 border-b border-gray-100 overflow-x-auto pb-1">
                 <button
-                    onClick={() => setActiveTab('receipt')}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition whitespace-nowrap ${activeTab === 'receipt' ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-gray-50'}`}
+                    onClick={() => setActiveTab('sponsorship_confirmation')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition whitespace-nowrap ${activeTab === 'sponsorship_confirmation' ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-gray-50'}`}
                 >
-                    Donation Receipt
+                    Confirmation
                 </button>
                 <button
-                    onClick={() => setActiveTab('welcome')}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition whitespace-nowrap ${activeTab === 'welcome' ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-gray-50'}`}
+                    onClick={() => setActiveTab('assets_needed')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition whitespace-nowrap ${activeTab === 'assets_needed' ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-gray-50'}`}
                 >
-                    Welcome Email
+                    Request Assets
+                </button>
+                <button
+                    onClick={() => setActiveTab('sponsorship_approved')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition whitespace-nowrap ${activeTab === 'sponsorship_approved' ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-gray-50'}`}
+                >
+                    Approved
                 </button>
             </div>
 
+            {/* Trigger Description */}
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-sm text-gray-600 flex gap-3">
+                <Info className="w-5 h-5 flex-shrink-0 text-gray-400" />
+                <div>
+                    <span className="font-bold text-gray-900">Trigger:</span> {currentTemplate.trigger || "Custom trigger"}
+                </div>
+            </div>
+
             <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
                     <div className="flex items-center gap-3">
                         <div className={`w-2 h-2 rounded-full ${currentTemplate.enabled ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                         <span className="text-sm font-medium text-gray-700">Enable this email?</span>
@@ -145,7 +136,7 @@ export default function EmailTemplates() {
                         <input
                             type="checkbox"
                             className="sr-only peer"
-                            checked={currentTemplate.enabled}
+                            checked={currentTemplate.enabled || false}
                             onChange={(e) => updateCurrent('enabled', e.target.checked)}
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
@@ -157,10 +148,11 @@ export default function EmailTemplates() {
                     <div>
                         <p className="font-bold mb-1">Available Variables:</p>
                         <p className="opacity-80 font-mono text-xs">
-                            {activeTab === 'receipt'
-                                ? '{{donorName}}, {{amount}}, {{transactionId}}, {{orgName}}, {{date}}'
-                                : '{{userName}}, {{orgName}}'
-                            }
+                            {{
+                                sponsorship_confirmation: '{{donorName}}, {{amount}}, {{orgName}}, {{portalUrl}}',
+                                assets_needed: '{{contactName}}, {{orgName}}, {{portalUrl}}',
+                                sponsorship_approved: '{{donorName}}, {{orgName}}'
+                            }[activeTab] || '{{orgName}}'}
                         </p>
                     </div>
                 </div>
@@ -169,7 +161,7 @@ export default function EmailTemplates() {
                     <label className="text-sm font-bold text-gray-700">Subject Line</label>
                     <input
                         type="text"
-                        value={currentTemplate.subject}
+                        value={currentTemplate.subject || ''}
                         onChange={(e) => updateCurrent('subject', e.target.value)}
                         className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none font-medium"
                     />
@@ -178,7 +170,7 @@ export default function EmailTemplates() {
                 <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-700">Email Body (HTML supported)</label>
                     <textarea
-                        value={currentTemplate.body}
+                        value={currentTemplate.body || ''}
                         onChange={(e) => updateCurrent('body', e.target.value)}
                         rows={8}
                         className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none font-mono text-sm"

@@ -53,14 +53,25 @@ const UserSchema = new mongoose.Schema({
             description: { type: String, default: 'Connect your brand with our community. Choose a package below to make an impact today.' }
         },
         emailTemplates: {
-            receipt: {
-                subject: { type: String, default: 'Receipt: Your contribution to {{orgName}}' },
-                body: { type: String, default: '<p>Dear {{donorName}},</p><p>Thank you for your generous contribution of <strong>{{amount}}</strong> to <strong>{{orgName}}</strong>.</p><p>Your support makes a real difference.</p><p>Transaction ID: {{transactionId}}</p><p>Sincerely,<br>{{orgName}}</p>' },
+            // Transactional: Payment Success
+            sponsorship_confirmation: {
+                trigger: { type: String, default: "Sent immediately to the sponsor after a successful checkout." },
+                subject: { type: String, default: 'Confirmation: Your sponsorship for {{orgName}}' },
+                body: { type: String, default: '<p>Dear {{donorName}},</p><p>Thank you for becoming a sponsor of <strong>{{orgName}}</strong>!</p><p>We have successfully received your payment of <strong>{{amount}}</strong>.</p><p><strong>Important Next Steps:</strong><br>If you haven\'t already, please upload your high-resolution logo and completing your branding profile so we can feature you immediately.</p><p><a href="{{portalUrl}}" style="background-color: {{primaryColor}}; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Go to Sponsor Portal</a></p>' },
                 enabled: { type: Boolean, default: true }
             },
-            welcome: { // For new sponsors/users
-                subject: { type: String, default: 'Welcome to {{orgName}}' },
-                body: { type: String, default: '<p>Hi {{userName}},</p><p>Welcome to <strong>{{orgName}}</strong>! We are thrilled to have you with us.</p>' },
+            // Reminder: Assets Missing
+            assets_needed: {
+                trigger: { type: String, default: "Sent automatically if a sponsor has not uploaded their logo/assets within 24 hours." },
+                subject: { type: String, default: 'Action Required: We need your logo for {{orgName}}' },
+                body: { type: String, default: '<p>Hi {{contactName}},</p><p>Thanks again for your sponsorship!</p><p>We noticed you haven\'t uploaded your brand assets yet. To ensure we can print your materials and feature you on our site, please upload your high-res logo as soon as possible.</p><p><a href="{{portalUrl}}" style="background-color: {{primaryColor}}; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Upload Assets Now</a></p>' },
+                enabled: { type: Boolean, default: true }
+            },
+            // Notification: Admin Approved
+            sponsorship_approved: {
+                trigger: { type: String, default: "Sent when an organization admin reviews and approves the sponsorship assets." },
+                subject: { type: String, default: 'You are live! Sponsorship approved for {{orgName}}' },
+                body: { type: String, default: '<p>Great news, {{donorName}}!</p><p>Your sponsorship has been reviewed and approved by the team at <strong>{{orgName}}</strong>.</p><p>Your brand is now visible on our campaign page.</p>' },
                 enabled: { type: Boolean, default: true }
             }
         }
