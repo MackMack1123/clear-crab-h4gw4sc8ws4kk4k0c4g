@@ -431,14 +431,14 @@ export default function SponsorshipLanding() {
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-black/20"></div>
                                         </div>
                                         <div className="lg:w-1/2 p-6 lg:p-12 flex flex-col justify-center relative">
-                                            <div className="absolute top-12 right-12">
+                                            <div className="absolute top-12 right-12 hidden lg:block">
                                                 <div className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-slate-900 text-white text-sm font-bold rounded-full">
                                                     <Star className="w-3 h-3 fill-white text-white" /> Featured
                                                 </div>
                                             </div>
                                             <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2 mt-8 lg:mt-0">{pkg.title}</h2>
                                             <div className="flex items-baseline gap-2 mb-6">
-                                                <span className="text-5xl font-bold text-gray-900 tracking-tight">${pkg.price}</span>
+                                                <span className="text-4xl lg:text-5xl font-bold text-gray-900 tracking-tight">${pkg.price}</span>
                                                 <span className="text-gray-500 font-medium">/ season</span>
                                             </div>
                                             <p className="text-gray-600 mb-8 text-lg leading-relaxed border-l-4 border-gray-100 pl-4">{pkg.description}</p>
@@ -597,31 +597,32 @@ export default function SponsorshipLanding() {
                 </div>
             </main>
 
-            {/* Floating Cart Button (Mobile/Desktop) if Cart has items */}
-            {cart.length > 0 && (
-                <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-6 fade-in duration-300">
+            {/* Static Footer Actions */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-6 border-t border-gray-200 mt-20">
+                {/* Powered By Badge */}
+                <a href="/" target="_blank" className="bg-white border border-gray-200 shadow-sm px-4 py-2 rounded-full flex items-center gap-2.5 hover:bg-gray-50 transition-colors group">
+                    <span className="text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">Powered by</span>
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 bg-gray-900 rounded flex items-center justify-center text-white text-[10px] font-bold">F</div>
+                        <span className="font-bold text-gray-900 text-sm tracking-tight">Fundraisr</span>
+                    </div>
+                </a>
+
+                {/* Review Selection Button (Conditional) */}
+                {cart.length > 0 && (
                     <button
                         onClick={() => navigate('/sponsorship/review')}
-                        className="bg-gray-900 text-white shadow-2xl px-6 py-4 rounded-full flex items-center gap-3 hover:scale-105 transition-all outline outline-4 outline-white"
+                        className="bg-gray-900 text-white shadow-xl px-8 py-4 rounded-full flex items-center gap-3 hover:scale-105 transition-all w-full md:w-auto justify-center"
                     >
                         <div className="relative">
                             <ShoppingCart className="w-5 h-5" />
                             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{cart.length}</span>
                         </div>
-                        <span className="font-bold pr-1">Review Cart</span>
+                        <span className="font-bold pr-1">Review Selection</span>
                         <ArrowRight className="w-4 h-4" />
                     </button>
-                </div>
-            )}
-
-            {/* Powered by Badge - Moved to left to avoid collision */}
-            <a href="/" target="_blank" className="fixed bottom-6 left-6 z-40 bg-white/90 backdrop-blur-md border border-gray-200 shadow-xl px-4 py-2 rounded-full flex items-center gap-2.5 hover:scale-105 transition-all duration-300 group">
-                <span className="text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">Powered by</span>
-                <div className="flex items-center gap-1.5">
-                    <div className="w-5 h-5 bg-gray-900 rounded flex items-center justify-center text-white text-[10px] font-bold">F</div>
-                    <span className="font-bold text-gray-900 text-sm tracking-tight">Fundraisr</span>
-                </div>
-            </a>
+                )}
+            </div>
 
             {/* Contact Modal */}
             <ContactModal
