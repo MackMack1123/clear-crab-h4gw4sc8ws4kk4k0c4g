@@ -172,7 +172,7 @@ export default function LandingPage() {
 
                         <div className="text-center">
                             <Link
-                                to="/contact"
+                                to="/sponsors"
                                 className="inline-flex items-center gap-2 bg-white text-primary px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all"
                             >
                                 Become a Sponsor <ArrowRight className="w-5 h-5" />

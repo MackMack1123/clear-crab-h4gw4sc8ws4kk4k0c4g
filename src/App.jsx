@@ -25,6 +25,7 @@ import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 import ComplianceFooter from './components/layout/ComplianceFooter';
 
 import LandingPage from './pages/LandingPage';
+import SponsorDiscovery from './pages/SponsorDiscovery';
 
 import { Toaster } from 'react-hot-toast';
 
@@ -54,6 +55,9 @@ function App() {
                                 <Route path="/campaign/edit/:id" element={<PrivateRoute><CampaignStudio /></PrivateRoute>} />
                                 <Route path="/campaign/:id" element={<CampaignPage />} />
                                 <Route path="/thank-you" element={<ThankYou />} />
+
+                                {/* Sponsor Discovery */}
+                                <Route path="/sponsors" element={<SponsorDiscovery />} />
 
                                 {/* Sponsorship Routes */}
                                 <Route path="/sponsorships/:organizerId" element={<SponsorshipLanding />} />
