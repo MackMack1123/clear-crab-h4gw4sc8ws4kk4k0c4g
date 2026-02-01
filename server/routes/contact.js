@@ -65,6 +65,32 @@ router.post('/', async (req, res) => {
 
         await transporter.sendMail(mailOptions);
 
+        // Send Auto-Reply to User
+        try {
+            const autoReplyOptions = {
+                from: `"${orgName} (via Fundraisr)" <${process.env.SMTP_USER}>`,
+                to: email,
+                subject: `We received your message: ${subject || 'Sponsorship Inquiry'}`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+                        <h2 style="color: #1e293b;">Thanks for reaching out!</h2>
+                        <p>Hi ${name},</p>
+                        <p>We've received your message for <strong>${orgName}</strong> regarding "<strong>${subject || 'Sponsorship Inquiry'}</strong>".</p>
+                        <p>We'll get back to you as soon as possible.</p>
+                        <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;">
+                        <p style="color: #64748b; font-size: 14px;">Your message:</p>
+                        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; font-style: italic; color: #475569;">
+                            "${message}"
+                        </div>
+                    </div>
+                `
+            };
+            await transporter.sendMail(autoReplyOptions);
+        } catch (autoReplyError) {
+            console.error('Failed to send auto-reply:', autoReplyError);
+            // Don't fail the main request if auto-reply fails
+        }
+
         res.json({ success: true, message: 'Email sent successfully' });
     } catch (error) {
         console.error('Error sending contact email:', error);
