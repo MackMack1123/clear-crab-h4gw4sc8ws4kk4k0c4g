@@ -64,9 +64,48 @@ export default function EmailTemplates() {
         loadData();
     }, [currentUser?.uid]);
 
-    // ... handleSave ...
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await userService.updateOrganizationProfile(currentUser.uid, {
+                emailTemplates: templates
+            });
+            toast.success("Templates saved successfully");
+            // Reload user data to confirm sync if needed, but local state is ahead
+        } catch (error) {
+            console.error("Save error:", error);
+            toast.error("Failed to save templates");
+        } finally {
+            setSaving(false);
+        }
+    };
 
-    // ... handleSendTest ...
+    const handleSendTest = async () => {
+        if (!testEmail) return;
+        setTesting(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/email/send-test`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUser.uid,
+                    to: testEmail,
+                    type: activeTab,
+                    templateOverride: templates[activeTab]
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to send');
+
+            toast.success(`Test email sent to ${testEmail}`);
+        } catch (error) {
+            console.error("Test email error:", error);
+            toast.error(error.message || "Failed to send test email");
+        } finally {
+            setTesting(false);
+        }
+    };
 
     if (loading) return <div className="p-8 text-center text-gray-500">Loading templates...</div>;
 

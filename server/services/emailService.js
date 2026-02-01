@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const EmailLog = require('../models/EmailLog');
 
 // Initialize Transporter
 const transporter = nodemailer.createTransport({
@@ -116,12 +117,29 @@ const emailService = {
                 subject: subject,
                 html: htmlBody,
                 sender: process.env.MXROUTE_USER,
-                replyTo: orgProfile.contactEmail || process.env.MXROUTE_USER
+                replyTo: orgProfile.contactEmail || organization.email || process.env.MXROUTE_USER
             };
 
             // Send
             const info = await transporter.sendMail(mailOptions);
             console.log(`Email sent: ${info.messageId}`);
+
+            // Log to Database (Async, don't block return)
+            try {
+                await EmailLog.create({
+                    userId: organization._id || organization.id,
+                    toEmail: toEmail,
+                    type: type,
+                    subject: subject,
+                    htmlBody: htmlBody,
+                    sentAt: new Date(),
+                    status: 'sent'
+                });
+            } catch (logError) {
+                console.error('Failed to log email:', logError);
+                // Don't fail the request if logging fails, but maybe alert
+            }
+
             return true;
 
         } catch (error) {

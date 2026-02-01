@@ -10,7 +10,7 @@ const User = require('../models/User');
 // Send Test Email
 router.post('/send-test', async (req, res) => {
     try {
-        const { to, type, userId } = req.body;
+        const { to, type, userId, templateOverride } = req.body;
 
         if (!userId || !to) {
             return res.status(400).json({ error: 'Missing userId or recipient email' });
@@ -21,11 +21,21 @@ router.post('/send-test', async (req, res) => {
             return res.status(404).json({ error: 'Organization not found' });
         }
 
+        // Apply template override if provided (for testing drafts)
+        if (templateOverride) {
+            if (!user.organizationProfile) user.organizationProfile = {};
+            if (!user.organizationProfile.emailTemplates) user.organizationProfile.emailTemplates = {};
+            user.organizationProfile.emailTemplates[type] = templateOverride;
+        }
+
         const testVars = {
             donorName: 'John Doe',
+            contactName: 'Jane Smith',
             amount: '$50.00',
             userName: 'Sponsor Name',
-            transactionId: 'TXN-12345'
+            transactionId: 'TXN-TEST-12345',
+            portalUrl: 'https://getfundraisr.io/portal/test',
+            orgName: user.organizationProfile?.orgName || 'Your Organization'
         };
 
         await emailService.sendTemplateEmail(user, type || 'welcome', to, testVars);

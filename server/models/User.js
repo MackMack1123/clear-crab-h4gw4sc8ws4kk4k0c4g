@@ -57,7 +57,7 @@ const UserSchema = new mongoose.Schema({
             sponsorship_confirmation: {
                 trigger: { type: String, default: "Sent immediately to the sponsor after a successful checkout." },
                 subject: { type: String, default: 'Confirmation: Your sponsorship for {{orgName}}' },
-                body: { type: String, default: '<p>Dear {{donorName}},</p><p>Thank you for becoming a sponsor of <strong>{{orgName}}</strong>!</p><p>We have successfully received your payment of <strong>{{amount}}</strong>.</p><p><strong>Important Next Steps:</strong><br>If you haven\'t already, please upload your high-resolution logo and completing your branding profile so we can feature you immediately.</p><p><a href="{{portalUrl}}" style="background-color: {{primaryColor}}; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Go to Sponsor Portal</a></p>' },
+                body: { type: String, default: '<p>Dear {{donorName}},</p><p>Thank you for becoming a sponsor of <strong>{{orgName}}</strong>!</p><p>We have successfully received your payment of <strong>{{amount}}</strong>.</p><p><strong>Important Next Steps:</strong><br>If you haven\'t already, please upload your high-resolution logo and complete your branding profile so we can feature you immediately.</p><p><a href="{{portalUrl}}" style="background-color: {{primaryColor}}; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Go to Sponsor Portal</a></p>' },
                 enabled: { type: Boolean, default: true }
             },
             // Reminder: Assets Missing
