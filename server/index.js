@@ -32,8 +32,18 @@ app.use('/api/sponsorships', sponsorshipRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/packages', require('./routes/packages'));
 app.use('/api/upload', uploadRoutes);
+const systemRoutes = require('./routes/system');
+const contactRoutes = require('./routes/contact');
+const waitlistRoutes = require('./routes/waitlist');
+
+// Routes
+app.use('/api/users', userRoutes);
+app.use('/api/sponsorships', sponsorshipRoutes);
+app.use('/api/campaigns', campaignRoutes);
+app.use('/api/packages', require('./routes/packages'));
+app.use('/api/upload', uploadRoutes);
 app.use('/api/contact', require('./routes/contact'));
-app.use('/api/slack', require('./routes/slack'));
+app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/payments/stripe', require('./routes/payments/stripe'));
 app.use('/api/payments/square', require('./routes/payments/square'));
 app.use('/api/analytics', require('./routes/analytics'));
