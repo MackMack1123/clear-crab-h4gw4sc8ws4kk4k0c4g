@@ -8,13 +8,18 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 const app = express();
+// Trust proxy (required for correct protocol detection behind Load Balancers/Coolify)
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 // Serve static uploads
-app.use('/uploads', express.static('public/uploads'));
+// Serve static uploads
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, 'public/uploads');
+console.log(`[Storage] Serving uploads from: ${uploadDir}`);
+app.use('/uploads', express.static(uploadDir));
 
 const userRoutes = require('./routes/users');
 const sponsorshipRoutes = require('./routes/sponsorships');

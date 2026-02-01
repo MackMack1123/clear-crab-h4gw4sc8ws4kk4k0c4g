@@ -110,6 +110,9 @@ export default function OrgBranding() {
             if (profile.slug) {
                 formData.append('slug', profile.slug);
             }
+            if (currentUser?.uid) {
+                formData.append('userId', currentUser.uid);
+            }
 
             const res = await fetch(`${API_BASE_URL}/api/upload`, {
 

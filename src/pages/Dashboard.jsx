@@ -55,6 +55,7 @@ export default function Dashboard() {
   const [teamName, setTeamName] = useState('');
   const [slug, setSlug] = useState('');
   const [slugError, setSlugError] = useState('');
+  const [enableFundraising, setEnableFundraising] = useState(true);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function Dashboard() {
       setLastName(userProfile.lastName || '');
       setTeamName(userProfile.teamName || '');
       setSlug(userProfile.slug || '');
+      setEnableFundraising(userProfile.organizationProfile?.enableFundraising !== false);
     }
   }, [userProfile]);
 
@@ -121,12 +123,15 @@ export default function Dashboard() {
         }
       }
 
-      await import('../services/userService').then(m => m.userService.updateUser(currentUser.uid, {
+      const updates = {
         firstName,
         lastName,
         teamName,
-        slug: slug || undefined // Only update if set
-      }));
+        slug: slug || undefined, // Only update if set
+        "organizationProfile.enableFundraising": enableFundraising
+      };
+
+      await import('../services/userService').then(m => m.userService.updateUser(currentUser.uid, updates));
       // Update local profile immediately for better UX
       if (refreshProfile) {
         await refreshProfile();
@@ -216,32 +221,34 @@ export default function Dashboard() {
           </div>
 
           {/* Team Fundraising */}
-          <div className="relative">
-            <div className="px-4 mb-3 flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Team Fundraising</span>
-              <div className="h-px bg-slate-800 flex-1"></div>
+          {enableFundraising && (
+            <div className="relative">
+              <div className="px-4 mb-3 flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Team Fundraising</span>
+                <div className="h-px bg-slate-800 flex-1"></div>
+              </div>
+              <div className="space-y-1">
+                <button
+                  onClick={() => setActiveTab('campaigns')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${activeTab === 'campaigns' ? 'bg-white/10 text-white border border-white/5' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                >
+                  <div className={`p-1.5 rounded-lg transition-colors ${activeTab === 'campaigns' ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white'}`}>
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  Campaigns
+                </button>
+                <button
+                  onClick={() => setActiveTab('payouts')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${activeTab === 'payouts' ? 'bg-white/10 text-white border border-white/5' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                >
+                  <div className={`p-1.5 rounded-lg transition-colors ${activeTab === 'payouts' ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white'}`}>
+                    <Wallet className="w-4 h-4" />
+                  </div>
+                  Funds & Payouts
+                </button>
+              </div>
             </div>
-            <div className="space-y-1">
-              <button
-                onClick={() => setActiveTab('campaigns')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${activeTab === 'campaigns' ? 'bg-white/10 text-white border border-white/5' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-              >
-                <div className={`p-1.5 rounded-lg transition-colors ${activeTab === 'campaigns' ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white'}`}>
-                  <Trophy className="w-4 h-4" />
-                </div>
-                Campaigns
-              </button>
-              <button
-                onClick={() => setActiveTab('payouts')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${activeTab === 'payouts' ? 'bg-white/10 text-white border border-white/5' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-              >
-                <div className={`p-1.5 rounded-lg transition-colors ${activeTab === 'payouts' ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white'}`}>
-                  <Wallet className="w-4 h-4" />
-                </div>
-                Funds & Payouts
-              </button>
-            </div>
-          </div>
+          )}
 
           {/* Organization Sponsorships */}
           <div className="relative">
@@ -689,6 +696,42 @@ export default function Dashboard() {
                         </div>
                       </form>
                     </div>
+
+                    {/* Features Toggle (New) */}
+                    <div className="border border-gray-200 rounded-2xl p-6">
+                      <div className="flex items-start gap-4 mb-6">
+                        <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
+                          <LayoutDashboard className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg text-gray-900">Features</h3>
+                          <p className="text-gray-500 text-sm">Customize your dashboard experience.</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        <div>
+                          <p className="font-bold text-gray-900 text-sm">Enable Team Fundraising</p>
+                          <p className="text-xs text-gray-500">Show Campaigns and Payouts tabs in your sidebar.</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const newValue = !enableFundraising;
+                            setEnableFundraising(newValue);
+                            // Auto-save toggle
+                            import('../services/userService').then(m => m.userService.updateUser(currentUser.uid, { "organizationProfile.enableFundraising": newValue }))
+                              .then(() => refreshProfile && refreshProfile())
+                              .then(() => toast.success(`Fundraising features ${newValue ? 'enabled' : 'disabled'}`))
+                              .catch(err => toast.error("Failed to update setting"));
+                          }}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enableFundraising ? 'bg-primary' : 'bg-gray-300'}`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enableFundraising ? 'translate-x-6' : 'translate-x-1'}`}
+                          />
+                        </button>
+                      </div>
+                    </div>
                     {/* Account Security (New) */}
                     <div className="border border-gray-200 rounded-2xl p-6">
                       <div className="flex items-start gap-4 mb-6">
@@ -763,8 +806,8 @@ export default function Dashboard() {
               </div>
             )
           }
-        </div>
-      </main>
-    </div>
+        </div >
+      </main >
+    </div >
   );
 }

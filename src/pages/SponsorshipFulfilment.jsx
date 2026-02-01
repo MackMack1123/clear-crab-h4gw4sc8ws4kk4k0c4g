@@ -88,7 +88,8 @@ export default function SponsorshipFulfilment() {
         try {
             const formDataUpload = new FormData();
             formDataUpload.append('file', file);
-            formDataUpload.append('userId', sponsorshipId);
+            // Group by Organization ID if available, otherwise Sponsorship ID
+            formDataUpload.append('userId', sponsorship?.organizerId || sponsorshipId);
 
             const response = await fetch(`${API_BASE_URL}/api/upload`, {
 
