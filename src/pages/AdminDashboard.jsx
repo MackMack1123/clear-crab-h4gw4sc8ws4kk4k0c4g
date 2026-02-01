@@ -161,7 +161,7 @@ export default function AdminDashboard() {
 
         try {
             // Use dot notation to update only the specific field
-            await userService.updateUser(user.id, { "organizationProfile.waiveFees": newVal });
+            await userService.updateUser(user._id || user.id, { "organizationProfile.waiveFees": newVal });
             toast.success(`Fee waiver ${newVal ? 'enabled' : 'disabled'} for ${user.email}`);
         } catch (error) {
             console.error("Failed to update fee waiver:", error);
@@ -291,8 +291,8 @@ export default function AdminDashboard() {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {users.map(u => (
-                                    <tr key={u.id} className="hover:bg-gray-50">
-                                        <td className="p-4 font-mono text-xs text-gray-500">{u.id}</td>
+                                    <tr key={u._id || u.id} className="hover:bg-gray-50">
+                                        <td className="p-4 font-mono text-xs text-gray-500">{u._id || u.id}</td>
                                         <td className="p-4 font-medium text-gray-900">{u.email}</td>
                                         <td className="p-4"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">{u.role || 'Organizer'}</span></td>
                                         <td className="p-4">

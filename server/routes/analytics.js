@@ -197,7 +197,7 @@ router.get('/admin', async (req, res) => {
             .sort((a, b) => b.revenue - a.revenue)
             .slice(0, 20)
             .map(o => {
-                const org = allOrgs.find(u => u._id === o.orgId);
+                const org = allOrgs.find(u => String(u._id) === String(o.orgId));
                 return {
                     ...o,
                     orgName: org?.organizationProfile?.name || org?.email || 'Unknown'
@@ -212,7 +212,7 @@ router.get('/admin', async (req, res) => {
         const allPackages = await Package.find({});
         const packagePopularity = Object.entries(packageCounts)
             .map(([pkgId, count]) => {
-                const pkg = allPackages.find(p => p._id === pkgId);
+                const pkg = allPackages.find(p => String(p._id) === String(pkgId));
                 return {
                     packageId: pkgId,
                     title: pkg?.title || 'Unknown',
