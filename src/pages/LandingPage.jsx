@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ShieldCheck, Users, Trophy, Heart } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Users, Trophy, Heart, Handshake, Building2, Megaphone } from 'lucide-react';
 
 export default function LandingPage() {
     return (
@@ -117,6 +117,69 @@ export default function LandingPage() {
                                     <p className="text-gray-600 leading-relaxed">{feature.desc}</p>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Sponsorship Section */}
+                <section className="py-24 bg-gradient-to-br from-purple-900 via-primary to-purple-800 relative overflow-hidden">
+                    <div className="absolute inset-0">
+                        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-white/5 rounded-full blur-3xl" />
+                        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent/10 rounded-full blur-3xl" />
+                    </div>
+
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                        <div className="text-center mb-16">
+                            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-1.5 mb-6">
+                                <Handshake className="w-4 h-4 text-white" />
+                                <span className="text-xs font-medium text-white/90">Local Business Partnerships</span>
+                            </div>
+                            <h2 className="font-heading text-3xl md:text-5xl font-bold text-white mb-4">
+                                Sponsor a Local Team
+                            </h2>
+                            <p className="text-xl text-white/80 max-w-2xl mx-auto">
+                                Support youth athletes in your community while getting your business in front of engaged local families.
+                            </p>
+                        </div>
+
+                        <div className="grid md:grid-cols-3 gap-8 mb-12">
+                            {[
+                                {
+                                    icon: <Building2 className="w-7 h-7 text-primary" />,
+                                    title: "Community Visibility",
+                                    desc: "Get your logo on jerseys, banners, and materials seen by hundreds of local families every game day."
+                                },
+                                {
+                                    icon: <Megaphone className="w-7 h-7 text-primary" />,
+                                    title: "Direct Engagement",
+                                    desc: "Connect with families who actively support their community — your ideal customers."
+                                },
+                                {
+                                    icon: <Heart className="w-7 h-7 text-primary" />,
+                                    title: "Make an Impact",
+                                    desc: "Help kids play the sports they love while building goodwill for your brand."
+                                }
+                            ].map((benefit, i) => (
+                                <div key={i} className="p-6 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all group">
+                                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                        {benefit.icon}
+                                    </div>
+                                    <h3 className="font-heading text-lg font-bold text-white mb-2">{benefit.title}</h3>
+                                    <p className="text-white/70 leading-relaxed text-sm">{benefit.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="text-center">
+                            <Link
+                                to="/contact"
+                                className="inline-flex items-center gap-2 bg-white text-primary px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all"
+                            >
+                                Become a Sponsor <ArrowRight className="w-5 h-5" />
+                            </Link>
+                            <p className="text-white/60 text-sm mt-4">
+                                Flexible packages starting at $100
+                            </p>
                         </div>
                     </div>
                 </section>
