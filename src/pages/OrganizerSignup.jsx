@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { auth } from '../firebase';
 import { useNavigate, Link } from 'react-router-dom';
 import { Loader2, ArrowRight, Lock } from 'lucide-react';
 import { systemService } from '../services/systemService';
@@ -43,12 +42,15 @@ export default function OrganizerSignup() {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // Create user doc
-            await setDoc(doc(db, 'users', user.uid), {
-                email: user.email,
-                venmoHandle: venmoHandle,
-                role: 'organizer',
-                createdAt: new Date().toISOString()
+            // Create user in MongoDB
+            await fetch(`${API_BASE_URL}/api/users/${user.uid}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: user.email,
+                    role: 'organizer',
+                    createdAt: new Date().toISOString()
+                })
             });
 
             navigate('/dashboard');

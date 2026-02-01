@@ -46,16 +46,7 @@ service cloud.firestore {
       allow create: if true;
       allow read, update: if request.auth != null && (resource.data.organizerId == request.auth.uid || isAdmin());
     }
-
-    // System Settings: Admins only for read/write
-    match /systemSettings/{docId} {
-      allow read, write: if isAdmin();
-    }
-
-    // System Settings (Development): Same rules for dev collection
-    match /systemSettings_dev/{docId} {
-      allow read, write: if isAdmin();
-    }
+    
     
     // Default deny
     match /{document=**} {
