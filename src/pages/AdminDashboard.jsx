@@ -497,7 +497,7 @@ export default function AdminDashboard() {
                                                     </button>
                                                     {u.organizationProfile?.slug && (
                                                         <a
-                                                            href={`/sponsor/${u.organizationProfile.slug}`}
+                                                            href={`/org/${u.organizationProfile.slug}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
