@@ -20,14 +20,15 @@ export default function SponsorshipView({ currentTab = 'sales', onTabChange }) {
         else setLocalTab(tab);
     };
 
+    const currentUserProfile = useAuth().userProfile;
+    const orgSlug = currentUserProfile?.organizationProfile?.slug;
+
     const handleCopyLink = () => {
-        const path = `${window.location.origin}/org/${currentUserProfile?.slug || currentUser.uid}`;
+        const path = `${window.location.origin}/org/${orgSlug || currentUser.uid}`;
         navigator.clipboard.writeText(path);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
-
-    const currentUserProfile = useAuth().userProfile;
 
     return (
         <div className="space-y-6">
@@ -51,7 +52,7 @@ export default function SponsorshipView({ currentTab = 'sales', onTabChange }) {
                         )}
                     </button>
                     <a
-                        href={`/org/${currentUserProfile?.slug || currentUser?.uid}`}
+                        href={`/org/${orgSlug || currentUser?.uid}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white rounded-lg font-bold text-xs hover:bg-primary-700 transition shadow-sm"

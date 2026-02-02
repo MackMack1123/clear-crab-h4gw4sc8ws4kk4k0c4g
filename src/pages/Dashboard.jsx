@@ -293,7 +293,7 @@ export default function Dashboard() {
                     Email Templates
                   </button>
                   <a
-                    href={`/org/${userProfile?.slug || currentUser.uid}`}
+                    href={`/org/${userProfile?.organizationProfile?.slug || currentUser.uid}`}
                     target="_blank"
                     className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-slate-500 hover:text-white hover:bg-white/5 flex items-center gap-1.5 transition-all group/link"
                   >
