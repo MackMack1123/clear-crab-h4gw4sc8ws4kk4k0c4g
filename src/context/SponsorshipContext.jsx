@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { systemService } from '../services/systemService';
 
 const SponsorshipContext = createContext();
 
@@ -15,6 +16,22 @@ export function SponsorshipProvider({ children }) {
             return [];
         }
     });
+
+    // System settings for fee rates
+    const [feeSettings, setFeeSettings] = useState({
+        platformFeePercent: 5,
+        processingFeePercent: 2.9,
+        processingFeeFixed: 0.30
+    });
+
+    // Fetch system settings on mount
+    useEffect(() => {
+        systemService.getSettings().then(settings => {
+            if (settings?.fees) {
+                setFeeSettings(settings.fees);
+            }
+        }).catch(err => console.error('Failed to load fee settings:', err));
+    }, []);
 
     // We also track the "organizer" context if buying from a specific one
     // But since packages have organizerId, we can infer.
@@ -46,10 +63,10 @@ export function SponsorshipProvider({ children }) {
 
     const cartSubtotal = cart.reduce((acc, item) => acc + (Number(item.price) || 0), 0);
 
-    // Fee Constants
-    const PLATFORM_RATE = 0.05;
-    const PROC_RATE = 0.029;
-    const PROC_FIXED = 0.30;
+    // Fee Rates from system settings (convert percentages to decimals)
+    const PLATFORM_RATE = feeSettings.platformFeePercent / 100;
+    const PROC_RATE = feeSettings.processingFeePercent / 100;
+    const PROC_FIXED = feeSettings.processingFeeFixed;
 
     // Calculate Raw Fees
     const rawPlatformFee = cartSubtotal * PLATFORM_RATE;
@@ -86,7 +103,8 @@ export function SponsorshipProvider({ children }) {
         coverFees,
         toggleCoverFees,
         cartTotal,
-        feesWaived
+        feesWaived,
+        feeSettings // Expose fee settings for display (e.g., "5% platform fee")
     };
 
     return (

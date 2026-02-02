@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Loader2, DollarSign, TrendingUp, CreditCard, Users, LayoutDashboard, Megaphone, LogOut, BarChart3, Settings } from 'lucide-react';
+import { Loader2, DollarSign, TrendingUp, CreditCard, Users, LayoutDashboard, Megaphone, LogOut, BarChart3, Settings, Percent } from 'lucide-react';
 import { payoutService } from '../services/payoutService';
 import { userService } from '../services/userService';
 import { campaignService } from '../services/campaignService';
@@ -426,6 +426,51 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
+                        {/* Platform Fee Controls */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                            <div className="flex items-start gap-4 mb-6">
+                                <div className="p-3 bg-green-50 text-green-600 rounded-xl">
+                                    <Percent className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">Platform Fee Configuration</h2>
+                                    <p className="text-gray-500">Configure the fees charged on sponsorships. These rates apply platform-wide.</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <FeeInputCard
+                                    label="Platform Fee"
+                                    description="Percentage charged as platform fee"
+                                    value={systemSettings.fees?.platformFeePercent ?? 5}
+                                    suffix="%"
+                                    onChange={(value) => handleUpdateSystemSettings('fees', 'platformFeePercent', value)}
+                                />
+                                <FeeInputCard
+                                    label="Processing Fee Rate"
+                                    description="Credit card processing percentage"
+                                    value={systemSettings.fees?.processingFeePercent ?? 2.9}
+                                    suffix="%"
+                                    step={0.1}
+                                    onChange={(value) => handleUpdateSystemSettings('fees', 'processingFeePercent', value)}
+                                />
+                                <FeeInputCard
+                                    label="Processing Fixed Fee"
+                                    description="Fixed fee per transaction"
+                                    value={systemSettings.fees?.processingFeeFixed ?? 0.30}
+                                    prefix="$"
+                                    step={0.01}
+                                    onChange={(value) => handleUpdateSystemSettings('fees', 'processingFeeFixed', value)}
+                                />
+                            </div>
+
+                            <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
+                                <p className="text-sm text-amber-800">
+                                    <strong>Note:</strong> Changes apply immediately to new checkouts. Example: A $100 sponsorship with current settings would have fees of <strong>${((systemSettings.fees?.platformFeePercent ?? 5) + (systemSettings.fees?.processingFeePercent ?? 2.9)).toFixed(1)}% + ${(systemSettings.fees?.processingFeeFixed ?? 0.30).toFixed(2)}</strong> = <strong>${(100 * ((systemSettings.fees?.platformFeePercent ?? 5) + (systemSettings.fees?.processingFeePercent ?? 2.9)) / 100 + (systemSettings.fees?.processingFeeFixed ?? 0.30)).toFixed(2)}</strong>
+                                </p>
+                            </div>
+                        </div>
+
                         {/* Registration Controls */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
                             <div className="flex items-start gap-4 mb-6">
@@ -493,6 +538,49 @@ function ToggleCard({ label, description, checked, onChange }) {
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`}
                 />
             </button>
+        </div>
+    );
+}
+
+function FeeInputCard({ label, description, value, onChange, prefix, suffix, step = 1 }) {
+    const [localValue, setLocalValue] = useState(value);
+
+    useEffect(() => {
+        setLocalValue(value);
+    }, [value]);
+
+    const handleBlur = () => {
+        const numValue = parseFloat(localValue) || 0;
+        if (numValue !== value) {
+            onChange(numValue);
+        }
+    };
+
+    return (
+        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <p className="font-bold text-gray-900 text-sm mb-1">{label}</p>
+            <p className="text-xs text-gray-500 mb-3">{description}</p>
+            <div className="relative">
+                {prefix && (
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
+                        {prefix}
+                    </span>
+                )}
+                <input
+                    type="number"
+                    value={localValue}
+                    onChange={(e) => setLocalValue(e.target.value)}
+                    onBlur={handleBlur}
+                    step={step}
+                    min={0}
+                    className={`w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition text-right font-mono ${prefix ? 'pl-8' : ''} ${suffix ? 'pr-8' : ''}`}
+                />
+                {suffix && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
+                        {suffix}
+                    </span>
+                )}
+            </div>
         </div>
     );
 }

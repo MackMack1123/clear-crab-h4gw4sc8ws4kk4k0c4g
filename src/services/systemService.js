@@ -15,6 +15,7 @@ export const systemService = {
             // Return safe defaults on error
             return {
                 payments: { stripe: true, square: true, paypal: true, check: true },
+                fees: { platformFeePercent: 5, processingFeePercent: 2.9, processingFeeFixed: 0.30 },
                 registrations: { organizationsEnabled: true }
             };
         }
