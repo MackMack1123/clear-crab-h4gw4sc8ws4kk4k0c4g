@@ -20,9 +20,16 @@ const campaignRoutes = require('./routes/campaigns');
 const uploadRoutes = require('./routes/upload');
 
 // --- CORS Configuration ---
+const defaultOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://getfundraisr.io',
+    'https://www.getfundraisr.io'
+];
+
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
-    : ['http://localhost:5173', 'http://localhost:3000']; // Dev defaults
+    ? [...new Set([...process.env.ALLOWED_ORIGINS.split(','), ...defaultOrigins])]
+    : defaultOrigins;
 
 app.use(cors({
     origin: function (origin, callback) {
