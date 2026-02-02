@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { systemService } from '../services/systemService';
+import { userService } from '../services/userService';
 
 const SponsorshipContext = createContext();
 
@@ -17,6 +18,9 @@ export function SponsorshipProvider({ children }) {
         }
     });
 
+    // Fresh organizer data (fetched to ensure fee waiver status is current)
+    const [freshOrganizerData, setFreshOrganizerData] = useState(null);
+
     // System settings for fee rates
     const [feeSettings, setFeeSettings] = useState({
         platformFeePercent: 5,
@@ -33,8 +37,28 @@ export function SponsorshipProvider({ children }) {
         }).catch(err => console.error('Failed to load fee settings:', err));
     }, []);
 
-    // We also track the "organizer" context if buying from a specific one
-    // But since packages have organizerId, we can infer.
+    // Fetch fresh organizer data when cart has items (to get current fee waiver status)
+    useEffect(() => {
+        const fetchFreshOrganizerData = async () => {
+            if (cart.length > 0) {
+                // Get organizer ID from cart - try _id first, then organizerId from package
+                const organizerId = cart[0].organizerData?._id || cart[0].organizerId;
+                if (organizerId) {
+                    try {
+                        const freshData = await userService.getUser(organizerId);
+                        setFreshOrganizerData(freshData);
+                    } catch (err) {
+                        console.error('Failed to fetch fresh organizer data:', err);
+                        // Fall back to snapshot data
+                        setFreshOrganizerData(null);
+                    }
+                }
+            } else {
+                setFreshOrganizerData(null);
+            }
+        };
+        fetchFreshOrganizerData();
+    }, [cart]);
 
     useEffect(() => {
         localStorage.setItem('sponsorship_cart', JSON.stringify(cart));
@@ -58,7 +82,8 @@ export function SponsorshipProvider({ children }) {
 
     const [coverFees, setCoverFees] = useState(false);
 
-    const organizer = cart.length > 0 ? cart[0].organizerData : null;
+    // Use fresh organizer data for fee waiver status (falls back to cart snapshot)
+    const organizer = freshOrganizerData || (cart.length > 0 ? cart[0].organizerData : null);
     const feesWaived = organizer?.organizationProfile?.waiveFees === true;
 
     const cartSubtotal = cart.reduce((acc, item) => acc + (Number(item.price) || 0), 0);

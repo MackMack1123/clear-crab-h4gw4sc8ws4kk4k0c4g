@@ -47,4 +47,23 @@ router.post('/send-test', async (req, res) => {
     }
 });
 
+// Send Welcome Email (for new signups)
+router.post('/welcome', async (req, res) => {
+    try {
+        const { email, userName } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+
+        await emailService.sendWelcomeEmail(email, userName);
+        res.json({ success: true, message: 'Welcome email sent' });
+
+    } catch (error) {
+        console.error('Welcome Email Route Error:', error);
+        // Don't fail the request - welcome email is non-critical
+        res.json({ success: false, message: 'Welcome email could not be sent' });
+    }
+});
+
 module.exports = router;

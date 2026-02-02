@@ -1,14 +1,68 @@
-import React from "react";
-import { useLocation, Link } from "react-router-dom";
-import { CheckCircle, ArrowRight, Home, Trophy } from "lucide-react";
+import React, { useState } from "react";
+import { useLocation, Link, useNavigate } from "react-router-dom";
+import { CheckCircle, ArrowRight, Home, Trophy, UserPlus, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { auth } from "../firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { userService } from "../services/userService";
+import { sponsorshipService } from "../services/sponsorshipService";
+import toast from "react-hot-toast";
 
 export default function ThankYou() {
   const location = useLocation();
+  const navigate = useNavigate();
   const state = location.state || {};
 
   // Support both campaign transactions and sponsorship submissions
-  const { transaction, type, title, message, sponsorshipIds } = state;
+  const { transaction, type, title, message, sponsorshipIds, isGuest, sponsorEmail } = state;
   const isSponsorship = type === "sponsorship";
+
+  // Account creation state for guest checkout
+  const [showAccountForm, setShowAccountForm] = useState(false);
+  const [creatingAccount, setCreatingAccount] = useState(false);
+  const [accountCreated, setAccountCreated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Handle account creation for guest checkout
+  const handleCreateAccount = async (e) => {
+    e.preventDefault();
+    if (!sponsorEmail || !password) {
+      toast.error("Please enter a password");
+      return;
+    }
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setCreatingAccount(true);
+    try {
+      // Create Firebase account
+      const userCredential = await createUserWithEmailAndPassword(auth, sponsorEmail, password);
+
+      // Create user record in MongoDB
+      await userService.updateUser(userCredential.user.uid, {
+        email: sponsorEmail,
+        role: 'sponsor',
+        roles: ['sponsor']
+      });
+
+      // Link all existing sponsorships with this email to the new account
+      await sponsorshipService.linkSponsorshipsToAccount(sponsorEmail, userCredential.user.uid);
+
+      setAccountCreated(true);
+      toast.success("Account created! Your sponsorships are now linked.");
+    } catch (error) {
+      console.error("Account creation error:", error);
+      if (error.code === 'auth/email-already-in-use') {
+        toast.error("An account with this email already exists. Please sign in instead.");
+      } else {
+        toast.error(error.message || "Failed to create account");
+      }
+    } finally {
+      setCreatingAccount(false);
+    }
+  };
 
   // No valid state - show not found
   if (!transaction && !isSponsorship) {
@@ -52,6 +106,91 @@ export default function ThankYou() {
           <p className="text-gray-600 text-lg mb-8">
             {message || "Your sponsorship has been processed successfully."}
           </p>
+
+          {/* Guest Account Creation Option */}
+          {isGuest && sponsorEmail && !accountCreated && (
+            <div className="mb-6">
+              {!showAccountForm ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-left">
+                  <div className="flex items-start gap-3">
+                    <UserPlus className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-bold text-blue-800 text-sm">Want to manage your sponsorship?</p>
+                      <p className="text-blue-700 text-xs mt-1">
+                        Create a free account to update your ad, view your history, and manage future sponsorships.
+                      </p>
+                      <button
+                        onClick={() => setShowAccountForm(true)}
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Create Account
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleCreateAccount} className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-left space-y-3">
+                  <h3 className="font-bold text-gray-900 text-sm">Create Your Account</h3>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm text-gray-600">
+                      <Mail className="w-4 h-4" />
+                      {sponsorEmail}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Create Password</label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full pl-9 pr-10 py-2 rounded-lg border border-gray-200 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                        placeholder="At least 6 characters"
+                        minLength={6}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={creatingAccount}
+                      className="flex-1 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-700 transition flex items-center justify-center gap-2"
+                    >
+                      {creatingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Account"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAccountForm(false)}
+                      className="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* Account Created Success */}
+          {accountCreated && (
+            <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-green-700">
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-bold text-sm">Account created successfully!</span>
+              </div>
+              <p className="text-green-600 text-xs mt-1">You can now access your sponsor dashboard anytime.</p>
+            </div>
+          )}
 
           <div className="space-y-3">
             {/* Show "Design Your Ad" button if we have sponsorship IDs from checkout */}

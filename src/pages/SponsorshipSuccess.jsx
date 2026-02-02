@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Mail } from 'lucide-react';
 import { userService } from '../services/userService';
+import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../config';
 
 export default function SponsorshipSuccess() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const { currentUser, addRole } = useAuth();
     const sessionId = searchParams.get('session_id');
     const paymentMethod = searchParams.get('payment_method');
     const orgId = searchParams.get('org_id');
@@ -48,6 +50,12 @@ export default function SponsorshipSuccess() {
             if (data.verified) {
                 setStatus('success');
                 setCount(data.count || 1);
+
+                // Add sponsor role to logged-in user (if they're an organizer, they now have both roles)
+                if (currentUser && addRole) {
+                    addRole('sponsor').catch(err => console.error('Failed to add sponsor role:', err));
+                }
+
                 toast.success('Payment verified successfully!');
             } else {
                 setStatus('error');

@@ -41,14 +41,15 @@ export default function SponsorshipFulfilment() {
                 setSponsorship(data);
 
                 // Robust Pre-fill Logic
-                // Priority: Saved Info > Top Level Sponsorship Data > User Profile Data
+                // Priority: Saved sponsorInfo > Top Level Sponsorship Data > Basic User Profile
+                // Note: We do NOT use userProfile.organizationProfile as sponsors are not organizers
                 setFormData(prev => ({
                     ...prev,
                     email: data.sponsorInfo?.email || data.sponsorEmail || userProfile?.email || prev.email,
                     contactName: data.sponsorInfo?.contactName || data.sponsorName || (userProfile?.firstName ? `${userProfile.firstName} ${userProfile.lastName}` : '') || prev.contactName,
-                    companyName: data.sponsorInfo?.companyName || (userProfile?.organizationProfile?.orgName) || prev.companyName,
+                    companyName: data.sponsorInfo?.companyName || prev.companyName,
                     adMessage: data.sponsorInfo?.adMessage || prev.adMessage,
-                    phone: data.sponsorInfo?.phone || prev.phone,
+                    phone: data.sponsorInfo?.phone || data.sponsorPhone || prev.phone,
                     logoUrl: data.branding?.logoUrl || prev.logoUrl,
                     children: data.children || []
                 }));

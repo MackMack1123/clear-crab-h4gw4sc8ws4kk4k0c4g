@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Loader2, ArrowRight, Lock } from 'lucide-react';
 import { systemService } from '../services/systemService';
 import { API_BASE_URL } from '../config';
@@ -13,6 +13,8 @@ export default function OrganizerSignup() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const redirectTo = searchParams.get('redirect') || '/dashboard';
 
     const [registrationsEnabled, setRegistrationsEnabled] = useState(true);
     const [checkingSettings, setCheckingSettings] = useState(true);
@@ -64,11 +66,22 @@ export default function OrganizerSignup() {
                 body: JSON.stringify({
                     email: user.email,
                     role: 'organizer',
+                    roles: ['organizer'],
                     createdAt: new Date().toISOString()
                 })
             });
 
-            navigate('/dashboard');
+            // Send welcome email (non-blocking)
+            fetch(`${API_BASE_URL}/api/email/welcome`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: user.email,
+                    userName: null // We don't have their name yet
+                })
+            }).catch(err => console.log('Welcome email failed (non-critical):', err));
+
+            navigate(redirectTo);
         } catch (err) {
             console.error(err);
             setError('Failed to create account. Email may be in use.');
@@ -286,7 +299,7 @@ export default function OrganizerSignup() {
 
                 <p className="text-center mt-8 text-gray-500">
                     Already have an account?{' '}
-                    <Link to="/login" className="font-bold text-primary hover:text-primary-700 transition">
+                    <Link to={redirectTo !== '/dashboard' ? `/login?redirect=${encodeURIComponent(redirectTo)}` : '/login'} className="font-bold text-primary hover:text-primary-700 transition">
                         Log in
                     </Link>
                 </p>

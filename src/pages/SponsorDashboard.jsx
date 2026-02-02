@@ -5,12 +5,20 @@ import { Link, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, LogOut, Package, ExternalLink, Edit3, Loader2, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
+import RoleSwitcher from '../components/layout/RoleSwitcher';
 
 export default function SponsorDashboard() {
-    const { currentUser, userProfile } = useAuth();
+    const { currentUser, userProfile, availableRoles, switchRole, activeRole } = useAuth();
     const navigate = useNavigate();
     const [sponsorships, setSponsorships] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Sync activeRole to 'sponsor' when viewing this dashboard
+    useEffect(() => {
+        if (activeRole !== 'sponsor' && availableRoles.includes('sponsor')) {
+            switchRole('sponsor');
+        }
+    }, [activeRole, availableRoles, switchRole]);
 
     useEffect(() => {
         if (currentUser) {
@@ -85,6 +93,13 @@ export default function SponsorDashboard() {
                 </nav>
 
                 <div className="p-4 border-t border-slate-800 bg-[#0f172a]">
+                    {/* Role Switcher - Only shows if user has multiple roles */}
+                    {availableRoles.length > 1 && (
+                        <div className="mb-3 pb-3 border-b border-slate-800">
+                            <RoleSwitcher />
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl border border-slate-800 bg-slate-800/50">
                         <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
                             {userProfile?.firstName?.[0] || 'S'}

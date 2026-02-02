@@ -6,6 +6,8 @@ require('dotenv').config({ path: path.join(__dirname, '.env') }); // Server .env
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const logger = require('./utils/logger');
 
 const app = express();
 // Trust proxy (required for correct protocol detection behind Load Balancers/Coolify)
@@ -17,9 +19,57 @@ const sponsorshipRoutes = require('./routes/sponsorships');
 const campaignRoutes = require('./routes/campaigns');
 const uploadRoutes = require('./routes/upload');
 
+// --- CORS Configuration ---
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:5173', 'http://localhost:3000']; // Dev defaults
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, Postman, etc.)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        // Log blocked origins in development
+        if (process.env.NODE_ENV !== 'production') {
+            console.warn(`[CORS] Blocked request from origin: ${origin}`);
+        }
+        return callback(new Error('Not allowed by CORS'), false);
+    },
+    credentials: true
+}));
+
+// --- Rate Limiting ---
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per window
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' }
+});
+
+// Apply rate limiting to all API routes
+app.use('/api/', limiter);
+
+// Stricter rate limit for auth-related endpoints
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20, // 20 attempts per 15 minutes
+    message: { error: 'Too many authentication attempts, please try again later.' }
+});
+
 // Middleware
-app.use(cors());
 app.use(express.json());
+
+// Request logging middleware (logs important requests)
+app.use((req, res, next) => {
+    // Log payment and auth related requests
+    if (req.path.includes('/payments') || req.path.includes('/auth')) {
+        logger.request(req, 'REQUEST', { query: req.query });
+    }
+    next();
+});
 // Serve static uploads
 // Serve static uploads
 const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, 'public/uploads');
@@ -41,21 +91,106 @@ app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/payments/stripe', require('./routes/payments/stripe'));
 app.use('/api/payments/square', require('./routes/payments/square'));
 app.use('/api/analytics', require('./routes/analytics'));
-app.use('/api/auth/github', require('./routes/auth/github'));
+app.use('/api/auth/github', authLimiter, require('./routes/auth/github')); // Auth rate limited
 app.use('/api/email', require('./routes/email'));
 app.use('/api/system', require('./routes/system'));
 app.use('/api/discover', require('./routes/discover'));
+app.use('/api/team', require('./routes/team'));
 
 app.get('/', (req, res) => {
     res.send('Fundraisr API is running');
 });
 
+// Health check endpoint for monitoring
+app.get('/api/health', async (req, res) => {
+    const healthcheck = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || 'development'
+    };
+
+    try {
+        // Check MongoDB connection
+        if (mongoose.connection.readyState === 1) {
+            healthcheck.database = 'connected';
+        } else {
+            healthcheck.database = 'disconnected';
+            healthcheck.status = 'degraded';
+        }
+        res.status(healthcheck.status === 'ok' ? 200 : 503).json(healthcheck);
+    } catch (error) {
+        healthcheck.status = 'error';
+        healthcheck.error = error.message;
+        res.status(503).json(healthcheck);
+    }
+});
+
+// 404 handler for unknown routes
+app.use((req, res, next) => {
+    res.status(404).json({ error: 'Not Found', path: req.path });
+});
+
+// Global error handler - catches all unhandled errors
+app.use((err, req, res, next) => {
+    // Log the error
+    logger.exception(err, {
+        method: req.method,
+        path: req.path,
+        ip: req.ip,
+        userId: req.headers['x-user-id'] || 'anonymous',
+        body: process.env.NODE_ENV !== 'production' ? req.body : undefined
+    });
+
+    // Handle specific error types
+    if (err.name === 'ValidationError') {
+        return res.status(400).json({
+            error: 'Validation Error',
+            details: err.message
+        });
+    }
+
+    if (err.name === 'CastError') {
+        return res.status(400).json({
+            error: 'Invalid ID format'
+        });
+    }
+
+    if (err.message === 'Not allowed by CORS') {
+        return res.status(403).json({
+            error: 'CORS policy violation'
+        });
+    }
+
+    // Default error response
+    const statusCode = err.statusCode || err.status || 500;
+    res.status(statusCode).json({
+        error: process.env.NODE_ENV === 'production'
+            ? 'Internal Server Error'
+            : err.message
+    });
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+    logger.exception(err, { type: 'uncaughtException' });
+    // Give logger time to write before exiting
+    setTimeout(() => process.exit(1), 1000);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled Promise Rejection', {
+        reason: reason instanceof Error ? reason.message : reason,
+        stack: reason instanceof Error ? reason.stack : undefined
+    });
+});
 
 // Database Connection
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/fundraisr')
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.error('MongoDB Connection Error:', err));
+    .then(() => logger.info('MongoDB Connected'))
+    .catch(err => logger.exception(err, { context: 'MongoDB Connection' }));
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    logger.info(`Server started`, { port: PORT, env: process.env.NODE_ENV || 'development' });
 });

@@ -31,7 +31,9 @@ const UserSchema = new mongoose.Schema({
     lastName: String,
     teamName: String,
     // slug moved to organizationProfile
-    role: { type: String, default: 'organizer' }, // organizer, admin
+    // Support both legacy single role and new multi-role system
+    role: { type: String, default: 'organizer' }, // Legacy: organizer, admin, sponsor
+    roles: { type: [String], default: [] }, // Multi-role: ['organizer', 'sponsor', 'admin']
     createdAt: { type: Date, default: Date.now },
     payoutMethod: String,
     balance: { type: Number, default: 0 },
@@ -108,6 +110,37 @@ const UserSchema = new mongoose.Schema({
         nodeId: String,
         connectedAt: Date
     },
+
+    // Team members of this organization
+    teamMembers: [{
+        memberId: String,        // Firebase UID
+        email: String,
+        role: { type: String, enum: ['manager', 'member'] },
+        joinedAt: Date,
+        invitedBy: String,
+        status: { type: String, enum: ['active', 'removed'], default: 'active' }
+    }],
+
+    // Pending invitations
+    teamInvitations: [{
+        id: String,
+        email: String,
+        role: { type: String, enum: ['manager', 'member'] },
+        token: String,           // Secure invite link token
+        invitedBy: String,
+        invitedByName: String,
+        expiresAt: Date,
+        createdAt: Date,
+        status: { type: String, enum: ['pending', 'accepted', 'declined', 'expired'], default: 'pending' }
+    }],
+
+    // Organizations this user is a member of (not owner)
+    memberOf: [{
+        organizationId: String,  // Firebase UID of org owner
+        orgName: String,
+        role: { type: String, enum: ['manager', 'member'] },
+        joinedAt: Date
+    }],
 
     // Payment Gateway Settings
     paymentSettings: {

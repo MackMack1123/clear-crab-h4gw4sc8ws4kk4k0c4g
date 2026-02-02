@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { CreditCard, Check, X, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
+import { useOrgPermissions } from '../../hooks/useOrgPermissions';
+import { CreditCard, Check, X, ExternalLink, Loader2, AlertCircle, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../../config';
 
@@ -32,8 +33,12 @@ const GATEWAYS = [
 ];
 
 export default function PaymentGatewaySettings() {
-    const { currentUser, userProfile, refreshProfile } = useAuth();
+    const { currentUser, userProfile, refreshProfile, activeOrganization } = useAuth();
+    const { canConnectPayments, role } = useOrgPermissions();
     const [loading, setLoading] = useState(true);
+
+    // Use activeOrganization.id for team member support
+    const orgId = activeOrganization?.id || currentUser?.uid;
     const [connecting, setConnecting] = useState(false);
     const [isToggling, setIsToggling] = useState(false);
     const [localSandbox, setLocalSandbox] = useState(false);
@@ -73,11 +78,11 @@ export default function PaymentGatewaySettings() {
     };
 
     const checkConnectionStatus = async () => {
-        if (!currentUser?.uid) return;
+        if (!orgId) return;
 
         try {
             // Check Stripe
-            const resStripe = await fetch(`${API_BASE_URL}/api/payments/stripe/account-status?userId=${currentUser.uid}`);
+            const resStripe = await fetch(`${API_BASE_URL}/api/payments/stripe/account-status?userId=${orgId}`);
 
             const dataStripe = await resStripe.json();
             setStripeStatus(dataStripe);
@@ -102,9 +107,13 @@ export default function PaymentGatewaySettings() {
     };
 
     const connectStripe = async () => {
+        if (!canConnectPayments) {
+            toast.error("Only organization owners can connect payment gateways");
+            return;
+        }
         setConnecting(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/api/payments/stripe/connect?userId=${currentUser.uid}`);
+            const res = await fetch(`${API_BASE_URL}/api/payments/stripe/connect?userId=${orgId}`);
 
             const data = await res.json();
 
@@ -122,6 +131,10 @@ export default function PaymentGatewaySettings() {
     };
 
     const disconnectStripe = async () => {
+        if (!canConnectPayments) {
+            toast.error("Only organization owners can disconnect payment gateways");
+            return;
+        }
         if (!confirm('Are you sure you want to disconnect Stripe? Sponsors won\'t be able to pay until you reconnect.')) {
             return;
         }
@@ -131,7 +144,7 @@ export default function PaymentGatewaySettings() {
 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: currentUser.uid })
+                body: JSON.stringify({ userId: orgId })
             });
 
             if (res.ok) {
@@ -150,9 +163,13 @@ export default function PaymentGatewaySettings() {
 
 
     const connectSquare = async () => {
+        if (!canConnectPayments) {
+            toast.error("Only organization owners can connect payment gateways");
+            return;
+        }
         setConnecting(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/api/payments/square/connect?userId=${currentUser.uid}`);
+            const res = await fetch(`${API_BASE_URL}/api/payments/square/connect?userId=${orgId}`);
 
             const data = await res.json();
 
@@ -170,6 +187,10 @@ export default function PaymentGatewaySettings() {
     };
 
     const disconnectSquare = async () => {
+        if (!canConnectPayments) {
+            toast.error("Only organization owners can disconnect payment gateways");
+            return;
+        }
         if (!confirm('Are you sure you want to disconnect Square?')) return;
         // TODO: Implement disconnect endpoint or just clear locally if minimal
         // For now, we manually update user or add a disconnect endpoint.
@@ -187,6 +208,17 @@ export default function PaymentGatewaySettings() {
 
     return (
         <div className="space-y-6">
+            {/* Read-only notice for non-owners */}
+            {!canConnectPayments && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <div>
+                        <p className="text-sm font-medium text-blue-800">View Only</p>
+                        <p className="text-xs text-blue-600">Only organization owners can connect payment gateways. You have {role} access.</p>
+                    </div>
+                </div>
+            )}
+
             <div>
                 <h3 className="text-lg font-bold text-gray-900 mb-1">Payment Gateway</h3>
                 <p className="text-sm text-gray-500">
@@ -247,7 +279,8 @@ export default function PaymentGatewaySettings() {
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={disconnectStripe}
-                                                    className="text-sm text-red-600 hover:text-red-700 font-medium"
+                                                    disabled={!canConnectPayments}
+                                                    className={`text-sm font-medium ${canConnectPayments ? 'text-red-600 hover:text-red-700' : 'text-gray-400 cursor-not-allowed'}`}
                                                 >
                                                     Disconnect
                                                 </button>
@@ -255,8 +288,8 @@ export default function PaymentGatewaySettings() {
                                         ) : (
                                             <button
                                                 onClick={connectStripe}
-                                                disabled={connecting}
-                                                className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition disabled:opacity-50"
+                                                disabled={connecting || !canConnectPayments}
+                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 ${canConnectPayments ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                                             >
                                                 {connecting ? (
                                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -275,7 +308,8 @@ export default function PaymentGatewaySettings() {
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={disconnectSquare}
-                                                    className="text-sm text-red-600 hover:text-red-700 font-medium"
+                                                    disabled={!canConnectPayments}
+                                                    className={`text-sm font-medium ${canConnectPayments ? 'text-red-600 hover:text-red-700' : 'text-gray-400 cursor-not-allowed'}`}
                                                 >
                                                     Disconnect
                                                 </button>
@@ -283,8 +317,8 @@ export default function PaymentGatewaySettings() {
                                         ) : (
                                             <button
                                                 onClick={connectSquare}
-                                                disabled={connecting}
-                                                className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-800 transition disabled:opacity-50"
+                                                disabled={connecting || !canConnectPayments}
+                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 ${canConnectPayments ? 'bg-black text-white hover:bg-gray-800' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                                             >
                                                 {connecting ? (
                                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -368,20 +402,24 @@ export default function PaymentGatewaySettings() {
                         </p>
                     </div>
 
-                    <label className="relative inline-flex items-center cursor-pointer">
+                    <label className={`relative inline-flex items-center ${canConnectPayments ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
                         <input
                             type="checkbox"
                             className="sr-only peer"
                             checked={localSandbox}
-                            disabled={isToggling}
+                            disabled={isToggling || !canConnectPayments}
                             onChange={async (e) => {
+                                if (!canConnectPayments) {
+                                    toast.error("Only organization owners can change payment settings");
+                                    return;
+                                }
                                 const newVal = e.target.checked;
                                 setLocalSandbox(newVal); // Optimistic Update
                                 setIsToggling(true);
 
                                 try {
                                     await import('../../services/userService').then(m =>
-                                        m.userService.updateUser(currentUser.uid, {
+                                        m.userService.updateUser(orgId, {
                                             paymentSettings: {
                                                 ...userProfile.paymentSettings,
                                                 sandboxMode: newVal

@@ -13,7 +13,10 @@ import PayoutView from '../components/dashboard/PayoutView';
 import RosterUpload from '../components/dashboard/RosterUpload';
 import SponsorshipView from '../components/dashboard/SponsorshipView';
 import OrgAnalytics from '../components/analytics/OrgAnalytics';
-import { BarChart3 } from 'lucide-react';
+import RoleSwitcher from '../components/layout/RoleSwitcher';
+import OrgSwitcher from '../components/layout/OrgSwitcher';
+import TeamManagement from '../components/team/TeamManagement';
+import { BarChart3, UsersRound } from 'lucide-react';
 import {
   LayoutDashboard,
   Wallet,
@@ -34,7 +37,7 @@ import {
 } from 'lucide-react';
 
 export default function Dashboard() {
-  const { currentUser, userProfile, updateUserEmail, refreshProfile } = useAuth();
+  const { currentUser, userProfile, updateUserEmail, refreshProfile, activeRole, availableRoles, hasRole, allOrganizations, activeOrganization, switchRole } = useAuth();
   const navigate = useNavigate();
   const [payoutMethod, setPayoutMethod] = useState('');
   const [isEditingPayout, setIsEditingPayout] = useState(false);
@@ -43,7 +46,7 @@ export default function Dashboard() {
   const [sponsorships, setSponsorships] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCampaignId, setSelectedCampaignId] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'campaigns', 'settings', 'sponsorships'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'campaigns', 'settings', 'sponsorships', 'team'
   const [sponsorshipTab, setSponsorshipTab] = useState('sales'); // 'sales', 'packages', 'content', 'settings'
 
   // Email Update State
@@ -59,6 +62,13 @@ export default function Dashboard() {
   const [slugError, setSlugError] = useState('');
   const [enableFundraising, setEnableFundraising] = useState(true);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  // Sync activeRole to 'organizer' when viewing this dashboard
+  useEffect(() => {
+    if (activeRole !== 'organizer' && availableRoles.includes('organizer')) {
+      switchRole('organizer');
+    }
+  }, [activeRole, availableRoles, switchRole]);
 
   useEffect(() => {
     if (userProfile?.email) {
@@ -149,7 +159,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (currentUser) {
-      if (userProfile?.role === 'sponsor') {
+      // Only redirect if user is ONLY a sponsor (no organizer role) and they're viewing as sponsor
+      // Users with multiple roles can use the role switcher to navigate
+      const isOnlySponsor = availableRoles.length === 1 && availableRoles[0] === 'sponsor';
+      if (isOnlySponsor) {
         navigate('/sponsor/dashboard');
         return;
       }
@@ -158,7 +171,7 @@ export default function Dashboard() {
     if (userProfile?.payoutMethod) {
       setPayoutMethod(userProfile.payoutMethod);
     }
-  }, [currentUser, userProfile]);
+  }, [currentUser, userProfile, availableRoles]);
 
   async function loadDashboardData() {
     try {
@@ -336,8 +349,18 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Settings */}
-        <div className="pt-4 mt-4 border-t border-slate-800">
+        {/* Team & Settings */}
+        <div className="pt-4 mt-4 border-t border-slate-800 space-y-1">
+          {/* Team - Only show for owners */}
+          {activeOrganization?.isOwn && (
+            <button
+              onClick={() => setActiveTab('team')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group ${activeTab === 'team' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/25' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+            >
+              <UsersRound className={`w-5 h-5 ${activeTab === 'team' ? 'text-white' : 'text-slate-500 group-hover:text-white transition-colors'}`} />
+              Team
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('settings')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group ${activeTab === 'settings' ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
@@ -349,6 +372,20 @@ export default function Dashboard() {
       </nav>
 
       <div className="p-4 border-t border-slate-800 bg-[#0f172a]">
+        {/* Org Switcher - Only shows if user has access to multiple organizations */}
+        {allOrganizations && allOrganizations.length > 1 && (
+          <div className="mb-3 pb-3 border-b border-slate-800">
+            <OrgSwitcher />
+          </div>
+        )}
+
+        {/* Role Switcher - Only shows if user has multiple roles */}
+        {availableRoles.length > 1 && (
+          <div className="mb-3 pb-3 border-b border-slate-800">
+            <RoleSwitcher />
+          </div>
+        )}
+
         <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl border border-slate-800 bg-slate-800/50">
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-inner">
             {userProfile?.teamName?.[0] || currentUser?.email?.[0] || 'U'}
@@ -377,7 +414,7 @@ export default function Dashboard() {
         <div className="max-w-6xl mx-auto space-y-8">
 
           {/* Header */}
-          {activeTab !== 'sponsorships' && (
+          {activeTab !== 'sponsorships' && activeTab !== 'team' && (
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <div className="flex justify-between items-center mb-8">
@@ -401,7 +438,7 @@ export default function Dashboard() {
           )}
 
           {/* Empty State Hero */}
-          {campaigns.length === 0 && sponsorships.length === 0 && !loading && activeTab !== 'sponsorships' && (
+          {campaigns.length === 0 && sponsorships.length === 0 && !loading && activeTab !== 'sponsorships' && activeTab !== 'team' && (
             <div className="bg-white rounded-3xl shadow-glow border border-gray-100 p-12 text-center relative overflow-hidden">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-purple-600/5 to-transparent pointer-events-none"></div>
               <div className="relative z-10 max-w-lg mx-auto">
@@ -429,7 +466,7 @@ export default function Dashboard() {
           )}
 
           {/* Stats Cards: Sponsorships (Priority) */}
-          {(campaigns.length > 0 || sponsorships.length > 0) && activeTab !== 'sponsorships' && (
+          {(campaigns.length > 0 || sponsorships.length > 0) && activeTab !== 'sponsorships' && activeTab !== 'team' && (
             <div className="space-y-6">
               {/* Sponsorship Stats Row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -476,7 +513,9 @@ export default function Dashboard() {
             </div>
           )}
 
-          {activeTab === 'sponsorships' ? (
+          {activeTab === 'team' ? (
+            <TeamManagement />
+          ) : activeTab === 'sponsorships' ? (
             <SponsorshipView currentTab={sponsorshipTab} onTabChange={setSponsorshipTab} />
           ) : campaigns.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

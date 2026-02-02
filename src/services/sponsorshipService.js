@@ -1,34 +1,67 @@
 import { API_BASE_URL } from '../config';
+import { auth } from '../firebase';
 const API_URL = `${API_BASE_URL}/api/sponsorships`;
+
+// Helper to get current user ID for permission checks
+const getCurrentUserId = () => auth.currentUser?.uid;
 
 export const sponsorshipService = {
     // --- Sponsorship Packages ---
 
-    // Create a new package
+    // Create a new package (with permission support for team members)
     createPackage: async (organizerId, data) => {
+        const headers = { 'Content-Type': 'application/json' };
+        const currentUserId = getCurrentUserId();
+
+        // Pass user ID for permission check if user is a team member
+        if (currentUserId && currentUserId !== organizerId) {
+            headers['x-user-id'] = currentUserId;
+        }
+
         const res = await fetch(`${API_URL}/packages`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...data, organizerId })
+            headers,
+            body: JSON.stringify({ ...data, organizerId, userId: currentUserId })
         });
-        if (!res.ok) throw new Error('Failed to create package');
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to create package');
+        }
         const pkg = await res.json();
         return pkg.id;
     },
 
-    // Update an existing package
+    // Update an existing package (with permission support)
     updatePackage: async (packageId, data) => {
+        const headers = { 'Content-Type': 'application/json' };
+        const currentUserId = getCurrentUserId();
+
+        if (currentUserId) {
+            headers['x-user-id'] = currentUserId;
+        }
+
         const res = await fetch(`${API_URL}/packages/${packageId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            headers,
+            body: JSON.stringify({ ...data, userId: currentUserId })
         });
-        if (!res.ok) throw new Error('Failed to update package');
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to update package');
+        }
     },
 
-    // Get all packages for an organizer (Admin)
+    // Get all packages for an organizer (with permission support for team members)
     getPackages: async (organizerId) => {
-        const res = await fetch(`${API_URL}/packages/${organizerId}`);
+        const currentUserId = getCurrentUserId();
+        let url = `${API_URL}/packages/${organizerId}`;
+
+        // Pass user ID for team member access verification
+        if (currentUserId && currentUserId !== organizerId) {
+            url += `?userId=${currentUserId}`;
+        }
+
+        const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to fetch packages');
         return await res.json();
     },
@@ -47,12 +80,23 @@ export const sponsorshipService = {
         return await res.json();
     },
 
-    // Delete a package
+    // Delete a package (with permission support)
     deletePackage: async (packageId) => {
-        const res = await fetch(`${API_URL}/packages/${packageId}`, {
-            method: 'DELETE'
+        const headers = {};
+        const currentUserId = getCurrentUserId();
+
+        if (currentUserId) {
+            headers['x-user-id'] = currentUserId;
+        }
+
+        const res = await fetch(`${API_URL}/packages/${packageId}?userId=${currentUserId || ''}`, {
+            method: 'DELETE',
+            headers
         });
-        if (!res.ok) throw new Error('Failed to delete package');
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to delete package');
+        }
     },
 
     // --- Sponsorships (Purchases) ---
@@ -102,7 +146,15 @@ export const sponsorshipService = {
     },
 
     getOrganizerSponsorships: async (organizerId) => {
-        const res = await fetch(`${API_URL}/organizer/${organizerId}`);
+        const currentUserId = getCurrentUserId();
+        let url = `${API_URL}/organizer/${organizerId}`;
+
+        // Pass user ID for team member access verification
+        if (currentUserId && currentUserId !== organizerId) {
+            url += `?userId=${currentUserId}`;
+        }
+
+        const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to fetch organizer sponsorships');
         return await res.json();
     },
@@ -135,5 +187,38 @@ export const sponsorshipService = {
             throw new Error(err.error || 'Failed to create checkout session');
         }
         return await res.json();
+    },
+
+    // Lookup sponsor by email (for guest checkout recognition)
+    lookupSponsorByEmail: async (email) => {
+        const res = await fetch(`${API_URL}/lookup-by-email/${encodeURIComponent(email)}`);
+        if (!res.ok) throw new Error('Failed to lookup sponsor');
+        return await res.json();
+    },
+
+    // Link all sponsorships to a new user account
+    linkSponsorshipsToAccount: async (email, userId) => {
+        const res = await fetch(`${API_URL}/link-account`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, userId })
+        });
+        if (!res.ok) throw new Error('Failed to link sponsorships');
+        return await res.json();
+    },
+
+    // Delete a sponsorship (for cleaning up failed payments)
+    deleteSponsorship: async (id) => {
+        const res = await fetch(`${API_URL}/${id}`, {
+            method: 'DELETE'
+        });
+        if (!res.ok) throw new Error('Failed to delete sponsorship');
+    },
+
+    // Delete multiple sponsorships
+    deleteSponsorships: async (ids) => {
+        await Promise.all(ids.map(id =>
+            fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+        ));
     }
 };

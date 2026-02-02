@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Loader2, DollarSign, TrendingUp, CreditCard, Users, LayoutDashboard, Megaphone, LogOut, BarChart3, Settings, Percent, Search, Building2, X, Check, ExternalLink, Eye, Edit2, Handshake } from 'lucide-react';
+import { Loader2, DollarSign, TrendingUp, CreditCard, Users, LayoutDashboard, Megaphone, LogOut, BarChart3, Settings, Percent, Search, Building2, X, Check, ExternalLink, Eye, Edit2, Handshake, ChevronDown, ChevronRight, Shield, Crown, UsersRound, Filter } from 'lucide-react';
 import { payoutService } from '../services/payoutService';
 import { userService } from '../services/userService';
 import { campaignService } from '../services/campaignService';
@@ -11,9 +11,10 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AdminAnalytics from '../components/analytics/AdminAnalytics';
+import RoleSwitcher from '../components/layout/RoleSwitcher';
 
 export default function AdminDashboard() {
-    const { logout } = useAuth();
+    const { logout, availableRoles } = useAuth();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
     const [loading, setLoading] = useState(true);
@@ -28,6 +29,9 @@ export default function AdminDashboard() {
 
     // Search/Filter States
     const [userSearch, setUserSearch] = useState('');
+    const [userOrgFilter, setUserOrgFilter] = useState('all'); // Filter users by organization
+    const [userRoleFilter, setUserRoleFilter] = useState('all'); // Filter by system role
+    const [expandedUserId, setExpandedUserId] = useState(null); // For showing team memberships
     const [sponsorshipFilter, setSponsorshipFilter] = useState('all'); // all, pending, paid, branding-submitted
     const [sponsorshipOrgFilter, setSponsorshipOrgFilter] = useState('all');
 
@@ -189,6 +193,39 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleChangeUserRole = async (user, newRole) => {
+        const userId = user._id || user.id;
+        const currentRoles = user.roles || [user.role || 'organizer'];
+
+        // Determine new roles array
+        let newRoles;
+        if (newRole === 'admin') {
+            // Add admin role if not present
+            newRoles = currentRoles.includes('admin') ? currentRoles : [...currentRoles, 'admin'];
+        } else {
+            // Remove admin role
+            newRoles = currentRoles.filter(r => r !== 'admin');
+            if (newRoles.length === 0) newRoles = ['organizer'];
+        }
+
+        // Optimistic Update
+        const updatedUsers = users.map(u =>
+            (u._id || u.id) === userId
+                ? { ...u, roles: newRoles, role: newRoles.includes('admin') ? 'admin' : 'organizer' }
+                : u
+        );
+        setUsers(updatedUsers);
+
+        try {
+            await userService.updateUser(userId, { roles: newRoles, role: newRoles.includes('admin') ? 'admin' : 'organizer' });
+            toast.success(`${user.email} is now ${newRoles.includes('admin') ? 'an Admin' : 'an Organizer'}`);
+        } catch (error) {
+            console.error("Failed to update user role:", error);
+            toast.error("Failed to update role");
+            setUsers(users); // Revert
+        }
+    };
+
     const handleUpdateSponsorshipStatus = async (sponsorshipId, newStatus) => {
         try {
             await sponsorshipService.updateSponsorship(sponsorshipId, { status: newStatus });
@@ -248,17 +285,59 @@ export default function AdminDashboard() {
         }
     };
 
+    // Get unique organizations for filter dropdown
+    const organizationOptions = useMemo(() => {
+        const orgs = new Map();
+        users.forEach(u => {
+            const userId = u._id || u.id;
+            const orgName = u.organizationProfile?.orgName;
+            if (orgName) {
+                orgs.set(userId, { id: userId, name: orgName, logo: u.organizationProfile?.logoUrl });
+            }
+        });
+        return Array.from(orgs.values()).sort((a, b) => a.name.localeCompare(b.name));
+    }, [users]);
+
     // Filtered data using useMemo for performance
     const filteredUsers = useMemo(() => {
-        if (!userSearch) return users;
-        const search = userSearch.toLowerCase();
-        return users.filter(u =>
-            u.email?.toLowerCase().includes(search) ||
-            u.organizationProfile?.orgName?.toLowerCase().includes(search) ||
-            u.organizationProfile?.slug?.toLowerCase().includes(search) ||
-            (u._id || u.id)?.toLowerCase().includes(search)
-        );
-    }, [users, userSearch]);
+        let result = users;
+
+        // Filter by search text
+        if (userSearch) {
+            const search = userSearch.toLowerCase();
+            result = result.filter(u =>
+                u.email?.toLowerCase().includes(search) ||
+                u.organizationProfile?.orgName?.toLowerCase().includes(search) ||
+                u.organizationProfile?.slug?.toLowerCase().includes(search) ||
+                (u._id || u.id)?.toLowerCase().includes(search)
+            );
+        }
+
+        // Filter by organization (owns or is member of)
+        if (userOrgFilter !== 'all') {
+            result = result.filter(u => {
+                const userId = u._id || u.id;
+                // User owns this org
+                if (userId === userOrgFilter) return true;
+                // User is a member of this org
+                if (u.memberOf?.some(m => m.organizationId === userOrgFilter)) return true;
+                // This org has this user as a team member
+                const targetOrg = users.find(org => (org._id || org.id) === userOrgFilter);
+                if (targetOrg?.teamMembers?.some(m => m.memberId === userId)) return true;
+                return false;
+            });
+        }
+
+        // Filter by system role
+        if (userRoleFilter !== 'all') {
+            result = result.filter(u => {
+                const userRoles = u.roles || [u.role || 'organizer'];
+                return userRoles.includes(userRoleFilter);
+            });
+        }
+
+        return result;
+    }, [users, userSearch, userOrgFilter, userRoleFilter]);
 
     const filteredSponsorships = useMemo(() => {
         let filtered = sponsorships;
@@ -320,6 +399,12 @@ export default function AdminDashboard() {
                 </nav>
 
                 <div className="p-4 border-t border-gray-100">
+                    {/* Role Switcher - Only shows if user has multiple roles */}
+                    {availableRoles.length > 1 && (
+                        <div className="mb-3 pb-3 border-b border-gray-100">
+                            <RoleSwitcher />
+                        </div>
+                    )}
                     <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all w-full font-medium">
                         <LogOut className="w-5 h-5" />
                         Sign Out
@@ -390,25 +475,69 @@ export default function AdminDashboard() {
 
                 {activeTab === 'users' && (
                     <div className="space-y-6 animate-fadeIn">
-                        {/* Search and Stats Bar */}
-                        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                            <div className="relative flex-1 max-w-md">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search by email, organization, or ID..."
-                                    value={userSearch}
-                                    onChange={(e) => setUserSearch(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
-                                />
+                        {/* Search, Filters and Stats Bar */}
+                        <div className="flex flex-col gap-4">
+                            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                                <div className="relative flex-1 max-w-md">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by email, organization, or ID..."
+                                        value={userSearch}
+                                        onChange={(e) => setUserSearch(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                                    />
+                                </div>
+                                <div className="flex gap-4 text-sm">
+                                    <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg font-medium">
+                                        {users.length} Total Users
+                                    </div>
+                                    <div className="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg font-medium">
+                                        {users.filter(u => (u.roles || [u.role]).includes('admin')).length} Admins
+                                    </div>
+                                    <div className="px-4 py-2 bg-green-50 text-green-700 rounded-lg font-medium">
+                                        {users.filter(u => u.organizationProfile?.waiveFees).length} Fee Waivers
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex gap-4 text-sm">
-                                <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg font-medium">
-                                    {users.length} Total Users
+
+                            {/* Filter Dropdowns */}
+                            <div className="flex flex-wrap gap-3">
+                                <div className="flex items-center gap-2">
+                                    <Filter className="w-4 h-4 text-gray-400" />
+                                    <span className="text-sm text-gray-500">Filters:</span>
                                 </div>
-                                <div className="px-4 py-2 bg-green-50 text-green-700 rounded-lg font-medium">
-                                    {users.filter(u => u.organizationProfile?.waiveFees).length} Fee Waivers
-                                </div>
+                                {/* Organization Filter */}
+                                <select
+                                    value={userOrgFilter}
+                                    onChange={(e) => setUserOrgFilter(e.target.value)}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                                >
+                                    <option value="all">All Organizations</option>
+                                    {organizationOptions.map(org => (
+                                        <option key={org.id} value={org.id}>{org.name}</option>
+                                    ))}
+                                </select>
+                                {/* Role Filter */}
+                                <select
+                                    value={userRoleFilter}
+                                    onChange={(e) => setUserRoleFilter(e.target.value)}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                                >
+                                    <option value="all">All Roles</option>
+                                    <option value="admin">Admins Only</option>
+                                    <option value="organizer">Organizers Only</option>
+                                    <option value="sponsor">Sponsors Only</option>
+                                </select>
+                                {(userOrgFilter !== 'all' || userRoleFilter !== 'all') && (
+                                    <button
+                                        onClick={() => { setUserOrgFilter('all'); setUserRoleFilter('all'); }}
+                                        className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition flex items-center gap-1"
+                                    >
+                                        <X className="w-3 h-3" />
+                                        Clear filters
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -417,77 +546,124 @@ export default function AdminDashboard() {
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
                                     <tr>
+                                        <th className="p-4 w-8"></th>
                                         <th className="p-4">Organization</th>
                                         <th className="p-4">Contact</th>
-                                        <th className="p-4">Role</th>
+                                        <th className="p-4">System Role</th>
+                                        <th className="p-4 text-center">Team</th>
                                         <th className="p-4 text-center">Fee Status</th>
                                         <th className="p-4">Joined</th>
                                         <th className="p-4 text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {filteredUsers.map(u => (
-                                        <tr key={u._id || u.id} className="hover:bg-gray-50">
-                                            <td className="p-4">
-                                                <div className="flex items-center gap-3">
-                                                    {u.organizationProfile?.logoUrl ? (
-                                                        <img
-                                                            src={u.organizationProfile.logoUrl}
-                                                            alt=""
-                                                            className="w-10 h-10 rounded-lg object-cover bg-gray-100"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                                                            <Building2 className="w-5 h-5 text-gray-400" />
-                                                        </div>
-                                                    )}
-                                                    <div>
-                                                        <div className="font-bold text-gray-900">
-                                                            {u.organizationProfile?.orgName || 'Unnamed Org'}
-                                                        </div>
-                                                        {u.organizationProfile?.slug && (
-                                                            <div className="text-xs text-gray-500">
-                                                                /{u.organizationProfile.slug}
+                                    {filteredUsers.map(u => {
+                                        const userId = u._id || u.id;
+                                        const isExpanded = expandedUserId === userId;
+                                        const teamMemberCount = u.teamMembers?.filter(m => m.status === 'active').length || 0;
+                                        const memberOfCount = u.memberOf?.length || 0;
+                                        const userRoles = u.roles || [u.role || 'organizer'];
+                                        const isAdmin = userRoles.includes('admin');
+
+                                        return (
+                                            <React.Fragment key={userId}>
+                                                <tr className={`hover:bg-gray-50 ${isExpanded ? 'bg-blue-50/50' : ''}`}>
+                                                    <td className="p-4">
+                                                        <button
+                                                            onClick={() => setExpandedUserId(isExpanded ? null : userId)}
+                                                            className="p-1 hover:bg-gray-200 rounded transition"
+                                                        >
+                                                            {isExpanded ? (
+                                                                <ChevronDown className="w-4 h-4 text-gray-500" />
+                                                            ) : (
+                                                                <ChevronRight className="w-4 h-4 text-gray-400" />
+                                                            )}
+                                                        </button>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            {u.organizationProfile?.logoUrl ? (
+                                                                <img
+                                                                    src={u.organizationProfile.logoUrl}
+                                                                    alt=""
+                                                                    className="w-10 h-10 rounded-lg object-cover bg-gray-100"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                                                                    <Building2 className="w-5 h-5 text-gray-400" />
+                                                                </div>
+                                                            )}
+                                                            <div>
+                                                                <div className="font-bold text-gray-900">
+                                                                    {u.organizationProfile?.orgName || 'Unnamed Org'}
+                                                                </div>
+                                                                {u.organizationProfile?.slug && (
+                                                                    <div className="text-xs text-gray-500">
+                                                                        /{u.organizationProfile.slug}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="font-medium text-gray-900">{u.email}</div>
-                                                <div className="text-xs text-gray-400 font-mono">{(u._id || u.id).slice(0, 12)}...</div>
-                                            </td>
-                                            <td className="p-4">
-                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${u.role === 'admin'
-                                                    ? 'bg-purple-50 text-purple-700'
-                                                    : 'bg-blue-50 text-blue-700'
-                                                    }`}>
-                                                    {u.role || 'Organizer'}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 text-center">
-                                                <button
-                                                    onClick={() => handleToggleFeeWaiver(u)}
-                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${u.organizationProfile?.waiveFees
-                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200 ring-2 ring-green-200'
-                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                        }`}
-                                                >
-                                                    {u.organizationProfile?.waiveFees ? (
-                                                        <>
-                                                            <Check className="w-3.5 h-3.5" />
-                                                            Fees Waived
-                                                        </>
-                                                    ) : (
-                                                        'Standard Fees'
-                                                    )}
-                                                </button>
-                                            </td>
-                                            <td className="p-4 text-gray-500 text-sm">
-                                                {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="flex items-center justify-center gap-2">
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="font-medium text-gray-900">{u.email}</div>
+                                                        <div className="text-xs text-gray-400 font-mono">{userId.slice(0, 12)}...</div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <select
+                                                            value={isAdmin ? 'admin' : 'organizer'}
+                                                            onChange={(e) => handleChangeUserRole(u, e.target.value)}
+                                                            className={`px-2 py-1 rounded-lg text-xs font-bold border-0 cursor-pointer ${isAdmin
+                                                                ? 'bg-purple-100 text-purple-700'
+                                                                : 'bg-blue-100 text-blue-700'
+                                                                }`}
+                                                        >
+                                                            <option value="organizer">Organizer</option>
+                                                            <option value="admin">Admin</option>
+                                                        </select>
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            {teamMemberCount > 0 && (
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-bold">
+                                                                    <UsersRound className="w-3 h-3" />
+                                                                    {teamMemberCount}
+                                                                </span>
+                                                            )}
+                                                            {memberOfCount > 0 && (
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-bold" title="Member of other orgs">
+                                                                    <Shield className="w-3 h-3" />
+                                                                    {memberOfCount}
+                                                                </span>
+                                                            )}
+                                                            {teamMemberCount === 0 && memberOfCount === 0 && (
+                                                                <span className="text-gray-400 text-xs">-</span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <button
+                                                            onClick={() => handleToggleFeeWaiver(u)}
+                                                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${u.organizationProfile?.waiveFees
+                                                                ? 'bg-green-100 text-green-700 hover:bg-green-200 ring-2 ring-green-200'
+                                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                                }`}
+                                                        >
+                                                            {u.organizationProfile?.waiveFees ? (
+                                                                <>
+                                                                    <Check className="w-3.5 h-3.5" />
+                                                                    Fees Waived
+                                                                </>
+                                                            ) : (
+                                                                'Standard Fees'
+                                                            )}
+                                                        </button>
+                                                    </td>
+                                                    <td className="p-4 text-gray-500 text-sm">
+                                                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex items-center justify-center gap-2">
                                                     <button
                                                         onClick={() => openOrgEditor(u)}
                                                         className="p-2 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition"
@@ -509,7 +685,120 @@ export default function AdminDashboard() {
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))}
+                                                {/* Expanded Row - Team Details */}
+                                                {isExpanded && (
+                                                    <tr className="bg-blue-50/30">
+                                                        <td colSpan={8} className="p-0">
+                                                            <div className="px-8 py-6 border-t border-blue-100">
+                                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                                    {/* Team Members Section */}
+                                                                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                                                                        <div className="flex items-center gap-2 mb-4">
+                                                                            <UsersRound className="w-5 h-5 text-purple-600" />
+                                                                            <h4 className="font-bold text-gray-900">Team Members</h4>
+                                                                            <span className="ml-auto text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
+                                                                                {teamMemberCount} members
+                                                                            </span>
+                                                                        </div>
+                                                                        {teamMemberCount > 0 ? (
+                                                                            <div className="space-y-2">
+                                                                                {u.teamMembers?.filter(m => m.status === 'active').map((member, idx) => {
+                                                                                    const memberUser = users.find(usr => (usr._id || usr.id) === member.memberId);
+                                                                                    return (
+                                                                                        <div key={idx} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                                                                                            <div>
+                                                                                                <div className="font-medium text-gray-900 text-sm">{member.email}</div>
+                                                                                                <div className="text-xs text-gray-500">
+                                                                                                    Joined {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : 'N/A'}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                                                                                                member.role === 'manager'
+                                                                                                    ? 'bg-purple-100 text-purple-700'
+                                                                                                    : 'bg-gray-100 text-gray-600'
+                                                                                            }`}>
+                                                                                                {member.role === 'manager' ? 'Manager' : 'Member'}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <p className="text-sm text-gray-500 text-center py-4">No team members</p>
+                                                                        )}
+                                                                        {/* Pending Invitations */}
+                                                                        {u.teamInvitations?.filter(inv => inv.status === 'pending').length > 0 && (
+                                                                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                                                                <p className="text-xs text-gray-500 mb-2 font-medium">Pending Invitations</p>
+                                                                                {u.teamInvitations.filter(inv => inv.status === 'pending').map((inv, idx) => (
+                                                                                    <div key={idx} className="flex items-center justify-between py-2 px-3 bg-yellow-50 rounded-lg">
+                                                                                        <span className="text-sm text-gray-700">{inv.email}</span>
+                                                                                        <span className="text-xs text-yellow-700 font-medium">Pending</span>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Member Of Section */}
+                                                                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                                                                        <div className="flex items-center gap-2 mb-4">
+                                                                            <Shield className="w-5 h-5 text-blue-600" />
+                                                                            <h4 className="font-bold text-gray-900">Member Of</h4>
+                                                                            <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                                                                                {memberOfCount} orgs
+                                                                            </span>
+                                                                        </div>
+                                                                        {memberOfCount > 0 ? (
+                                                                            <div className="space-y-2">
+                                                                                {u.memberOf?.map((membership, idx) => {
+                                                                                    const org = users.find(usr => (usr._id || usr.id) === membership.organizationId);
+                                                                                    return (
+                                                                                        <div key={idx} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                {org?.organizationProfile?.logoUrl ? (
+                                                                                                    <img
+                                                                                                        src={org.organizationProfile.logoUrl}
+                                                                                                        alt=""
+                                                                                                        className="w-6 h-6 rounded object-cover"
+                                                                                                    />
+                                                                                                ) : (
+                                                                                                    <div className="w-6 h-6 rounded bg-gray-200 flex items-center justify-center">
+                                                                                                        <Building2 className="w-3 h-3 text-gray-400" />
+                                                                                                    </div>
+                                                                                                )}
+                                                                                                <div>
+                                                                                                    <div className="font-medium text-gray-900 text-sm">
+                                                                                                        {membership.orgName || org?.organizationProfile?.orgName || 'Unknown Org'}
+                                                                                                    </div>
+                                                                                                    <div className="text-xs text-gray-500">
+                                                                                                        Joined {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : 'N/A'}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                                                                                                membership.role === 'manager'
+                                                                                                    ? 'bg-purple-100 text-purple-700'
+                                                                                                    : 'bg-gray-100 text-gray-600'
+                                                                                            }`}>
+                                                                                                {membership.role === 'manager' ? 'Manager' : 'Member'}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <p className="text-sm text-gray-500 text-center py-4">Not a member of any other organizations</p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                             {filteredUsers.length === 0 && (

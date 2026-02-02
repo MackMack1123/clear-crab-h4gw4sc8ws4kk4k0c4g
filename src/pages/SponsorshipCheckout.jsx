@@ -1,15 +1,25 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { sponsorshipService } from "../services/sponsorshipService";
 import { userService } from "../services/userService";
 import { systemService } from "../services/systemService";
 import { PayPalButtons } from "@paypal/react-paypal-js";
-import { ArrowLeft, ShieldCheck, CreditCard, Loader2 } from "lucide-react";
+import { ArrowLeft, ShieldCheck, CreditCard, Loader2, UserCheck, LogIn } from "lucide-react";
 import { useSponsorship } from "../context/SponsorshipContext";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 import SquarePaymentForm from "../components/SquarePaymentForm";
 import { API_BASE_URL } from "../config";
+
+// Debounce helper
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 export default function SponsorshipCheckout() {
   const { packageId } = useParams();
@@ -27,7 +37,7 @@ export default function SponsorshipCheckout() {
     coverFees,
     toggleCoverFees,
   } = useSponsorship();
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, addRole } = useAuth();
 
   // Local state for single-item fallback (backward compatibility)
   const [singlePkg, setSinglePkg] = useState(null);
@@ -36,6 +46,75 @@ export default function SponsorshipCheckout() {
   const [systemSettings, setSystemSettings] = useState(null);
   const [initializingPayment, setInitializingPayment] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
+  const [paymentError, setPaymentError] = useState(null);
+
+  // Sponsor details form
+  const [sponsorDetails, setSponsorDetails] = useState({
+    companyName: '',
+    contactName: '',
+    phone: '',
+    email: ''
+  });
+
+  // Returning sponsor recognition
+  const [returningSponsorship, setReturningSponsor] = useState(null);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const debouncedEmail = useDebounce(sponsorDetails.email, 500);
+
+  // Initialize sponsor details from user profile when available
+  useEffect(() => {
+    if (currentUser && userProfile) {
+      setSponsorDetails(prev => ({
+        ...prev,
+        email: prev.email || currentUser.email || '',
+        contactName: prev.contactName || (userProfile?.firstName && userProfile?.lastName
+          ? `${userProfile.firstName} ${userProfile.lastName}`
+          : currentUser.displayName || ''),
+      }));
+    } else if (currentUser) {
+      setSponsorDetails(prev => ({
+        ...prev,
+        email: prev.email || currentUser.email || '',
+        contactName: prev.contactName || currentUser.displayName || '',
+      }));
+    }
+  }, [currentUser, userProfile]);
+
+  // Check for returning sponsor when email changes
+  useEffect(() => {
+    const checkReturningSponsorship = async () => {
+      if (!debouncedEmail || debouncedEmail.length < 5 || !debouncedEmail.includes('@')) {
+        setReturningSponsor(null);
+        return;
+      }
+
+      setCheckingEmail(true);
+      try {
+        const result = await sponsorshipService.lookupSponsorByEmail(debouncedEmail);
+        if (result.found) {
+          setReturningSponsor(result);
+          // Pre-fill form if we have data and fields are empty
+          if (result.prefill) {
+            setSponsorDetails(prev => ({
+              ...prev,
+              companyName: prev.companyName || result.prefill.companyName || '',
+              contactName: prev.contactName || result.prefill.contactName || '',
+              phone: prev.phone || result.prefill.phone || '',
+            }));
+          }
+        } else {
+          setReturningSponsor(null);
+        }
+      } catch (err) {
+        console.error('Email lookup failed:', err);
+        setReturningSponsor(null);
+      } finally {
+        setCheckingEmail(false);
+      }
+    };
+
+    checkReturningSponsorship();
+  }, [debouncedEmail]);
 
   // Fallback logic adjusted to respect fee coverage
   const isCartCheckout = !packageId && cart.length > 0;
@@ -95,9 +174,17 @@ export default function SponsorshipCheckout() {
 
   // Handle Stripe Checkout
   const handleStripeCheckout = async () => {
+    // Validate sponsor details
+    if (!sponsorDetails.companyName || !sponsorDetails.contactName || !sponsorDetails.email) {
+      toast.error("Please fill in all sponsor details");
+      return;
+    }
+
     setInitializingPayment(true);
+    setPaymentError(null);
+
     try {
-      // 1. Create Pending Sponsorships
+      // 1. Create Pending Sponsorships with sponsor details (guest or logged-in)
       const promises = checkoutItems.map((item) =>
         sponsorshipService.createSponsorship({
           organizerId: item.organizerId,
@@ -105,13 +192,18 @@ export default function SponsorshipCheckout() {
           packageTitle: item.title,
           amount: item.price,
           status: "pending", // Pending payment
-          payerEmail: currentUser.email,
-          sponsorUserId: currentUser.uid,
-          sponsorName:
-            userProfile?.firstName && userProfile?.lastName
-              ? `${userProfile.firstName} ${userProfile.lastName}`
-              : currentUser.displayName || "Guest Sponsor",
-          sponsorEmail: currentUser.email,
+          payerEmail: sponsorDetails.email,
+          sponsorUserId: currentUser?.uid || null, // null for guest checkout
+          sponsorName: sponsorDetails.contactName,
+          sponsorEmail: sponsorDetails.email,
+          sponsorPhone: sponsorDetails.phone,
+          // Pre-populate sponsorInfo for fulfilment
+          sponsorInfo: {
+            companyName: sponsorDetails.companyName,
+            contactName: sponsorDetails.contactName,
+            email: sponsorDetails.email,
+            phone: sponsorDetails.phone,
+          },
         }),
       );
 
@@ -127,12 +219,14 @@ export default function SponsorshipCheckout() {
           price: item.price,
           quantity: 1,
         })),
-        customerEmail: currentUser.email,
-        successUrl: `${window.location.origin}/sponsorship/success?session_id={CHECKOUT_SESSION_ID}`,
+        customerEmail: sponsorDetails.email,
+        successUrl: `${window.location.origin}/sponsorship/success?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(sponsorDetails.email)}&guest=${currentUser ? 'false' : 'true'}`,
         cancelUrl: `${window.location.origin}/sponsorship/checkout`, // Back to checkout
         metadata: {
           sponsorshipIds: JSON.stringify(sponsorshipIds), // Pass IDs to verify later
           coverFees: coverFees ? "true" : "false",
+          sponsorEmail: sponsorDetails.email,
+          isGuest: currentUser ? "false" : "true",
         },
         coverFees: coverFees, // Pass to backend logic
       });
@@ -141,6 +235,7 @@ export default function SponsorshipCheckout() {
       window.location.href = session.url;
     } catch (error) {
       console.error("Stripe Checkout Error:", error);
+      setPaymentError("Failed to start payment processing. Please try again.");
       toast.error("Failed to start payment processing");
       setInitializingPayment(false);
     }
@@ -148,10 +243,18 @@ export default function SponsorshipCheckout() {
 
   // Handle Square Payment
   const handleSquarePayment = async (nonce) => {
+    // Validate sponsor details
+    if (!sponsorDetails.companyName || !sponsorDetails.contactName || !sponsorDetails.email) {
+      toast.error("Please fill in all sponsor details");
+      return;
+    }
+
     setInitializingPayment(true);
+    setPaymentError(null);
+    let sponsorshipIds = [];
+
     try {
-      // 1. Create Pending Sponsorships (if not already exists?)
-      // We usually create them as 'pending' before payment.
+      // 1. Create Pending Sponsorships with sponsor details (guest or logged-in)
       const promises = checkoutItems.map((item) =>
         sponsorshipService.createSponsorship({
           organizerId: item.organizerId,
@@ -159,18 +262,22 @@ export default function SponsorshipCheckout() {
           packageTitle: item.title,
           amount: item.price,
           status: "pending",
-          payerEmail: currentUser.email,
-          sponsorUserId: currentUser.uid,
-          sponsorName:
-            userProfile?.firstName && userProfile?.lastName
-              ? `${userProfile.firstName} ${userProfile.lastName}`
-              : currentUser.displayName || "Guest Sponsor",
-          sponsorEmail: currentUser.email,
+          payerEmail: sponsorDetails.email,
+          sponsorUserId: currentUser?.uid || null,
+          sponsorName: sponsorDetails.contactName,
+          sponsorEmail: sponsorDetails.email,
+          sponsorPhone: sponsorDetails.phone,
+          sponsorInfo: {
+            companyName: sponsorDetails.companyName,
+            contactName: sponsorDetails.contactName,
+            email: sponsorDetails.email,
+            phone: sponsorDetails.phone,
+          },
         }),
       );
 
       const sponsorships = await Promise.all(promises);
-      const sponsorshipIds = sponsorships.map((s) => s.id);
+      sponsorshipIds = sponsorships.map((s) => s.id);
 
       // 2. Process Payment on Backend
       const response = await fetch(
@@ -183,7 +290,7 @@ export default function SponsorshipCheckout() {
             amount: displayTotal,
             organizerId,
             sponsorshipIds,
-            payerEmail: currentUser.email,
+            payerEmail: sponsorDetails.email,
             coverFees,
           }),
         },
@@ -201,19 +308,38 @@ export default function SponsorshipCheckout() {
         clearCart();
       }
 
+      // Add sponsor role to logged-in user (if they're an organizer, they now have both roles)
+      if (currentUser && addRole) {
+        addRole('sponsor').catch(err => console.error('Failed to add sponsor role:', err));
+      }
+
       toast.success("Payment Successful!");
 
-      // Navigate to success page with sponsorship IDs
+      // Navigate to success page with sponsorship IDs and guest info
       navigate("/thank-you", {
         state: {
           type: "sponsorship",
           title: "Payment Successful!",
           message: `Thank you for your sponsorship! You purchased ${sponsorshipIds.length} package${sponsorshipIds.length > 1 ? "s" : ""}. You can now design your ad.`,
           sponsorshipIds,
+          isGuest: !currentUser,
+          sponsorEmail: sponsorDetails.email,
         },
       });
     } catch (error) {
       console.error("Square Payment Error:", error);
+
+      // Clean up pending sponsorships that were created
+      if (sponsorshipIds?.length > 0) {
+        try {
+          await sponsorshipService.deleteSponsorships(sponsorshipIds);
+          console.log("Cleaned up pending sponsorships after payment failure");
+        } catch (cleanupErr) {
+          console.error("Failed to cleanup sponsorships:", cleanupErr);
+        }
+      }
+
+      setPaymentError(error.message || "Payment processing failed. Please try again.");
       toast.error(error.message || "Payment processing failed");
     } finally {
       setInitializingPayment(false);
@@ -226,10 +352,29 @@ export default function SponsorshipCheckout() {
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
+
+  // Show loading state if payment finished (cart cleared but navigation pending)
+  if (isFinished)
+    return (
+      <div className="min-h-screen flex items-center justify-center flex-col gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-gray-500 font-medium">Completing your order...</p>
+      </div>
+    );
+
   if (checkoutItems.length === 0)
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        No items to checkout
+      <div className="min-h-screen flex items-center justify-center flex-col gap-4 p-4">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Your cart is empty</h2>
+          <p className="text-gray-500 mb-4">Add a sponsorship package to continue.</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-6 py-2 bg-primary text-white rounded-xl font-bold hover:bg-primary-700 transition"
+          >
+            Go Back
+          </button>
+        </div>
       </div>
     );
 
@@ -342,10 +487,137 @@ export default function SponsorshipCheckout() {
             </div>
           </div>
 
-          {currentUser ? (
-            <>
-              {/* SANDBOX / TEST MODE */}
-              {paymentSettings.sandboxMode ? (
+          {/* Payment Error Alert */}
+          {paymentError && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+                  <span className="text-red-600 font-bold">!</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-red-800 text-sm">Payment Failed</h3>
+                  <p className="text-red-700 text-sm mt-1">{paymentError}</p>
+                  <button
+                    onClick={() => setPaymentError(null)}
+                    className="mt-2 text-xs font-bold text-red-600 hover:text-red-800"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Sponsor Details Form - Always visible (guest or logged in) */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider">Sponsor Information</h3>
+              {currentUser && (
+                <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                  <UserCheck className="w-3 h-3" /> Signed in
+                </span>
+              )}
+            </div>
+
+            {/* Email field first - for returning sponsor recognition */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                  value={sponsorDetails.email}
+                  onChange={(e) => setSponsorDetails(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="john@acmecorp.com"
+                />
+                {checkingEmail && (
+                  <Loader2 className="w-4 h-4 animate-spin text-gray-400 absolute right-3 top-3.5" />
+                )}
+              </div>
+            </div>
+
+            {/* Returning sponsor recognition */}
+            {returningSponsorship && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <UserCheck className="w-5 h-5 text-green-600 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-green-800 text-sm">Welcome back!</p>
+                    <p className="text-green-700 text-xs mt-1">
+                      We found {returningSponsorship.sponsorshipCount} previous sponsorship{returningSponsorship.sponsorshipCount > 1 ? 's' : ''}
+                      {returningSponsorship.organizations?.length > 0 && (
+                        <> with {returningSponsorship.organizations.slice(0, 2).join(', ')}{returningSponsorship.organizations.length > 2 ? ` and ${returningSponsorship.organizations.length - 2} more` : ''}</>
+                      )}.
+                      We've pre-filled your details below.
+                    </p>
+                    {returningSponsorship.hasAccount && !currentUser && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/sponsorship/auth?redirect=${window.location.pathname}`)}
+                        className="mt-2 text-xs font-bold text-green-700 hover:text-green-900 flex items-center gap-1"
+                      >
+                        <LogIn className="w-3 h-3" /> Sign in to your account
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Company / Business Name *</label>
+              <input
+                type="text"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                value={sponsorDetails.companyName}
+                onChange={(e) => setSponsorDetails(prev => ({ ...prev, companyName: e.target.value }))}
+                placeholder="Acme Corp"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Name *</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                  value={sponsorDetails.contactName}
+                  onChange={(e) => setSponsorDetails(prev => ({ ...prev, contactName: e.target.value }))}
+                  placeholder="John Smith"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                  value={sponsorDetails.phone}
+                  onChange={(e) => setSponsorDetails(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="(555) 123-4567"
+                />
+              </div>
+            </div>
+
+            {/* Optional sign-in prompt for guests */}
+            {!currentUser && !returningSponsorship?.hasAccount && (
+              <div className="pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/sponsorship/auth?redirect=${window.location.pathname}`)}
+                  className="text-xs text-gray-500 hover:text-primary flex items-center gap-1"
+                >
+                  <LogIn className="w-3 h-3" /> Already have an account? Sign in
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Payment Options */}
+          <>
+            {/* SANDBOX / TEST MODE */}
+            {paymentSettings.sandboxMode ? (
                 <div className="space-y-4">
                   <div className="bg-purple-50 border border-purple-200 p-4 rounded-xl text-center">
                     <p className="font-bold text-purple-700 text-sm mb-1">
@@ -358,9 +630,15 @@ export default function SponsorshipCheckout() {
 
                   <SandboxPaymentForm
                     onSubmit={async (cardDetails) => {
+                      // Validate sponsor details
+                      if (!sponsorDetails.companyName || !sponsorDetails.contactName || !sponsorDetails.email) {
+                        toast.error("Please fill in all sponsor details");
+                        return;
+                      }
+
                       setInitializingPayment(true);
                       try {
-                        // Create simulated sponsorships
+                        // Create simulated sponsorships with sponsor details (guest or logged-in)
                         const promises = checkoutItems.map((item) =>
                           sponsorshipService.createSponsorship({
                             organizerId: item.organizerId,
@@ -369,14 +647,18 @@ export default function SponsorshipCheckout() {
                             amount: item.price,
                             status: "paid",
                             isTest: true, // Flag as test data
-                            payerEmail: currentUser.email,
-                            sponsorUserId: currentUser.uid,
+                            payerEmail: sponsorDetails.email,
+                            sponsorUserId: currentUser?.uid || null,
                             paymentId: `sim_${Math.random().toString(36).substr(2, 9)}`,
-                            sponsorName:
-                              userProfile?.firstName && userProfile?.lastName
-                                ? `${userProfile.firstName} ${userProfile.lastName}`
-                                : currentUser.displayName || "Guest Sponsor",
-                            sponsorEmail: currentUser.email,
+                            sponsorName: sponsorDetails.contactName,
+                            sponsorEmail: sponsorDetails.email,
+                            sponsorPhone: sponsorDetails.phone,
+                            sponsorInfo: {
+                              companyName: sponsorDetails.companyName,
+                              contactName: sponsorDetails.contactName,
+                              email: sponsorDetails.email,
+                              phone: sponsorDetails.phone,
+                            },
                           }),
                         );
 
@@ -392,13 +674,15 @@ export default function SponsorshipCheckout() {
                         await new Promise((r) => setTimeout(r, 1000));
 
                         toast.success("Sandbox Payment Successful!");
-                        // Navigate to success page with sponsorship IDs
+                        // Navigate to success page with sponsorship IDs and guest info
                         navigate("/thank-you", {
                           state: {
                             type: "sponsorship",
                             title: "Payment Successful!",
                             message: `Thank you for your sponsorship! You purchased ${results.length} package${results.length > 1 ? "s" : ""}. You can now design your ad.`,
                             sponsorshipIds,
+                            isGuest: !currentUser,
+                            sponsorEmail: sponsorDetails.email,
                           },
                         });
                       } catch (err) {
@@ -446,9 +730,15 @@ export default function SponsorshipCheckout() {
                     systemSettings?.payments?.check !== false && (
                       <button
                         onClick={async () => {
+                          // Validate sponsor details
+                          if (!sponsorDetails.companyName || !sponsorDetails.contactName || !sponsorDetails.email) {
+                            toast.error("Please fill in all sponsor details");
+                            return;
+                          }
+
                           if (
                             window.confirm(
-                              `You are pledging to pay $${totalAmount} by check. Proceed?`,
+                              `You are pledging to pay $${displayTotal.toFixed(2)} by check. Proceed?`,
                             )
                           ) {
                             setInitializingPayment(true);
@@ -461,15 +751,17 @@ export default function SponsorshipCheckout() {
                                   amount: item.price,
                                   status: "pending", // Pending payment
                                   paymentMethod: "check",
-                                  payerEmail: currentUser.email,
-                                  sponsorUserId: currentUser.uid,
-                                  sponsorName:
-                                    userProfile?.firstName &&
-                                    userProfile?.lastName
-                                      ? `${userProfile.firstName} ${userProfile.lastName}`
-                                      : currentUser.displayName ||
-                                        "Guest Sponsor",
-                                  sponsorEmail: currentUser.email,
+                                  payerEmail: sponsorDetails.email,
+                                  sponsorUserId: currentUser?.uid || null,
+                                  sponsorName: sponsorDetails.contactName,
+                                  sponsorEmail: sponsorDetails.email,
+                                  sponsorPhone: sponsorDetails.phone,
+                                  sponsorInfo: {
+                                    companyName: sponsorDetails.companyName,
+                                    contactName: sponsorDetails.contactName,
+                                    email: sponsorDetails.email,
+                                    phone: sponsorDetails.phone,
+                                  },
                                 }),
                               );
 
@@ -479,9 +771,9 @@ export default function SponsorshipCheckout() {
                                 clearCart();
                               }
 
-                              // Redirect to success page with check instructions
+                              // Redirect to success page with check instructions and guest info
                               navigate(
-                                `/sponsorship/success?payment_method=check&org_id=${organizerId}`,
+                                `/sponsorship/success?payment_method=check&org_id=${organizerId}&email=${encodeURIComponent(sponsorDetails.email)}&guest=${currentUser ? 'false' : 'true'}`,
                               );
                             } catch (err) {
                               console.error(err);
@@ -509,12 +801,17 @@ export default function SponsorshipCheckout() {
                             label: "pay",
                           }}
                           createOrder={(data, actions) => {
+                            // Validate sponsor details before creating order
+                            if (!sponsorDetails.companyName || !sponsorDetails.contactName || !sponsorDetails.email) {
+                              toast.error("Please fill in all sponsor details");
+                              return Promise.reject(new Error("Missing sponsor details"));
+                            }
                             return actions.order.create({
                               purchase_units: [
                                 {
                                   description: `Sponsorship Purchase (${checkoutItems.length} items)`,
                                   amount: {
-                                    value: totalAmount.toString(),
+                                    value: displayTotal.toFixed(2),
                                   },
                                 },
                               ],
@@ -524,7 +821,7 @@ export default function SponsorshipCheckout() {
                             try {
                               const details = await actions.order.capture();
 
-                              // Process all items
+                              // Process all items with sponsor details (guest or logged-in)
                               const promises = checkoutItems.map((item) =>
                                 sponsorshipService.createSponsorship({
                                   organizerId: item.organizerId,
@@ -532,17 +829,18 @@ export default function SponsorshipCheckout() {
                                   packageTitle: item.title,
                                   amount: item.price,
                                   status: "paid",
-                                  payerEmail: currentUser.email, // Use authenticated email
-                                  sponsorUserId: currentUser.uid, // Link to User account
+                                  payerEmail: sponsorDetails.email,
+                                  sponsorUserId: currentUser?.uid || null,
                                   paymentId: details.id,
-                                  sponsorName: (userProfile?.firstName
-                                    ? `${userProfile.firstName} ${userProfile.lastName}`
-                                    : currentUser.displayName ||
-                                      `${details.payer.name.given_name} ${details.payer.name.surname}`
-                                  ).trim(),
-                                  sponsorEmail:
-                                    currentUser.email ||
-                                    details.payer.email_address,
+                                  sponsorName: sponsorDetails.contactName,
+                                  sponsorEmail: sponsorDetails.email,
+                                  sponsorPhone: sponsorDetails.phone,
+                                  sponsorInfo: {
+                                    companyName: sponsorDetails.companyName,
+                                    contactName: sponsorDetails.contactName,
+                                    email: sponsorDetails.email,
+                                    phone: sponsorDetails.phone,
+                                  },
                                 }),
                               );
 
@@ -555,7 +853,7 @@ export default function SponsorshipCheckout() {
                                 clearCart();
                               }
 
-                              // Navigate to success page
+                              // Navigate to success page with guest info
                               toast.success("Payment Successful!");
                               navigate("/thank-you", {
                                 state: {
@@ -563,6 +861,8 @@ export default function SponsorshipCheckout() {
                                   title: "Payment Successful!",
                                   message: `Thank you for your sponsorship! You purchased ${results.length} package${results.length > 1 ? "s" : ""}. You can now design your ad.`,
                                   sponsorshipIds,
+                                  isGuest: !currentUser,
+                                  sponsorEmail: sponsorDetails.email,
                                 },
                               });
                             } catch (error) {
@@ -583,25 +883,7 @@ export default function SponsorshipCheckout() {
                     )}
                 </>
               )}
-            </>
-          ) : (
-            <div className="text-center space-y-4">
-              <p className="text-sm text-gray-500">
-                Please sign in to complete your purchase so you can manage your
-                ad materials later.
-              </p>
-              <button
-                onClick={() =>
-                  navigate(
-                    `/sponsorship/auth?redirect=${window.location.pathname}${window.location.search}`,
-                  )
-                }
-                className="w-full bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-700 transition"
-              >
-                Sign In / Create Account
-              </button>
-            </div>
-          )}
+          </>
 
           <div className="mt-6 flex justify-center text-xs text-gray-400 gap-1">
             <ShieldCheck className="w-4 h-4" /> Secure payment processing

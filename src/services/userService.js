@@ -1,15 +1,30 @@
 import { API_BASE_URL } from '../config';
+import { auth } from '../firebase';
 const API_URL = `${API_BASE_URL}/api/users`;
 
+// Helper to get current user ID for permission checks
+const getCurrentUserId = () => auth.currentUser?.uid;
+
 export const userService = {
-    // Update user profile
-    updateUser: async (userId, updates) => {
+    // Update user profile (supports team member access with permission checks)
+    updateUser: async (userId, updates, requesterId = null) => {
+        const headers = { 'Content-Type': 'application/json' };
+
+        // If updating a different user (team member scenario), pass requester ID
+        const currentUserId = requesterId || getCurrentUserId();
+        if (currentUserId && currentUserId !== userId) {
+            headers['x-user-id'] = currentUserId;
+        }
+
         const res = await fetch(`${API_URL}/${userId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify(updates)
         });
-        if (!res.ok) throw new Error('Failed to update user');
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to update user');
+        }
         return await res.json();
     },
 
@@ -39,14 +54,24 @@ export const userService = {
         if (!res.ok) throw new Error('Failed to update organization profile');
     },
 
-    // Update Public Page Content
-    updatePageContent: async (userId, contentBlocks) => {
+    // Update Public Page Content (supports team member access)
+    updatePageContent: async (userId, contentBlocks, requesterId = null) => {
+        const headers = { 'Content-Type': 'application/json' };
+
+        const currentUserId = requesterId || getCurrentUserId();
+        if (currentUserId && currentUserId !== userId) {
+            headers['x-user-id'] = currentUserId;
+        }
+
         const res = await fetch(`${API_URL}/${userId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ publicContent: contentBlocks })
         });
-        if (!res.ok) throw new Error('Failed to update page content');
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to update page content');
+        }
     },
 
 

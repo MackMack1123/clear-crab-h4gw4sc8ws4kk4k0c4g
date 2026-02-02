@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { useOrgPermissions } from '../../../hooks/useOrgPermissions';
 import { sponsorshipService } from '../../../services/sponsorshipService';
-import { Plus, Edit2, Trash2, Check, X, Upload, Image as ImageIcon, MapPin } from 'lucide-react';
+import { Plus, Edit2, Trash2, Check, X, Upload, Image as ImageIcon, MapPin, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../../common/ConfirmModal';
 import { API_BASE_URL } from '../../../config';
 
 export default function ManagePackages() {
-    const { currentUser } = useAuth();
+    const { currentUser, activeOrganization } = useAuth();
+    const { canEditPackages, role } = useOrgPermissions();
     const [packages, setPackages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
@@ -25,16 +27,19 @@ export default function ManagePackages() {
     const [uploading, setUploading] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState(null); // Package to delete
 
+    // Use activeOrganization.id for team member support
+    const orgId = activeOrganization?.id || currentUser?.uid;
+
     useEffect(() => {
-        if (currentUser) {
+        if (orgId) {
             loadPackages();
         }
-    }, [currentUser]);
+    }, [orgId]);
 
     const loadPackages = async () => {
         setLoading(true);
         try {
-            const data = await sponsorshipService.getPackages(currentUser.uid);
+            const data = await sponsorshipService.getPackages(orgId);
             setPackages(data);
         } catch (error) {
             console.error("Error loading packages:", error);
@@ -65,7 +70,7 @@ export default function ManagePackages() {
         try {
             const formDataUpload = new FormData();
             formDataUpload.append('file', file);
-            formDataUpload.append('userId', currentUser.uid);
+            formDataUpload.append('userId', orgId);
 
             const response = await fetch(`${API_BASE_URL}/api/upload`, {
 
@@ -93,7 +98,7 @@ export default function ManagePackages() {
         try {
             const formDataUpload = new FormData();
             formDataUpload.append('file', file);
-            formDataUpload.append('userId', currentUser.uid);
+            formDataUpload.append('userId', orgId);
 
             const response = await fetch(`${API_BASE_URL}/api/upload`, {
 
@@ -148,7 +153,7 @@ export default function ManagePackages() {
             if (currentPackage) {
                 await sponsorshipService.updatePackage(currentPackage.id, dataToSave);
             } else {
-                await sponsorshipService.createPackage(currentUser.uid, dataToSave);
+                await sponsorshipService.createPackage(orgId, dataToSave);
             }
             setIsEditing(false);
             setCurrentPackage(null);
@@ -201,9 +206,20 @@ export default function ManagePackages() {
 
     return (
         <div className="space-y-6">
+            {/* Read-only notice for members */}
+            {!canEditPackages && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <div>
+                        <p className="text-sm font-medium text-blue-800">View Only</p>
+                        <p className="text-xs text-blue-600">You have {role} access. Contact the organization owner to request edit permissions.</p>
+                    </div>
+                </div>
+            )}
+
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-gray-900">Sponsorship Packages</h2>
-                {!isEditing && (
+                {!isEditing && canEditPackages && (
                     <button
                         onClick={() => {
                             setCurrentPackage(null);
@@ -375,22 +391,25 @@ export default function ManagePackages() {
                     ) : (
                         packages.map(pkg => (
                             <div key={pkg.id} className={`bg-white p-6 rounded-2xl border ${pkg.active ? 'border-gray-100' : 'border-gray-200 opacity-75'} shadow-sm relative group`}>
-                                <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                                    <button
-                                        onClick={() => startEdit(pkg)}
-                                        className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg"
-                                        title="Edit package"
-                                    >
-                                        <Edit2 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => setDeleteTarget(pkg)}
-                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
-                                        title="Delete package"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
+                                {/* Only show edit/delete controls if user has edit permissions */}
+                                {canEditPackages && (
+                                    <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                                        <button
+                                            onClick={() => startEdit(pkg)}
+                                            className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg"
+                                            title="Edit package"
+                                        >
+                                            <Edit2 className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => setDeleteTarget(pkg)}
+                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                                            title="Delete package"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="font-bold text-lg text-gray-900">{pkg.title}</h3>
                                     <span className="font-heading font-bold text-xl text-primary">${pkg.price}</span>
@@ -404,12 +423,18 @@ export default function ManagePackages() {
                                     ))}
                                 </ul>
                                 <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => toggleActive(pkg)}
-                                        className={`text-xs font-bold px-3 py-1 rounded-full border ${pkg.active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}
-                                    >
-                                        {pkg.active ? 'Active' : 'Inactive'}
-                                    </button>
+                                    {canEditPackages ? (
+                                        <button
+                                            onClick={() => toggleActive(pkg)}
+                                            className={`text-xs font-bold px-3 py-1 rounded-full border ${pkg.active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}
+                                        >
+                                            {pkg.active ? 'Active' : 'Inactive'}
+                                        </button>
+                                    ) : (
+                                        <span className={`text-xs font-bold px-3 py-1 rounded-full border ${pkg.active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                                            {pkg.active ? 'Active' : 'Inactive'}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         ))

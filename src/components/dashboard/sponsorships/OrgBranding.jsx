@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { useOrgPermissions } from '../../../hooks/useOrgPermissions';
 import { userService } from '../../../services/userService';
-import { Upload, Save, Globe, Mail, Link as LinkIcon, Palette } from 'lucide-react';
+import { Upload, Save, Globe, Mail, Link as LinkIcon, Palette, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../../../config';
 
 export default function OrgBranding() {
-    const { currentUser, userProfile: initialProfile } = useAuth();
+    const { currentUser, userProfile: initialProfile, activeOrganization } = useAuth();
+    const { canEditSettings, role } = useOrgPermissions();
     const [profile, setProfile] = useState({
         orgName: '',
         contactEmail: '',
@@ -20,6 +22,9 @@ export default function OrgBranding() {
     const [slugStatus, setSlugStatus] = useState('idle'); // 'idle' | 'checking' | 'available' | 'taken'
     const [slugEditing, setSlugEditing] = useState(false); // Controls if slug input is editable
     const [savedSlug, setSavedSlug] = useState(''); // Track the originally saved slug
+
+    // Use activeOrganization.id for team member support
+    const orgId = activeOrganization?.id || currentUser?.uid;
 
     // Debounced slug availability check
     useEffect(() => {
@@ -37,7 +42,7 @@ export default function OrgBranding() {
         setSlugStatus('checking');
         const timer = setTimeout(async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/api/users/check-slug/${profile.slug}?userId=${currentUser.uid}`);
+                const res = await fetch(`${API_BASE_URL}/api/users/check-slug/${profile.slug}?userId=${orgId}`);
 
                 const data = await res.json();
                 setSlugStatus(data.available ? 'available' : 'taken');
@@ -48,14 +53,14 @@ export default function OrgBranding() {
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [profile.slug, currentUser?.uid, initialProfile?.slug]);
+    }, [profile.slug, orgId, initialProfile?.slug]);
 
     useEffect(() => {
         // Fetch fresh data from API on mount
         const loadProfile = async () => {
-            if (!currentUser?.uid) return;
+            if (!orgId) return;
             try {
-                const freshProfile = await userService.getUser(currentUser.uid);
+                const freshProfile = await userService.getUser(orgId);
                 if (freshProfile?.organizationProfile) {
                     setProfile(prev => ({
                         ...prev,
@@ -87,12 +92,16 @@ export default function OrgBranding() {
             }
         };
         loadProfile();
-    }, [currentUser?.uid]);
+    }, [orgId]);
 
     const handleLogoUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        if (!currentUser) {
+        if (!canEditSettings) {
+            toast.error("You don't have permission to edit settings");
+            return;
+        }
+        if (!orgId) {
             toast.error("You must be logged in.");
             return;
         }
@@ -110,9 +119,7 @@ export default function OrgBranding() {
             if (profile.slug) {
                 formData.append('slug', profile.slug);
             }
-            if (currentUser?.uid) {
-                formData.append('userId', currentUser.uid);
-            }
+            formData.append('userId', orgId);
 
             const res = await fetch(`${API_BASE_URL}/api/upload`, {
 
@@ -142,6 +149,11 @@ export default function OrgBranding() {
 
     const handleSave = async (e) => {
         e.preventDefault();
+
+        if (!canEditSettings) {
+            toast.error("You don't have permission to edit settings");
+            return;
+        }
 
         // Prevent saving if URL is a Blob (upload incomplete or failed)
         if (profile.logoUrl && profile.logoUrl.startsWith('blob:')) {
@@ -173,7 +185,7 @@ export default function OrgBranding() {
                 'organizationProfile.slug': profile.slug
             };
 
-            await userService.updateUser(currentUser.uid, payload);
+            await userService.updateUser(orgId, payload);
             toast.success("Organization profile saved!");
         } catch (error) {
             console.error("Error saving profile:", error);
@@ -185,6 +197,17 @@ export default function OrgBranding() {
 
     return (
         <form onSubmit={handleSave} className="bg-white p-8 rounded-3xl border border-gray-100 shadow-soft space-y-6">
+            {/* Read-only notice for non-owners */}
+            {!canEditSettings && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3 -mt-2 mb-4">
+                    <Lock className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <div>
+                        <p className="text-sm font-medium text-blue-800">View Only</p>
+                        <p className="text-xs text-blue-600">Only organization owners can edit branding settings. You have {role} access.</p>
+                    </div>
+                </div>
+            )}
+
             <h2 className="text-xl font-bold text-gray-900 mb-6">Organization Branding</h2>
 
             {/* Logo Section */}
@@ -330,15 +353,17 @@ export default function OrgBranding() {
                 </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-100 flex justify-end">
-                <button
-                    type="submit"
-                    disabled={saving || uploading}
-                    className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-xl hover:bg-black transition font-bold shadow-lg shadow-gray-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {saving ? 'Saving...' : uploading ? 'Uploading Logo...' : <><Save className="w-4 h-4" /> Save Changes</>}
-                </button>
-            </div>
+            {canEditSettings && (
+                <div className="pt-4 border-t border-gray-100 flex justify-end">
+                    <button
+                        type="submit"
+                        disabled={saving || uploading}
+                        className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-xl hover:bg-black transition font-bold shadow-lg shadow-gray-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {saving ? 'Saving...' : uploading ? 'Uploading Logo...' : <><Save className="w-4 h-4" /> Save Changes</>}
+                    </button>
+                </div>
+            )}
         </form>
     );
 }

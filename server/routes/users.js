@@ -1,6 +1,49 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const { checkOrgAccess, canPerformAction } = require('../middleware/teamAuth');
+
+// Helper to determine what permission level is needed for specific fields
+function getRequiredPermissionForUpdate(updates) {
+    const ownerOnlyFields = [
+        'organizationProfile.orgName',
+        'organizationProfile.contactEmail',
+        'organizationProfile.website',
+        'organizationProfile.primaryColor',
+        'organizationProfile.logoUrl',
+        'organizationProfile.slug',
+        'organizationProfile.emailTemplates',
+        'paymentSettings',
+        'slug',
+        'email',
+        'teamMembers',
+        'teamInvitations'
+    ];
+
+    const managerFields = [
+        'publicContent',
+        'organizationProfile.description'
+    ];
+
+    const updateKeys = Object.keys(updates);
+
+    // Check for owner-only fields
+    for (const key of updateKeys) {
+        if (ownerOnlyFields.some(f => key.startsWith(f))) {
+            return 'editSettings';
+        }
+    }
+
+    // Check for manager-level fields
+    for (const key of updateKeys) {
+        if (managerFields.some(f => key.startsWith(f))) {
+            return 'editContent';
+        }
+    }
+
+    // Default to owner for safety
+    return 'editSettings';
+}
 
 // Check slug availability (must be before /:id to avoid being caught)
 router.get('/check-slug/:slug', async (req, res) => {
@@ -80,6 +123,29 @@ router.post('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
+        const requesterId = req.headers['x-user-id'] || req.body._requesterId;
+
+        // Remove _requesterId from updates if present (it's metadata, not actual data)
+        delete updates._requesterId;
+
+        // If a requester ID is provided, verify they have permission
+        if (requesterId && requesterId !== id) {
+            const { canAccess, role } = await checkOrgAccess(requesterId, id);
+
+            if (!canAccess) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            // Determine what permission is needed for this update
+            const requiredAction = getRequiredPermissionForUpdate(updates);
+            if (!canPerformAction(role, requiredAction)) {
+                return res.status(403).json({
+                    error: 'Insufficient permissions for this action',
+                    required: requiredAction,
+                    current: role
+                });
+            }
+        }
 
         // Upsert: Create if doesn't exist, Update if it does
         const user = await User.findByIdAndUpdate(

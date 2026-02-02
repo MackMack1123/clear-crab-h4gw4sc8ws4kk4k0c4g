@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { useOrgPermissions } from '../../../hooks/useOrgPermissions';
 import { userService } from '../../../services/userService';
 import { sponsorshipService } from '../../../services/sponsorshipService';
-import { Plus, Trash2, GripVertical, Image as ImageIcon, Save, ArrowUp, ArrowDown, Type, Megaphone, Layout, LayoutGrid, List, X, BarChart3 } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Image as ImageIcon, Save, ArrowUp, ArrowDown, Type, Megaphone, Layout, LayoutGrid, List, X, BarChart3, Lock } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../../common/ConfirmModal';
 import { API_BASE_URL } from '../../../config';
 
 export default function PageContentBuilder({ setActiveTab }) {
-    const { currentUser, userProfile } = useAuth();
+    const { currentUser, userProfile, activeOrganization } = useAuth();
+    const { canEditContent, role } = useOrgPermissions();
     const [blocks, setBlocks] = useState([]);
     const [saving, setSaving] = useState(false);
     const [availablePackages, setAvailablePackages] = useState([]);
@@ -17,14 +19,17 @@ export default function PageContentBuilder({ setActiveTab }) {
     const [deleteTarget, setDeleteTarget] = useState(null); // Block ID to delete
     const [navTarget, setNavTarget] = useState(null); // Tab to navigate to
 
+    // Use activeOrganization.id for team member support
+    const orgId = activeOrganization?.id || currentUser?.uid;
+
     useEffect(() => {
         if (userProfile?.publicContent) {
             setBlocks(userProfile.publicContent);
         }
-        if (currentUser?.uid) {
-            sponsorshipService.getActivePackages(currentUser.uid).then(setAvailablePackages);
+        if (orgId) {
+            sponsorshipService.getActivePackages(orgId).then(setAvailablePackages);
         }
-    }, [userProfile, currentUser]);
+    }, [userProfile, orgId]);
 
     const hasUnsavedChanges = JSON.stringify(blocks) !== JSON.stringify(userProfile?.publicContent || []);
 
@@ -139,7 +144,7 @@ export default function PageContentBuilder({ setActiveTab }) {
         try {
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('userId', currentUser.uid);
+            formData.append('userId', orgId);
 
             const response = await fetch(`${API_BASE_URL}/api/upload`, {
 
@@ -170,10 +175,14 @@ export default function PageContentBuilder({ setActiveTab }) {
     };
 
     const handleSave = async () => {
+        if (!canEditContent) {
+            toast.error("You don't have permission to edit content");
+            return;
+        }
         setSaving(true);
         try {
             await Promise.all([
-                userService.updatePageContent(currentUser.uid, blocks)
+                userService.updatePageContent(orgId, blocks)
             ]);
             toast.success("Page content saved!");
         } catch (error) {
@@ -185,10 +194,14 @@ export default function PageContentBuilder({ setActiveTab }) {
     };
 
     const handleSaveAndNavigate = async () => {
+        if (!canEditContent) {
+            toast.error("You don't have permission to edit content");
+            return;
+        }
         setSaving(true);
         try {
             await Promise.all([
-                userService.updatePageContent(currentUser.uid, blocks)
+                userService.updatePageContent(orgId, blocks)
             ]);
             toast.success("Page content saved!");
             setActiveTab(navTarget);
@@ -203,25 +216,38 @@ export default function PageContentBuilder({ setActiveTab }) {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
+            {/* Read-only notice for members */}
+            {!canEditContent && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <div>
+                        <p className="text-sm font-medium text-blue-800">View Only</p>
+                        <p className="text-xs text-blue-600">You have {role} access. Contact the organization owner to request edit permissions.</p>
+                    </div>
+                </div>
+            )}
+
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-xl font-bold text-gray-900">Page Content</h2>
                     <p className="text-gray-500">Add custom sections to tell your story on the sponsorship page.</p>
                 </div>
-                <button
-                    onClick={() => {
-                        // Check if any uploads are in progress
-                        if (Object.keys(uploadingState).length > 0) {
-                            toast.error('Please wait for image uploads to complete before saving');
-                            return;
-                        }
-                        handleSave();
-                    }}
-                    disabled={saving || Object.keys(uploadingState).length > 0}
-                    className="flex items-center gap-2 bg-gray-900 text-white px-6 py-2 rounded-xl hover:bg-black transition font-bold shadow-lg shadow-gray-900/20 disabled:opacity-50"
-                >
-                    {Object.keys(uploadingState).length > 0 ? 'Uploading...' : saving ? 'Saving...' : <><Save className="w-4 h-4" /> Save Changes</>}
-                </button>
+                {canEditContent && (
+                    <button
+                        onClick={() => {
+                            // Check if any uploads are in progress
+                            if (Object.keys(uploadingState).length > 0) {
+                                toast.error('Please wait for image uploads to complete before saving');
+                                return;
+                            }
+                            handleSave();
+                        }}
+                        disabled={saving || Object.keys(uploadingState).length > 0}
+                        className="flex items-center gap-2 bg-gray-900 text-white px-6 py-2 rounded-xl hover:bg-black transition font-bold shadow-lg shadow-gray-900/20 disabled:opacity-50"
+                    >
+                        {Object.keys(uploadingState).length > 0 ? 'Uploading...' : saving ? 'Saving...' : <><Save className="w-4 h-4" /> Save Changes</>}
+                    </button>
+                )}
             </div>
 
 
@@ -242,30 +268,34 @@ export default function PageContentBuilder({ setActiveTab }) {
                                     {block.type === 'package_list' && 'PACKAGE LIST'}
                                     {block.type === 'stats' && 'IMPACT STATS'}
                                 </span>
-                                <div className="flex gap-1">
-                                    <button
-                                        onClick={() => moveBlock(index, 'up')}
-                                        disabled={index === 0}
-                                        className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-900 disabled:opacity-30"
-                                    >
-                                        <ArrowUp className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => moveBlock(index, 'down')}
-                                        disabled={index === blocks.length - 1}
-                                        className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-900 disabled:opacity-30"
-                                    >
-                                        <ArrowDown className="w-4 h-4" />
-                                    </button>
-                                </div>
+                                {canEditContent && (
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={() => moveBlock(index, 'up')}
+                                            disabled={index === 0}
+                                            className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-900 disabled:opacity-30"
+                                        >
+                                            <ArrowUp className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => moveBlock(index, 'down')}
+                                            disabled={index === blocks.length - 1}
+                                            className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-900 disabled:opacity-30"
+                                        >
+                                            <ArrowDown className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            <button
-                                onClick={() => removeBlock(block.id)}
-                                className="text-red-400 hover:text-red-600 p-1 rounded transition"
-                                title="Remove Section"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
+                            {canEditContent && (
+                                <button
+                                    onClick={() => removeBlock(block.id)}
+                                    className="text-red-400 hover:text-red-600 p-1 rounded transition"
+                                    title="Remove Section"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
 
                         <div className="space-y-4">
@@ -697,6 +727,7 @@ export default function PageContentBuilder({ setActiveTab }) {
                     </div>
                 ))}
 
+                {canEditContent && (
                 <div className="space-y-8">
                     <div>
                         <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Hero Sections</h4>
@@ -831,6 +862,7 @@ export default function PageContentBuilder({ setActiveTab }) {
                         </div>
                     </div>
                 </div>
+                )}
             </div>
             {/* Image Picker Modal */}
             {showStockPicker && (

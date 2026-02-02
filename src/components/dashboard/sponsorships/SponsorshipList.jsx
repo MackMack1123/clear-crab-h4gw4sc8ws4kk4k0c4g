@@ -4,20 +4,23 @@ import { sponsorshipService } from '../../../services/sponsorshipService';
 import { CheckCircle, Clock, XCircle, ExternalLink } from 'lucide-react';
 
 export default function SponsorshipList() {
-    const { currentUser } = useAuth();
+    const { currentUser, activeOrganization } = useAuth();
     const [sponsorships, setSponsorships] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // Use activeOrganization.id for team member support
+    const orgId = activeOrganization?.id || currentUser?.uid;
+
     useEffect(() => {
-        if (currentUser) {
+        if (orgId) {
             loadData();
         }
-    }, [currentUser]);
+    }, [orgId]);
 
     const loadData = async () => {
         setLoading(true);
         try {
-            const data = await sponsorshipService.getOrganizerSponsorships(currentUser.uid);
+            const data = await sponsorshipService.getOrganizerSponsorships(orgId);
             setSponsorships(data);
         } catch (error) {
             console.error("Error loading sponsorships:", error);

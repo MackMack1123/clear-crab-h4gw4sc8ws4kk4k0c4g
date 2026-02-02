@@ -34,7 +34,8 @@ export default function SponsorAuth() {
                     email,
                     firstName,
                     lastName,
-                    role: 'sponsor' // Explicitly mark as sponsor
+                    role: 'sponsor',
+                    roles: ['sponsor']
                 });
                 toast.success("Account created!");
             }
