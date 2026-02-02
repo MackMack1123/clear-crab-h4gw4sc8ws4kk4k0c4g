@@ -8,6 +8,7 @@ import { campaignService } from '../services/campaignService';
 import { sponsorshipService } from '../services/sponsorshipService';
 import { promoteToAdmin } from '../utils/seedData';
 import { API_BASE_URL } from '../config';
+import { formatCurrency } from '../utils/formatCurrency';
 
 import PayoutView from '../components/dashboard/PayoutView';
 import RosterUpload from '../components/dashboard/RosterUpload';
@@ -535,7 +536,7 @@ export default function Dashboard() {
                       <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Campaigns</span>
                     </div>
                     <p className="text-2xl font-bold text-gray-900">{campaigns.length}</p>
-                    <p className="text-xs text-gray-400 mt-1">${campaigns.reduce((acc, c) => acc + (c.currentAmount || 0), 0).toFixed(2)} raised</p>
+                    <p className="text-xs text-gray-400 mt-1">${formatCurrency(campaigns.reduce((acc, c) => acc + (c.currentAmount || 0), 0))} raised</p>
                   </div>
                 )}
               </div>
@@ -618,7 +619,7 @@ export default function Dashboard() {
                             )}
                             <div>
                               <p className="font-medium text-gray-900 text-sm">{sponsor.sponsorInfo?.companyName || sponsor.sponsorName}</p>
-                              <p className="text-xs text-gray-500">${(sponsor.amount || 0).toFixed(2)}</p>
+                              <p className="text-xs text-gray-500">${formatCurrency(sponsor.amount || 0)}</p>
                             </div>
                           </div>
                           <span className={`text-xs font-medium px-2 py-1 rounded-full ${

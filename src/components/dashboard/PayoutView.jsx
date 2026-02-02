@@ -1,5 +1,6 @@
 import React from 'react';
 import { DollarSign } from 'lucide-react';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 export default function PayoutView({ campaigns }) {
     // Calculate totals
@@ -13,7 +14,7 @@ export default function PayoutView({ campaigns }) {
                 <h2 className="text-lg font-bold">Financial Overview</h2>
                 <div className="flex items-center gap-1 text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm font-medium">
                     <DollarSign className="w-4 h-4" />
-                    <span>Net Payout: ${netPayout.toFixed(2)}</span>
+                    <span>Net Payout: ${formatCurrency(netPayout)}</span>
                 </div>
             </div>
 
@@ -41,9 +42,9 @@ export default function PayoutView({ campaigns }) {
                                 return (
                                     <tr key={campaign.id} className="border-b hover:bg-gray-50">
                                         <td className="px-6 py-4 font-medium">{campaign.title}</td>
-                                        <td className="px-6 py-4">${raised.toFixed(2)}</td>
-                                        <td className="px-6 py-4 text-red-500">-${fee.toFixed(2)}</td>
-                                        <td className="px-6 py-4 text-green-600 font-bold">${(raised - fee).toFixed(2)}</td>
+                                        <td className="px-6 py-4">${formatCurrency(raised)}</td>
+                                        <td className="px-6 py-4 text-red-500">-${formatCurrency(fee)}</td>
+                                        <td className="px-6 py-4 text-green-600 font-bold">${formatCurrency(raised - fee)}</td>
                                     </tr>
                                 );
                             })

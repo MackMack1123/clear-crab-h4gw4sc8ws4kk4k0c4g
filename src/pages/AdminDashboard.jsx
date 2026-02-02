@@ -7,6 +7,7 @@ import { userService } from '../services/userService';
 import { campaignService } from '../services/campaignService';
 import { systemService } from '../services/systemService';
 import { sponsorshipService } from '../services/sponsorshipService';
+import { formatCurrency } from '../utils/formatCurrency';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -432,8 +433,8 @@ export default function AdminDashboard() {
                     <div className="space-y-8 animate-fadeIn">
                         {/* Metrics Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            <MetricCard title="Gross Volume" value={`$${metrics.grossVolume.toFixed(2)}`} icon={DollarSign} color="text-gray-900" />
-                            <MetricCard title="Net Profit" value={`$${metrics.netProfit.toFixed(2)}`} icon={TrendingUp} color="text-green-600" bg="bg-green-50" />
+                            <MetricCard title="Gross Volume" value={`$${formatCurrency(metrics.grossVolume)}`} icon={DollarSign} color="text-gray-900" />
+                            <MetricCard title="Net Profit" value={`$${formatCurrency(metrics.netProfit)}`} icon={TrendingUp} color="text-green-600" bg="bg-green-50" />
                             <MetricCard title="Total Users" value={metrics.totalUsers} icon={Users} color="text-blue-600" />
                             <MetricCard title="Active Campaigns" value={metrics.activeCampaigns} icon={Megaphone} color="text-purple-600" />
                         </div>
@@ -449,7 +450,7 @@ export default function AdminDashboard() {
                                                 <div className="font-medium text-gray-900">{t.donorName || 'Anonymous'}</div>
                                                 <div className="text-xs text-gray-500">{new Date(t.timestamp).toLocaleDateString()}</div>
                                             </div>
-                                            <div className="font-bold text-green-600">+${t.amount?.toFixed(2)}</div>
+                                            <div className="font-bold text-green-600">+${formatCurrency(t.amount || 0)}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -463,7 +464,7 @@ export default function AdminDashboard() {
                                                 <div className="font-medium text-gray-900">User: {p.userId.slice(0, 8)}...</div>
                                                 <div className="text-xs text-gray-500">{p.method}</div>
                                             </div>
-                                            <div className="font-bold text-gray-900">${p.amount?.toFixed(2)}</div>
+                                            <div className="font-bold text-gray-900">${formatCurrency(p.amount || 0)}</div>
                                         </div>
                                     ))}
                                     {payouts.length === 0 && <div className="text-gray-400 text-sm">No pending payouts.</div>}
@@ -987,9 +988,9 @@ export default function AdminDashboard() {
                 {activeTab === 'financials' && (
                     <div className="space-y-8 animate-fadeIn">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <MetricCard title="Total Revenue" value={`$${metrics.totalRevenue.toFixed(2)}`} icon={DollarSign} color="text-green-600" />
-                            <MetricCard title="Net to Teams" value={`$${metrics.netToTeams.toFixed(2)}`} icon={TrendingUp} color="text-blue-600" />
-                            <MetricCard title="Est. Costs" value={`$${metrics.totalCosts.toFixed(2)}`} icon={CreditCard} color="text-red-500" />
+                            <MetricCard title="Total Revenue" value={`$${formatCurrency(metrics.totalRevenue)}`} icon={DollarSign} color="text-green-600" />
+                            <MetricCard title="Net to Teams" value={`$${formatCurrency(metrics.netToTeams)}`} icon={TrendingUp} color="text-blue-600" />
+                            <MetricCard title="Est. Costs" value={`$${formatCurrency(metrics.totalCosts)}`} icon={CreditCard} color="text-red-500" />
                         </div>
 
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -1012,9 +1013,9 @@ export default function AdminDashboard() {
                                             <tr key={t.id} className="hover:bg-gray-50">
                                                 <td className="p-4 text-gray-500">{new Date(t.timestamp).toLocaleDateString()}</td>
                                                 <td className="p-4 font-medium">{t.donorName}</td>
-                                                <td className="p-4">${t.amount?.toFixed(2)}</td>
-                                                <td className="p-4 text-gray-500">${t.processingFee?.toFixed(2)}</td>
-                                                <td className="p-4 font-bold text-green-600">${t.netMargin?.toFixed(2)}</td>
+                                                <td className="p-4">${formatCurrency(t.amount || 0)}</td>
+                                                <td className="p-4 text-gray-500">${formatCurrency(t.processingFee || 0)}</td>
+                                                <td className="p-4 font-bold text-green-600">${formatCurrency(t.netMargin || 0)}</td>
                                             </tr>
                                         ))}
                                     </tbody>

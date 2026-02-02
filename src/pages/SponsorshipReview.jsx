@@ -3,6 +3,7 @@ import { useSponsorship } from '../context/SponsorshipContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2, ShieldCheck, LogIn, UserPlus, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { formatCurrency } from '../utils/formatCurrency';
 
 export default function SponsorshipReview() {
     // Scroll to top on mount
@@ -78,7 +79,7 @@ export default function SponsorshipReview() {
                                     <p className="text-xs text-gray-400 line-clamp-2">{item.description}</p>
                                 </div>
                                 <div className="flex flex-row sm:flex-col items-center sm:items-end gap-4 sm:gap-1">
-                                    <span className="text-xl font-bold text-gray-900">${item.price}</span>
+                                    <span className="text-xl font-bold text-gray-900">${formatCurrency(item.price)}</span>
                                     <button
                                         onClick={() => removeFromCart(item.id)}
                                         className="text-gray-400 hover:text-red-500 transition p-2"
@@ -98,7 +99,7 @@ export default function SponsorshipReview() {
                             <div className="space-y-3 mb-6">
                                 <div className="flex justify-between text-sm text-gray-600">
                                     <span>Subtotal ({cart.length} item{cart.length > 1 ? 's' : ''})</span>
-                                    <span>${cartSubtotal.toFixed(2)}</span>
+                                    <span>${formatCurrency(cartSubtotal)}</span>
                                 </div>
 
                                 {/* Fee Breakdown - Always visible */}
@@ -106,7 +107,7 @@ export default function SponsorshipReview() {
                                     <div className="flex justify-between text-gray-500">
                                         <span>Credit Card Fees</span>
                                         <span className={coverFees ? "text-gray-900" : "text-gray-400"}>
-                                            -${processingFee.toFixed(2)}
+                                            -${formatCurrency(processingFee)}
                                         </span>
                                     </div>
                                     <div className="flex justify-between text-gray-500">
@@ -117,10 +118,10 @@ export default function SponsorshipReview() {
                                             )}
                                         </span>
                                         {feesWaived ? (
-                                            <span className="line-through text-gray-300">-${originalPlatformFee.toFixed(2)}</span>
+                                            <span className="line-through text-gray-300">-${formatCurrency(originalPlatformFee)}</span>
                                         ) : (
                                             <span className={coverFees ? "text-gray-900" : "text-gray-400"}>
-                                                -${platformFee.toFixed(2)}
+                                                -${formatCurrency(platformFee)}
                                             </span>
                                         )}
                                     </div>
@@ -128,8 +129,8 @@ export default function SponsorshipReview() {
                                         <span>Amount to Team</span>
                                         <span>
                                             ${coverFees
-                                                ? cartSubtotal.toFixed(2)
-                                                : (cartSubtotal - processingFee - platformFee).toFixed(2)
+                                                ? formatCurrency(cartSubtotal)
+                                                : formatCurrency(cartSubtotal - processingFee - platformFee)
                                             }
                                         </span>
                                     </div>
@@ -145,17 +146,17 @@ export default function SponsorshipReview() {
                                     />
                                     <div>
                                         <span className="text-sm font-medium text-gray-900 group-hover:text-primary transition">
-                                            Cover the fees (+${(platformFee + processingFee).toFixed(2)})
+                                            Cover the fees (+${formatCurrency(platformFee + processingFee)})
                                         </span>
                                         <p className="text-xs text-gray-500 mt-0.5">
-                                            Ensure the team receives the full ${cartSubtotal.toFixed(2)}
+                                            Ensure the team receives the full ${formatCurrency(cartSubtotal)}
                                         </p>
                                     </div>
                                 </label>
 
                                 <div className="border-t border-gray-200 pt-3 flex justify-between font-bold text-lg text-gray-900">
                                     <span>Your Total</span>
-                                    <span className="text-primary">${cartTotal.toFixed(2)}</span>
+                                    <span className="text-primary">${formatCurrency(cartTotal)}</span>
                                 </div>
 
                                 <button

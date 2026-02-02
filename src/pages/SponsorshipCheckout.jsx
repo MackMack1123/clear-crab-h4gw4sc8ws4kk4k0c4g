@@ -10,6 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 import SquarePaymentForm from "../components/SquarePaymentForm";
 import { API_BASE_URL } from "../config";
+import { formatCurrency } from "../utils/formatCurrency";
 
 // Debounce helper
 function useDebounce(value, delay) {
@@ -419,7 +420,7 @@ export default function SponsorshipCheckout() {
                 className="flex justify-between items-center text-sm"
               >
                 <span className="text-gray-600">{item.title}</span>
-                <span className="font-bold text-gray-900">${item.price}</span>
+                <span className="font-bold text-gray-900">${formatCurrency(item.price)}</span>
               </div>
             ))}
 
@@ -428,7 +429,7 @@ export default function SponsorshipCheckout() {
               <div className="flex justify-between items-center text-sm text-gray-500">
                 <span>Credit Card Fees</span>
                 <span className={coverFees ? "text-gray-700" : "text-gray-400"}>
-                  -${processingFee.toFixed(2)}
+                  -${formatCurrency(processingFee)}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm text-gray-500">
@@ -442,11 +443,11 @@ export default function SponsorshipCheckout() {
                 </span>
                 {feesWaived ? (
                   <span className="line-through text-gray-300">
-                    -${originalPlatformFee.toFixed(2)}
+                    -${formatCurrency(originalPlatformFee)}
                   </span>
                 ) : (
                   <span className={coverFees ? "text-gray-700" : "text-gray-400"}>
-                    -${platformFee.toFixed(2)}
+                    -${formatCurrency(platformFee)}
                   </span>
                 )}
               </div>
@@ -454,8 +455,8 @@ export default function SponsorshipCheckout() {
                 <span>Amount to Team</span>
                 <span>
                   ${coverFees
-                    ? displaySubtotal.toFixed(2)
-                    : (displaySubtotal - processingFee - platformFee).toFixed(2)
+                    ? formatCurrency(displaySubtotal)
+                    : formatCurrency(displaySubtotal - processingFee - platformFee)
                   }
                 </span>
               </div>
@@ -471,10 +472,10 @@ export default function SponsorshipCheckout() {
               />
               <div>
                 <span className="text-sm font-medium text-gray-900 group-hover:text-primary transition">
-                  Cover the fees (+${(platformFee + processingFee).toFixed(2)})
+                  Cover the fees (+${formatCurrency(platformFee + processingFee)})
                 </span>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Ensure the team receives the full ${displaySubtotal.toFixed(2)}
+                  Ensure the team receives the full ${formatCurrency(displaySubtotal)}
                 </p>
               </div>
             </label>
@@ -482,7 +483,7 @@ export default function SponsorshipCheckout() {
             <div className="border-t border-gray-200 pt-3 flex justify-between items-center text-lg">
               <span className="font-bold text-gray-900">Your Total</span>
               <span className="font-heading font-bold text-primary text-2xl">
-                ${displayTotal.toFixed(2)}
+                ${formatCurrency(displayTotal)}
               </span>
             </div>
           </div>
@@ -738,7 +739,7 @@ export default function SponsorshipCheckout() {
 
                           if (
                             window.confirm(
-                              `You are pledging to pay $${displayTotal.toFixed(2)} by check. Proceed?`,
+                              `You are pledging to pay $${formatCurrency(displayTotal)} by check. Proceed?`,
                             )
                           ) {
                             setInitializingPayment(true);
