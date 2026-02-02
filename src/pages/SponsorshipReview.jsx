@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useSponsorship } from '../context/SponsorshipContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2, ShieldCheck, LogIn, UserPlus, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function SponsorshipReview() {
+    // Scroll to top on mount
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
     const { cart, removeFromCart, cartTotal, cartSubtotal, processingFee, platformFee, originalPlatformFee, coverFees, toggleCoverFees, feesWaived } = useSponsorship();
     const { currentUser } = useAuth();
     const navigate = useNavigate();
