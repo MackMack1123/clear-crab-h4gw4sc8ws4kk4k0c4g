@@ -171,7 +171,7 @@ export default function SponsorDiscovery() {
                                         </div>
 
                                         <Link
-                                            to={`/sponsor/${org.slug}`}
+                                            to={`/org/${org.slug}`}
                                             className="w-full bg-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
                                         >
                                             View Packages <ArrowRight className="w-4 h-4" />
