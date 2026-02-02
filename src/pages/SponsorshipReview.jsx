@@ -93,46 +93,65 @@ export default function SponsorshipReview() {
                             <h3 className="font-bold text-lg text-gray-900 mb-4">Summary</h3>
                             <div className="space-y-3 mb-6">
                                 <div className="flex justify-between text-sm text-gray-600">
-                                    <span>Subtotal ({cart.length} items)</span>
+                                    <span>Subtotal ({cart.length} item{cart.length > 1 ? 's' : ''})</span>
                                     <span>${cartSubtotal.toFixed(2)}</span>
                                 </div>
-                                <div className="flex justify-between text-sm text-gray-600">
-                                    {coverFees && (
-                                        <>
-                                            <div className="flex justify-between text-sm text-gray-600">
-                                                <span>Processing Fee</span>
-                                                <span>${processingFee.toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm text-gray-600">
-                                                <span>
-                                                    Platform Fee
-                                                    {feesWaived && <span className="text-green-600 font-bold text-xs ml-1">(Waived)</span>}
-                                                </span>
-                                                <span className={feesWaived ? "line-through text-gray-400" : ""}>
-                                                    ${(feesWaived ? originalPlatformFee : platformFee).toFixed(2)}
-                                                </span>
-                                            </div>
-                                        </>
-                                    )}
 
-                                    <label className="flex items-start gap-2 pt-2 cursor-pointer group border-t border-gray-100 mt-2">
-                                        <div className="relative flex items-center">
-                                            <input
-                                                type="checkbox"
-                                                checked={coverFees}
-                                                onChange={toggleCoverFees}
-                                                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary mt-0.5"
-                                            />
-                                        </div>
-                                        <span className="text-xs text-gray-500 group-hover:text-gray-700 transition">
-                                            I'd like to cover the fees <strong>(${(platformFee + processingFee).toFixed(2)})</strong> so the organization receives the full amount.
+                                {/* Fee Breakdown - Always visible */}
+                                <div className="bg-gray-50 rounded-xl p-3 space-y-2 text-sm">
+                                    <div className="flex justify-between text-gray-500">
+                                        <span>Credit Card Fees</span>
+                                        <span className={coverFees ? "text-gray-900" : "text-gray-400"}>
+                                            -${processingFee.toFixed(2)}
                                         </span>
-                                    </label>
-
-                                    <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-lg text-gray-900">
-                                        <span>Total</span>
-                                        <span>${cartTotal.toFixed(2)}</span>
                                     </div>
+                                    <div className="flex justify-between text-gray-500">
+                                        <span className="flex items-center gap-1">
+                                            Platform Fee
+                                            {feesWaived && (
+                                                <span className="text-green-600 font-bold text-xs">(Waived)</span>
+                                            )}
+                                        </span>
+                                        {feesWaived ? (
+                                            <span className="line-through text-gray-300">-${originalPlatformFee.toFixed(2)}</span>
+                                        ) : (
+                                            <span className={coverFees ? "text-gray-900" : "text-gray-400"}>
+                                                -${platformFee.toFixed(2)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex justify-between font-medium text-green-700 pt-2 border-t border-gray-200">
+                                        <span>Amount to Team</span>
+                                        <span>
+                                            ${coverFees
+                                                ? cartSubtotal.toFixed(2)
+                                                : (cartSubtotal - processingFee - platformFee).toFixed(2)
+                                            }
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Cover Fees Checkbox */}
+                                <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-primary hover:bg-primary/5 transition group">
+                                    <input
+                                        type="checkbox"
+                                        checked={coverFees}
+                                        onChange={toggleCoverFees}
+                                        className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary mt-0.5"
+                                    />
+                                    <div>
+                                        <span className="text-sm font-medium text-gray-900 group-hover:text-primary transition">
+                                            Cover the fees (+${(platformFee + processingFee).toFixed(2)})
+                                        </span>
+                                        <p className="text-xs text-gray-500 mt-0.5">
+                                            Ensure the team receives the full ${cartSubtotal.toFixed(2)}
+                                        </p>
+                                    </div>
+                                </label>
+
+                                <div className="border-t border-gray-200 pt-3 flex justify-between font-bold text-lg text-gray-900">
+                                    <span>Your Total</span>
+                                    <span className="text-primary">${cartTotal.toFixed(2)}</span>
                                 </div>
 
                                 <button

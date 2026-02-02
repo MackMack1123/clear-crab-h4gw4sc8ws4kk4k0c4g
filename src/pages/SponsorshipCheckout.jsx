@@ -25,6 +25,7 @@ export default function SponsorshipCheckout() {
     originalPlatformFee,
     feesWaived,
     coverFees,
+    toggleCoverFees,
   } = useSponsorship();
   const { currentUser, userProfile } = useAuth();
 
@@ -266,7 +267,7 @@ export default function SponsorshipCheckout() {
             </div>
           </div>
 
-          <div className="bg-gray-50 p-6 rounded-2xl mb-8 border border-gray-200 space-y-4">
+          <div className="bg-gray-50 p-6 rounded-2xl mb-6 border border-gray-200 space-y-4">
             {checkoutItems.map((item, i) => (
               <div
                 key={i}
@@ -277,35 +278,64 @@ export default function SponsorshipCheckout() {
               </div>
             ))}
 
-            {coverFees && (
-              <div className="pt-2 border-t border-gray-200 border-dashed space-y-1">
-                <div className="flex justify-between items-center text-sm text-gray-500">
-                  <span>Processing Fee</span>
-                  <span>${processingFee.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm text-gray-500">
-                  <span>
-                    Platform Fee{" "}
-                    {feesWaived && (
-                      <span className="text-green-600 font-bold text-xs ml-1">
-                        (Waived)
-                      </span>
-                    )}
-                  </span>
-                  <span
-                    className={feesWaived ? "line-through text-gray-400" : ""}
-                  >
-                    $
-                    {(feesWaived ? originalPlatformFee : platformFee).toFixed(
-                      2,
-                    )}
-                  </span>
-                </div>
+            {/* Fee Breakdown - Always visible */}
+            <div className="pt-3 border-t border-gray-200 border-dashed space-y-2">
+              <div className="flex justify-between items-center text-sm text-gray-500">
+                <span>Credit Card Fees</span>
+                <span className={coverFees ? "text-gray-700" : "text-gray-400"}>
+                  -${processingFee.toFixed(2)}
+                </span>
               </div>
-            )}
+              <div className="flex justify-between items-center text-sm text-gray-500">
+                <span className="flex items-center gap-1">
+                  Platform Fee
+                  {feesWaived && (
+                    <span className="text-green-600 font-bold text-xs">
+                      (Waived)
+                    </span>
+                  )}
+                </span>
+                {feesWaived ? (
+                  <span className="line-through text-gray-300">
+                    -${originalPlatformFee.toFixed(2)}
+                  </span>
+                ) : (
+                  <span className={coverFees ? "text-gray-700" : "text-gray-400"}>
+                    -${platformFee.toFixed(2)}
+                  </span>
+                )}
+              </div>
+              <div className="flex justify-between items-center text-sm font-medium text-green-700 pt-2 border-t border-gray-200">
+                <span>Amount to Team</span>
+                <span>
+                  ${coverFees
+                    ? displaySubtotal.toFixed(2)
+                    : (displaySubtotal - processingFee - platformFee).toFixed(2)
+                  }
+                </span>
+              </div>
+            </div>
+
+            {/* Cover Fees Checkbox */}
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-primary hover:bg-white transition group bg-white">
+              <input
+                type="checkbox"
+                checked={coverFees}
+                onChange={toggleCoverFees}
+                className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary mt-0.5"
+              />
+              <div>
+                <span className="text-sm font-medium text-gray-900 group-hover:text-primary transition">
+                  Cover the fees (+${(platformFee + processingFee).toFixed(2)})
+                </span>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Ensure the team receives the full ${displaySubtotal.toFixed(2)}
+                </p>
+              </div>
+            </label>
 
             <div className="border-t border-gray-200 pt-3 flex justify-between items-center text-lg">
-              <span className="font-bold text-gray-900">Total</span>
+              <span className="font-bold text-gray-900">Your Total</span>
               <span className="font-heading font-bold text-primary text-2xl">
                 ${displayTotal.toFixed(2)}
               </span>
