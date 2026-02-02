@@ -423,30 +423,30 @@ export default function Dashboard() {
 
           {/* Header */}
           {activeTab !== 'sponsorships' && activeTab !== 'team' && (
-            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div>
-                <div className="flex justify-between items-center mb-8">
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Welcome back, {userProfile?.firstName || 'Organizer'}!</h1>
-                    <p className="text-gray-600">Here's what's happening with your campaigns.</p>
-                    <button onClick={() => promoteToAdmin(currentUser?.uid, currentUser?.email)} className="text-xs text-gray-400 hover:text-primary underline mt-1">
-                      (Dev) Make Me Admin
-                    </button>
-                  </div>
-                  <Link
-                    to="/campaign/new"
-                    className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
-                  >
-                    <Plus className="w-5 h-5" />
-                    New Campaign
-                  </Link>
-                </div>
+                <h1 className="text-2xl font-bold text-gray-900">Welcome back, {userProfile?.firstName || 'Organizer'}!</h1>
+                <p className="text-gray-600">Here's what's happening with your organization.</p>
+                {process.env.NODE_ENV === 'development' && (
+                  <button onClick={() => promoteToAdmin(currentUser?.uid, currentUser?.email)} className="text-xs text-gray-400 hover:text-primary underline mt-1">
+                    (Dev) Make Me Admin
+                  </button>
+                )}
               </div>
+              {enableFundraising && (
+                <Link
+                  to="/campaign/new"
+                  className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+                >
+                  <Plus className="w-5 h-5" />
+                  New Campaign
+                </Link>
+              )}
             </header>
           )}
 
-          {/* Empty State Hero */}
-          {campaigns.length === 0 && sponsorships.length === 0 && !loading && activeTab !== 'sponsorships' && activeTab !== 'team' && (
+          {/* Empty State Hero - only show on overview when there's nothing */}
+          {campaigns.length === 0 && sponsorships.length === 0 && !loading && activeTab === 'overview' && (
             <div className="bg-white rounded-3xl shadow-glow border border-gray-100 p-12 text-center relative overflow-hidden">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-purple-600/5 to-transparent pointer-events-none"></div>
               <div className="relative z-10 max-w-lg mx-auto">
@@ -455,69 +455,224 @@ export default function Dashboard() {
                 </div>
                 <h2 className="font-heading text-3xl font-bold text-gray-900 mb-4">Start Accepting Sponsorships</h2>
                 <p className="text-gray-500 mb-8 text-lg">Create packages and share your page with local businesses to raise funds effortlessly.</p>
-                <div className="flex justify-center gap-4">
+                <div className="flex justify-center gap-4 flex-wrap">
                   <button
                     onClick={() => { setActiveTab('sponsorships'); setSponsorshipTab('packages'); }}
                     className="inline-flex items-center gap-2 px-8 py-4 bg-purple-600 text-white rounded-xl font-bold text-lg hover:bg-purple-700 transition shadow-xl shadow-purple-600/30 hover:-translate-y-1"
                   >
                     Create Package
                   </button>
-                  <Link
-                    to="/campaign/new"
-                    className="inline-flex items-center gap-2 px-8 py-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-50 transition"
-                  >
-                    Start Fundraiser
-                  </Link>
+                  {enableFundraising && (
+                    <Link
+                      to="/campaign/new"
+                      className="inline-flex items-center gap-2 px-8 py-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-50 transition"
+                    >
+                      Start Fundraiser
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Stats Cards: Sponsorships (Priority) */}
-          {(campaigns.length > 0 || sponsorships.length > 0) && activeTab !== 'sponsorships' && activeTab !== 'team' && (
+          {/* Dashboard Overview */}
+          {activeTab === 'overview' && (
             <div className="space-y-6">
-              {/* Sponsorship Stats Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-2xl shadow-soft border border-gray-100 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              {/* Stats Cards Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Total Revenue */}
+                <div className="bg-white p-5 rounded-2xl shadow-soft border border-gray-100 relative overflow-hidden group">
+                  <div className="absolute -top-4 -right-4 opacity-5 group-hover:opacity-10 transition-opacity">
                     <HeartHandshake className="w-24 h-24 text-purple-600" />
                   </div>
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
-                      <HeartHandshake className="w-6 h-6" />
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl">
+                      <HeartHandshake className="w-5 h-5" />
                     </div>
-                    <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Sponsorship Revenue</span>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Revenue</span>
                   </div>
-                  <p className="text-3xl font-heading font-bold text-gray-900">
-                    ${sponsorships.reduce((acc, s) => acc + (['active', 'approved'].includes(s.status) ? (s.packageId?.price || s.amount || 0) : 0), 0).toFixed(2)}
+                  <p className="text-2xl font-bold text-gray-900">
+                    ${sponsorships.reduce((acc, s) => acc + (['paid', 'branding-submitted'].includes(s.status) ? (s.amount || 0) : 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
-                  <div className="mt-2 text-xs text-gray-400 font-bold flex items-center gap-1">
-                    <span className="text-green-600">{sponsorships.filter(s => s.status === 'active').length} Active</span>
-                    <span>•</span>
-                    <span className="text-amber-500">{sponsorships.filter(s => ['pending', 'pending_approval'].includes(s.status)).length} Pending</span>
+                  <p className="text-xs text-gray-400 mt-1">From {sponsorships.filter(s => ['paid', 'branding-submitted'].includes(s.status)).length} paid sponsors</p>
+                </div>
+
+                {/* Total Sponsors */}
+                <div className="bg-white p-5 rounded-2xl shadow-soft border border-gray-100">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Sponsors</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{sponsorships.length}</p>
+                  <div className="flex items-center gap-2 mt-1 text-xs">
+                    <span className="text-green-600 font-medium">{sponsorships.filter(s => ['paid', 'branding-submitted'].includes(s.status)).length} paid</span>
+                    <span className="text-gray-300">•</span>
+                    <span className="text-amber-500 font-medium">{sponsorships.filter(s => s.status === 'pending').length} pending</span>
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl shadow-soft border border-gray-100">
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="p-3 bg-green-50 text-green-600 rounded-xl">
-                      <Wallet className="w-6 h-6" />
+                {/* Awaiting Branding */}
+                <div className="bg-white p-5 rounded-2xl shadow-soft border border-gray-100">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
+                      <TrendingUp className="w-5 h-5" />
                     </div>
-                    <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Campaign Raised</span>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Awaiting Branding</span>
                   </div>
-                  <p className="text-3xl font-heading font-bold text-gray-900">${(userProfile?.balance || 0).toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-gray-900">{sponsorships.filter(s => s.status === 'paid' && !s.branding?.logoUrl).length}</p>
+                  <p className="text-xs text-gray-400 mt-1">Sponsors who haven't uploaded logos</p>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl shadow-soft border border-gray-100">
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="p-3 bg-primary/10 text-primary rounded-xl">
-                      <Trophy className="w-6 h-6" />
+                {/* Campaigns */}
+                {enableFundraising && (
+                  <div className="bg-white p-5 rounded-2xl shadow-soft border border-gray-100">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
+                        <Trophy className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Campaigns</span>
                     </div>
-                    <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Active Campaigns</span>
+                    <p className="text-2xl font-bold text-gray-900">{campaigns.length}</p>
+                    <p className="text-xs text-gray-400 mt-1">${campaigns.reduce((acc, c) => acc + (c.currentAmount || 0), 0).toFixed(2)} raised</p>
                   </div>
-                  <p className="text-3xl font-heading font-bold text-gray-900">{campaigns.length}</p>
+                )}
+              </div>
+
+              {/* Quick Actions & Recent Sponsors Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Quick Actions */}
+                <div className="bg-white rounded-2xl shadow-soft border border-gray-100 p-6">
+                  <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <ArrowRight className="w-4 h-4 text-purple-600" />
+                    Quick Actions
+                  </h3>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => { setActiveTab('sponsorships'); setSponsorshipTab('packages'); }}
+                      className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-purple-50 text-left transition group"
+                    >
+                      <span className="text-sm font-medium text-gray-700 group-hover:text-purple-700">Manage Packages</span>
+                      <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600" />
+                    </button>
+                    <button
+                      onClick={() => { setActiveTab('sponsorships'); setSponsorshipTab('content'); }}
+                      className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-purple-50 text-left transition group"
+                    >
+                      <span className="text-sm font-medium text-gray-700 group-hover:text-purple-700">Edit Public Page</span>
+                      <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600" />
+                    </button>
+                    <button
+                      onClick={() => { setActiveTab('sponsorships'); setSponsorshipTab('widget'); }}
+                      className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-purple-50 text-left transition group"
+                    >
+                      <span className="text-sm font-medium text-gray-700 group-hover:text-purple-700">Get Embed Widget</span>
+                      <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600" />
+                    </button>
+                    <a
+                      href={`/org/${userProfile?.organizationProfile?.slug || currentUser?.uid}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-purple-50 text-left transition group"
+                    >
+                      <span className="text-sm font-medium text-gray-700 group-hover:text-purple-700">View Public Page</span>
+                      <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-purple-600" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Recent Sponsors */}
+                <div className="lg:col-span-2 bg-white rounded-2xl shadow-soft border border-gray-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                      <HeartHandshake className="w-4 h-4 text-purple-600" />
+                      Recent Sponsors
+                    </h3>
+                    <button
+                      onClick={() => { setActiveTab('sponsorships'); setSponsorshipTab('sales'); }}
+                      className="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                    >
+                      View All
+                    </button>
+                  </div>
+                  {sponsorships.length === 0 ? (
+                    <div className="text-center py-8">
+                      <HeartHandshake className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                      <p className="text-gray-500 text-sm">No sponsors yet</p>
+                      <p className="text-gray-400 text-xs mt-1">Share your page to start receiving sponsorships</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {sponsorships.slice(0, 5).map((sponsor) => (
+                        <div key={sponsor._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                          <div className="flex items-center gap-3">
+                            {sponsor.branding?.logoUrl ? (
+                              <img src={sponsor.branding.logoUrl} alt="" className="w-10 h-10 rounded-lg object-contain bg-white border" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                                <span className="text-purple-600 font-bold text-sm">
+                                  {(sponsor.sponsorInfo?.companyName || sponsor.sponsorName || '?')[0].toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm">{sponsor.sponsorInfo?.companyName || sponsor.sponsorName}</p>
+                              <p className="text-xs text-gray-500">${(sponsor.amount || 0).toFixed(2)}</p>
+                            </div>
+                          </div>
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                            sponsor.status === 'branding-submitted' ? 'bg-green-100 text-green-700' :
+                            sponsor.status === 'paid' ? 'bg-blue-100 text-blue-700' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {sponsor.status === 'branding-submitted' ? 'Complete' :
+                             sponsor.status === 'paid' ? 'Awaiting Logo' :
+                             'Pending'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Setup Checklist - only show if incomplete */}
+              {(!userProfile?.organizationProfile?.orgName || !userProfile?.organizationProfile?.logoUrl) && (
+                <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-2xl p-6 text-white">
+                  <h3 className="font-bold mb-3 flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
+                    Complete Your Setup
+                  </h3>
+                  <p className="text-purple-100 text-sm mb-4">Finish setting up your organization to make a great impression on sponsors.</p>
+                  <div className="space-y-2">
+                    {!userProfile?.organizationProfile?.orgName && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="w-5 h-5 rounded-full border-2 border-purple-300" />
+                        <span>Add your organization name</span>
+                      </div>
+                    )}
+                    {!userProfile?.organizationProfile?.logoUrl && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="w-5 h-5 rounded-full border-2 border-purple-300" />
+                        <span>Upload your logo</span>
+                      </div>
+                    )}
+                    {!userProfile?.organizationProfile?.description && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="w-5 h-5 rounded-full border-2 border-purple-300" />
+                        <span>Add a description</span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { setActiveTab('sponsorships'); setSponsorshipTab('content'); }}
+                    className="mt-4 px-4 py-2 bg-white text-purple-700 rounded-lg font-medium text-sm hover:bg-purple-50 transition"
+                  >
+                    Complete Setup
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -525,7 +680,7 @@ export default function Dashboard() {
             <TeamManagement />
           ) : activeTab === 'sponsorships' ? (
             <SponsorshipView currentTab={sponsorshipTab} onTabChange={setSponsorshipTab} />
-          ) : campaigns.length > 0 && (
+          ) : (activeTab === 'campaigns' || activeTab === 'payouts') && enableFundraising ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Main Content Area */}
               <div className="lg:col-span-2 space-y-8">
@@ -691,9 +846,7 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-          )}
-
-
+          ) : null}
 
           {/* Settings View */}
           {
