@@ -681,6 +681,7 @@ export default function SponsorshipLanding() {
                             return null;
                         })}
                     </div>
+                )}
             </main>
 
             {/* Footer Actions: Sticky Bar on Mobile, Floating Buttons on Desktop */}

@@ -107,6 +107,13 @@ export const sponsorshipService = {
         return await res.json();
     },
 
+    // Get ALL sponsorships (Admin only)
+    getAllSponsorships: async () => {
+        const res = await fetch(`${API_URL}/admin/all`);
+        if (!res.ok) throw new Error('Failed to fetch all sponsorships');
+        return await res.json();
+    },
+
     // Get all sponsorships for a sponsor
     getSponsorSponsorships: async (userId, email) => {
         let url = `${API_URL}/sponsor/${userId}`;

@@ -189,6 +189,59 @@ router.get("/organizer/:organizerId", async (req, res) => {
   }
 });
 
+// Get ALL sponsorships (Admin only)
+router.get("/admin/all", async (req, res) => {
+  try {
+    // TODO: Add admin authentication check
+    const sponsorships = await Sponsorship.find({})
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Manually populate organizer and package data
+    if (sponsorships.length > 0) {
+      const organizerIds = [
+        ...new Set(sponsorships.map((s) => s.organizerId).filter(Boolean)),
+      ];
+      const packageIds = [
+        ...new Set(sponsorships.map((s) => s.packageId).filter(Boolean)),
+      ];
+
+      // Fetch organizers
+      const organizers = await User.find({ _id: { $in: organizerIds } })
+        .select("email organizationProfile.orgName")
+        .lean();
+      const organizerMap = {};
+      organizers.forEach((o) => {
+        organizerMap[o._id] = o;
+      });
+
+      // Fetch packages
+      const packages = await Package.find({ _id: { $in: packageIds } })
+        .select("title price")
+        .lean();
+      const packageMap = {};
+      packages.forEach((p) => {
+        packageMap[p._id] = p;
+      });
+
+      // Attach populated data
+      const populatedSponsorships = sponsorships.map((s) => ({
+        ...s,
+        id: s._id,
+        organizer: organizerMap[s.organizerId] || null,
+        package: packageMap[s.packageId] || null,
+      }));
+
+      return res.json(populatedSponsorships);
+    }
+
+    res.json(sponsorships);
+  } catch (err) {
+    console.error("[Admin Sponsorships Error]", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get all sponsorships for a specific sponsor (User)
 router.get("/sponsor/:userId", async (req, res) => {
   try {

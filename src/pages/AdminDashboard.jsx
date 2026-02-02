@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Loader2, DollarSign, TrendingUp, CreditCard, Users, LayoutDashboard, Megaphone, LogOut, BarChart3, Settings, Percent } from 'lucide-react';
+import { Loader2, DollarSign, TrendingUp, CreditCard, Users, LayoutDashboard, Megaphone, LogOut, BarChart3, Settings, Percent, Search, Building2, X, Check, ExternalLink, Eye, Edit2, Handshake } from 'lucide-react';
 import { payoutService } from '../services/payoutService';
 import { userService } from '../services/userService';
 import { campaignService } from '../services/campaignService';
 import { systemService } from '../services/systemService';
+import { sponsorshipService } from '../services/sponsorshipService';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +24,16 @@ export default function AdminDashboard() {
     const [users, setUsers] = useState([]);
     const [campaigns, setCampaigns] = useState([]);
     const [systemSettings, setSystemSettings] = useState(null);
+    const [sponsorships, setSponsorships] = useState([]);
+
+    // Search/Filter States
+    const [userSearch, setUserSearch] = useState('');
+    const [sponsorshipFilter, setSponsorshipFilter] = useState('all'); // all, pending, paid, branding-submitted
+    const [sponsorshipOrgFilter, setSponsorshipOrgFilter] = useState('all');
+
+    // Organization Editor Modal State
+    const [editingOrg, setEditingOrg] = useState(null);
+    const [orgEditForm, setOrgEditForm] = useState({});
 
     // Metrics State
     const [metrics, setMetrics] = useState({
@@ -47,10 +58,11 @@ export default function AdminDashboard() {
                 payoutService.getPendingPayouts(),
                 userService.getAllUsers(),
                 campaignService.getAllCampaigns(),
-                systemService.getSettings()
+                systemService.getSettings(),
+                sponsorshipService.getAllSponsorships()
             ]);
 
-            const [transResult, payoutsResult, usersResult, campaignsResult, settingsResult] = results;
+            const [transResult, payoutsResult, usersResult, campaignsResult, settingsResult, sponsorshipsResult] = results;
 
             // Handle Transactions
             let transData = [];
@@ -91,6 +103,13 @@ export default function AdminDashboard() {
                 setSystemSettings(settingsResult.value);
             } else {
                 console.error("Failed to load settings:", settingsResult.reason);
+            }
+
+            // Handle Sponsorships
+            if (sponsorshipsResult.status === 'fulfilled') {
+                setSponsorships(sponsorshipsResult.value);
+            } else {
+                console.error("Failed to load sponsorships:", sponsorshipsResult.reason);
             }
 
             // Calculate Metrics
@@ -170,6 +189,98 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleUpdateSponsorshipStatus = async (sponsorshipId, newStatus) => {
+        try {
+            await sponsorshipService.updateSponsorship(sponsorshipId, { status: newStatus });
+            setSponsorships(prev => prev.map(s =>
+                s.id === sponsorshipId ? { ...s, status: newStatus } : s
+            ));
+            toast.success(`Sponsorship status updated to ${newStatus}`);
+        } catch (error) {
+            console.error("Failed to update sponsorship:", error);
+            toast.error("Failed to update sponsorship");
+        }
+    };
+
+    const openOrgEditor = (user) => {
+        setEditingOrg(user);
+        setOrgEditForm({
+            orgName: user.organizationProfile?.orgName || '',
+            slug: user.organizationProfile?.slug || '',
+            contactEmail: user.organizationProfile?.contactEmail || user.email || '',
+            website: user.organizationProfile?.website || '',
+            description: user.organizationProfile?.description || '',
+            logoUrl: user.organizationProfile?.logoUrl || '',
+            primaryColor: user.organizationProfile?.primaryColor || '#3B82F6',
+            waiveFees: user.organizationProfile?.waiveFees || false,
+            enableFundraising: user.organizationProfile?.enableFundraising !== false
+        });
+    };
+
+    const handleSaveOrgProfile = async () => {
+        if (!editingOrg) return;
+        try {
+            const updateData = {
+                "organizationProfile.orgName": orgEditForm.orgName,
+                "organizationProfile.slug": orgEditForm.slug,
+                "organizationProfile.contactEmail": orgEditForm.contactEmail,
+                "organizationProfile.website": orgEditForm.website,
+                "organizationProfile.description": orgEditForm.description,
+                "organizationProfile.logoUrl": orgEditForm.logoUrl,
+                "organizationProfile.primaryColor": orgEditForm.primaryColor,
+                "organizationProfile.waiveFees": orgEditForm.waiveFees,
+                "organizationProfile.enableFundraising": orgEditForm.enableFundraising
+            };
+            await userService.updateUser(editingOrg._id || editingOrg.id, updateData);
+
+            // Update local state
+            setUsers(prev => prev.map(u =>
+                (u._id || u.id) === (editingOrg._id || editingOrg.id)
+                    ? { ...u, organizationProfile: { ...u.organizationProfile, ...orgEditForm } }
+                    : u
+            ));
+
+            toast.success("Organization profile updated");
+            setEditingOrg(null);
+        } catch (error) {
+            console.error("Failed to update organization:", error);
+            toast.error("Failed to save changes");
+        }
+    };
+
+    // Filtered data using useMemo for performance
+    const filteredUsers = useMemo(() => {
+        if (!userSearch) return users;
+        const search = userSearch.toLowerCase();
+        return users.filter(u =>
+            u.email?.toLowerCase().includes(search) ||
+            u.organizationProfile?.orgName?.toLowerCase().includes(search) ||
+            u.organizationProfile?.slug?.toLowerCase().includes(search) ||
+            (u._id || u.id)?.toLowerCase().includes(search)
+        );
+    }, [users, userSearch]);
+
+    const filteredSponsorships = useMemo(() => {
+        let filtered = sponsorships;
+        if (sponsorshipFilter !== 'all') {
+            filtered = filtered.filter(s => s.status === sponsorshipFilter);
+        }
+        if (sponsorshipOrgFilter !== 'all') {
+            filtered = filtered.filter(s => s.organizerId === sponsorshipOrgFilter);
+        }
+        return filtered;
+    }, [sponsorships, sponsorshipFilter, sponsorshipOrgFilter]);
+
+    const uniqueOrganizers = useMemo(() => {
+        const orgMap = new Map();
+        sponsorships.forEach(s => {
+            if (s.organizer && !orgMap.has(s.organizerId)) {
+                orgMap.set(s.organizerId, s.organizer);
+            }
+        });
+        return Array.from(orgMap.entries());
+    }, [sponsorships]);
+
     if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
     return (
@@ -201,9 +312,9 @@ export default function AdminDashboard() {
                 <nav className="flex-1 p-4 space-y-1 mt-16 md:mt-0">
                     <SidebarItem icon={LayoutDashboard} label="Overview" active={activeTab === 'overview'} onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }} />
                     <SidebarItem icon={BarChart3} label="Analytics" active={activeTab === 'analytics'} onClick={() => { setActiveTab('analytics'); setIsSidebarOpen(false); }} />
-                    <SidebarItem icon={Users} label="User Management" active={activeTab === 'users'} onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} />
+                    <SidebarItem icon={Users} label="Users & Orgs" active={activeTab === 'users'} onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} />
+                    <SidebarItem icon={Handshake} label="Sponsorships" active={activeTab === 'sponsorships'} onClick={() => { setActiveTab('sponsorships'); setIsSidebarOpen(false); }} />
                     <SidebarItem icon={Megaphone} label="Campaigns" active={activeTab === 'campaigns'} onClick={() => { setActiveTab('campaigns'); setIsSidebarOpen(false); }} />
-
                     <SidebarItem icon={DollarSign} label="Financials" active={activeTab === 'financials'} onClick={() => { setActiveTab('financials'); setIsSidebarOpen(false); }} />
                     <SidebarItem icon={Settings} label="System" active={activeTab === 'system'} onClick={() => { setActiveTab('system'); setIsSidebarOpen(false); }} />
                 </nav>
@@ -222,9 +333,9 @@ export default function AdminDashboard() {
                     <h1 className="text-3xl font-bold text-gray-900">
                         {activeTab === 'overview' && 'Dashboard Overview'}
                         {activeTab === 'analytics' && 'Platform Analytics'}
-                        {activeTab === 'users' && 'User Management'}
+                        {activeTab === 'users' && 'Users & Organizations'}
+                        {activeTab === 'sponsorships' && 'Sponsorship Management'}
                         {activeTab === 'campaigns' && 'Campaign Management'}
-
                         {activeTab === 'financials' && 'Financial Reports'}
                         {activeTab === 'system' && 'System Controls'}
                     </h1>
@@ -278,39 +389,278 @@ export default function AdminDashboard() {
                 )}
 
                 {activeTab === 'users' && (
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-fadeIn">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
-                                <tr>
-                                    <th className="p-4">User ID</th>
-                                    <th className="p-4">Email</th>
-                                    <th className="p-4">Role</th>
-                                    <th className="p-4">Platform Fees</th>
-                                    <th className="p-4">Joined</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {users.map(u => (
-                                    <tr key={u._id || u.id} className="hover:bg-gray-50">
-                                        <td className="p-4 font-mono text-xs text-gray-500">{u._id || u.id}</td>
-                                        <td className="p-4 font-medium text-gray-900">{u.email}</td>
-                                        <td className="p-4"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">{u.role || 'Organizer'}</span></td>
-                                        <td className="p-4">
-                                            <button
-                                                onClick={() => handleToggleFeeWaiver(u)}
-                                                className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${u.organizationProfile?.waiveFees
-                                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                    }`}
-                                            >
-                                                {u.organizationProfile?.waiveFees ? 'Waived' : 'Standard'}
-                                            </button>
-                                        </td>
-                                        <td className="p-4 text-gray-500">{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}</td>
+                    <div className="space-y-6 animate-fadeIn">
+                        {/* Search and Stats Bar */}
+                        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                            <div className="relative flex-1 max-w-md">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by email, organization, or ID..."
+                                    value={userSearch}
+                                    onChange={(e) => setUserSearch(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                                />
+                            </div>
+                            <div className="flex gap-4 text-sm">
+                                <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg font-medium">
+                                    {users.length} Total Users
+                                </div>
+                                <div className="px-4 py-2 bg-green-50 text-green-700 rounded-lg font-medium">
+                                    {users.filter(u => u.organizationProfile?.waiveFees).length} Fee Waivers
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Users Grid/Table */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+                                    <tr>
+                                        <th className="p-4">Organization</th>
+                                        <th className="p-4">Contact</th>
+                                        <th className="p-4">Role</th>
+                                        <th className="p-4 text-center">Fee Status</th>
+                                        <th className="p-4">Joined</th>
+                                        <th className="p-4 text-center">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredUsers.map(u => (
+                                        <tr key={u._id || u.id} className="hover:bg-gray-50">
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-3">
+                                                    {u.organizationProfile?.logoUrl ? (
+                                                        <img
+                                                            src={u.organizationProfile.logoUrl}
+                                                            alt=""
+                                                            className="w-10 h-10 rounded-lg object-cover bg-gray-100"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                                                            <Building2 className="w-5 h-5 text-gray-400" />
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <div className="font-bold text-gray-900">
+                                                            {u.organizationProfile?.orgName || 'Unnamed Org'}
+                                                        </div>
+                                                        {u.organizationProfile?.slug && (
+                                                            <div className="text-xs text-gray-500">
+                                                                /{u.organizationProfile.slug}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="font-medium text-gray-900">{u.email}</div>
+                                                <div className="text-xs text-gray-400 font-mono">{(u._id || u.id).slice(0, 12)}...</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${u.role === 'admin'
+                                                    ? 'bg-purple-50 text-purple-700'
+                                                    : 'bg-blue-50 text-blue-700'
+                                                    }`}>
+                                                    {u.role || 'Organizer'}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <button
+                                                    onClick={() => handleToggleFeeWaiver(u)}
+                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${u.organizationProfile?.waiveFees
+                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200 ring-2 ring-green-200'
+                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                        }`}
+                                                >
+                                                    {u.organizationProfile?.waiveFees ? (
+                                                        <>
+                                                            <Check className="w-3.5 h-3.5" />
+                                                            Fees Waived
+                                                        </>
+                                                    ) : (
+                                                        'Standard Fees'
+                                                    )}
+                                                </button>
+                                            </td>
+                                            <td className="p-4 text-gray-500 text-sm">
+                                                {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <button
+                                                        onClick={() => openOrgEditor(u)}
+                                                        className="p-2 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition"
+                                                        title="Edit Organization"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    {u.organizationProfile?.slug && (
+                                                        <a
+                                                            href={`/sponsor/${u.organizationProfile.slug}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                                            title="View Public Page"
+                                                        >
+                                                            <ExternalLink className="w-4 h-4" />
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {filteredUsers.length === 0 && (
+                                <div className="p-8 text-center text-gray-500">
+                                    No users found matching your search.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'sponsorships' && (
+                    <div className="space-y-6 animate-fadeIn">
+                        {/* Filter Bar */}
+                        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                            <div className="flex flex-wrap gap-3">
+                                <select
+                                    value={sponsorshipFilter}
+                                    onChange={(e) => setSponsorshipFilter(e.target.value)}
+                                    className="px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white"
+                                >
+                                    <option value="all">All Statuses</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="paid">Paid</option>
+                                    <option value="branding-submitted">Branding Submitted</option>
+                                </select>
+                                <select
+                                    value={sponsorshipOrgFilter}
+                                    onChange={(e) => setSponsorshipOrgFilter(e.target.value)}
+                                    className="px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white"
+                                >
+                                    <option value="all">All Organizations</option>
+                                    {uniqueOrganizers.map(([id, org]) => (
+                                        <option key={id} value={id}>
+                                            {org.organizationProfile?.orgName || org.email}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex gap-4 text-sm">
+                                <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg font-medium">
+                                    {sponsorships.length} Total
+                                </div>
+                                <div className="px-4 py-2 bg-green-50 text-green-700 rounded-lg font-medium">
+                                    ${sponsorships.reduce((sum, s) => sum + (s.amount || 0), 0).toLocaleString()} Value
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Stats Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <MetricCard
+                                title="Pending"
+                                value={sponsorships.filter(s => s.status === 'pending').length}
+                                icon={Handshake}
+                                color="text-yellow-600"
+                                bg="bg-yellow-50"
+                            />
+                            <MetricCard
+                                title="Paid"
+                                value={sponsorships.filter(s => s.status === 'paid').length}
+                                icon={Check}
+                                color="text-green-600"
+                                bg="bg-green-50"
+                            />
+                            <MetricCard
+                                title="Branding Done"
+                                value={sponsorships.filter(s => s.status === 'branding-submitted').length}
+                                icon={Building2}
+                                color="text-blue-600"
+                                bg="bg-blue-50"
+                            />
+                            <MetricCard
+                                title="Total Revenue"
+                                value={`$${sponsorships.filter(s => s.status !== 'pending').reduce((sum, s) => sum + (s.amount || 0), 0).toLocaleString()}`}
+                                icon={DollarSign}
+                                color="text-primary"
+                            />
+                        </div>
+
+                        {/* Sponsorships Table */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+                                    <tr>
+                                        <th className="p-4">Sponsor</th>
+                                        <th className="p-4">Organization</th>
+                                        <th className="p-4">Package</th>
+                                        <th className="p-4">Amount</th>
+                                        <th className="p-4">Status</th>
+                                        <th className="p-4">Date</th>
+                                        <th className="p-4 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredSponsorships.map(s => (
+                                        <tr key={s.id || s._id} className="hover:bg-gray-50">
+                                            <td className="p-4">
+                                                <div className="font-medium text-gray-900">{s.sponsorName}</div>
+                                                <div className="text-xs text-gray-500">{s.sponsorEmail}</div>
+                                                {s.sponsorInfo?.companyName && (
+                                                    <div className="text-xs text-primary font-medium">{s.sponsorInfo.companyName}</div>
+                                                )}
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="font-medium text-gray-900">
+                                                    {s.organizer?.organizationProfile?.orgName || 'Unknown Org'}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-gray-600">
+                                                {s.package?.title || 'Unknown Package'}
+                                            </td>
+                                            <td className="p-4 font-bold text-gray-900">
+                                                ${s.amount?.toLocaleString()}
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${s.status === 'paid'
+                                                    ? 'bg-green-50 text-green-700'
+                                                    : s.status === 'branding-submitted'
+                                                        ? 'bg-blue-50 text-blue-700'
+                                                        : 'bg-yellow-50 text-yellow-700'
+                                                    }`}>
+                                                    {s.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-gray-500 text-sm">
+                                                {s.createdAt ? new Date(s.createdAt).toLocaleDateString() : 'N/A'}
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <select
+                                                        value={s.status}
+                                                        onChange={(e) => handleUpdateSponsorshipStatus(s.id || s._id, e.target.value)}
+                                                        className="text-xs px-2 py-1 rounded-lg border border-gray-200 bg-white"
+                                                    >
+                                                        <option value="pending">Pending</option>
+                                                        <option value="paid">Paid</option>
+                                                        <option value="branding-submitted">Branding Done</option>
+                                                    </select>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {filteredSponsorships.length === 0 && (
+                                <div className="p-8 text-center text-gray-500">
+                                    No sponsorships found matching your filters.
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -495,6 +845,160 @@ export default function AdminDashboard() {
                     </div>
                 )}
             </main>
+
+            {/* Organization Editor Modal */}
+            {editingOrg && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
+                            <h2 className="text-xl font-bold text-gray-900">Edit Organization</h2>
+                            <button
+                                onClick={() => setEditingOrg(null)}
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-6">
+                            {/* Basic Info */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Organization Name</label>
+                                    <input
+                                        type="text"
+                                        value={orgEditForm.orgName}
+                                        onChange={(e) => setOrgEditForm(prev => ({ ...prev, orgName: e.target.value }))}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                                        placeholder="e.g., Eastside Youth Soccer"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">URL Slug</label>
+                                    <div className="flex items-center">
+                                        <span className="text-gray-400 text-sm mr-1">/sponsor/</span>
+                                        <input
+                                            type="text"
+                                            value={orgEditForm.slug}
+                                            onChange={(e) => setOrgEditForm(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                                            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                                            placeholder="eastside-soccer"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
+                                    <input
+                                        type="email"
+                                        value={orgEditForm.contactEmail}
+                                        onChange={(e) => setOrgEditForm(prev => ({ ...prev, contactEmail: e.target.value }))}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                                    <input
+                                        type="url"
+                                        value={orgEditForm.website}
+                                        onChange={(e) => setOrgEditForm(prev => ({ ...prev, website: e.target.value }))}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                                        placeholder="https://..."
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                <textarea
+                                    value={orgEditForm.description}
+                                    onChange={(e) => setOrgEditForm(prev => ({ ...prev, description: e.target.value }))}
+                                    rows={3}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition resize-none"
+                                    placeholder="Brief description of the organization..."
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
+                                    <input
+                                        type="url"
+                                        value={orgEditForm.logoUrl}
+                                        onChange={(e) => setOrgEditForm(prev => ({ ...prev, logoUrl: e.target.value }))}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                                        placeholder="https://..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Primary Color</label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="color"
+                                            value={orgEditForm.primaryColor}
+                                            onChange={(e) => setOrgEditForm(prev => ({ ...prev, primaryColor: e.target.value }))}
+                                            className="w-12 h-10 rounded-lg border border-gray-200 cursor-pointer"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={orgEditForm.primaryColor}
+                                            onChange={(e) => setOrgEditForm(prev => ({ ...prev, primaryColor: e.target.value }))}
+                                            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition font-mono"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Feature Toggles */}
+                            <div className="border-t border-gray-200 pt-6">
+                                <h3 className="font-bold text-gray-900 mb-4">Settings & Features</h3>
+                                <div className="space-y-3">
+                                    <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition">
+                                        <div>
+                                            <span className="font-medium text-gray-900">Waive Platform Fees</span>
+                                            <p className="text-xs text-gray-500">Organization won't be charged platform fees</p>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={orgEditForm.waiveFees}
+                                            onChange={(e) => setOrgEditForm(prev => ({ ...prev, waiveFees: e.target.checked }))}
+                                            className="w-5 h-5 rounded text-primary focus:ring-primary/20"
+                                        />
+                                    </label>
+                                    <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition">
+                                        <div>
+                                            <span className="font-medium text-gray-900">Enable Fundraising Features</span>
+                                            <p className="text-xs text-gray-500">Show fundraising campaign tabs in organizer dashboard</p>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={orgEditForm.enableFundraising}
+                                            onChange={(e) => setOrgEditForm(prev => ({ ...prev, enableFundraising: e.target.checked }))}
+                                            className="w-5 h-5 rounded text-primary focus:ring-primary/20"
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-6 border-t border-gray-200 flex items-center justify-end gap-3 sticky bottom-0 bg-white rounded-b-2xl">
+                            <button
+                                onClick={() => setEditingOrg(null)}
+                                className="px-4 py-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveOrgProfile}
+                                className="px-6 py-2.5 bg-primary text-white rounded-xl hover:bg-primary/90 transition font-medium flex items-center gap-2"
+                            >
+                                <Check className="w-4 h-4" />
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

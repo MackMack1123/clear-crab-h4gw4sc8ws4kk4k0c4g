@@ -211,6 +211,7 @@ export default function SponsorDashboard() {
                             </div>
                         )}
                     </div>
+                </div>
             </main>
         </div>
     );

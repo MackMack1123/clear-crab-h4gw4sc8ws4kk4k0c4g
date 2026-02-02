@@ -169,5 +169,6 @@ export default function SponsorshipReview() {
                     </div>
                 </div>
             </div>
-            );
+        </div>
+    );
 }
