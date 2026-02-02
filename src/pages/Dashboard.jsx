@@ -16,7 +16,8 @@ import OrgAnalytics from '../components/analytics/OrgAnalytics';
 import RoleSwitcher from '../components/layout/RoleSwitcher';
 import OrgSwitcher from '../components/layout/OrgSwitcher';
 import TeamManagement from '../components/team/TeamManagement';
-import { BarChart3, UsersRound } from 'lucide-react';
+import WidgetGenerator from '../components/dashboard/WidgetGenerator';
+import { BarChart3, UsersRound, Code2 } from 'lucide-react';
 import {
   LayoutDashboard,
   Wallet,
@@ -304,6 +305,13 @@ export default function Dashboard() {
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'sponsorships' && sponsorshipTab === 'emails' ? 'text-purple-400 bg-purple-500/10' : 'text-slate-500 hover:text-slate-300'}`}
                   >
                     Email Templates
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('sponsorships'); setSponsorshipTab('widget'); }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'sponsorships' && sponsorshipTab === 'widget' ? 'text-purple-400 bg-purple-500/10' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    <Code2 className="w-3 h-3" />
+                    Embed Widget
                   </button>
                   <a
                     href={`/org/${userProfile?.organizationProfile?.slug || currentUser.uid}`}

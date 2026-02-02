@@ -47,6 +47,17 @@ app.use(cors({
     credentials: true
 }));
 
+// Allow any origin for widget API endpoints (they're meant to be embedded)
+app.use('/api/widget', (req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
 // --- Rate Limiting ---
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -103,6 +114,14 @@ app.use('/api/email', require('./routes/email'));
 app.use('/api/system', require('./routes/system'));
 app.use('/api/discover', require('./routes/discover'));
 app.use('/api/team', require('./routes/team'));
+app.use('/api/widget', require('./routes/widget'));
+
+// Serve widget script with permissive CORS for embedding on any site
+app.use('/widget', (req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minute cache
+    next();
+}, express.static(path.join(__dirname, 'public/widget')));
 
 app.get('/', (req, res) => {
     res.send('Fundraisr API is running');

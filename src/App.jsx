@@ -20,6 +20,7 @@ import SponsorAuth from './pages/SponsorAuth';
 import SponsorDashboard from './pages/SponsorDashboard';
 import SponsorshipSuccess from './pages/SponsorshipSuccess';
 import AcceptInvite from './pages/AcceptInvite';
+import SponsorProfile from './pages/SponsorProfile';
 
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 
@@ -73,6 +74,7 @@ function App() {
                                 <Route path="/sponsor/dashboard" element={<PrivateRoute><SponsorDashboard /></PrivateRoute>} />
                                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                                 <Route path="/invite/:token" element={<AcceptInvite />} />
+                                <Route path="/sponsor/:sponsorshipId" element={<SponsorProfile />} />
                             </Routes>
                             <ComplianceFooter />
                         </div>
