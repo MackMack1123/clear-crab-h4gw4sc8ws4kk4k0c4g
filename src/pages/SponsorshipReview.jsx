@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
 import { useSponsorship } from '../context/SponsorshipContext';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2, ShieldCheck, LogIn, UserPlus, ArrowRight } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Trash2, ShieldCheck, ArrowRight } from 'lucide-react';
 import { formatCurrency } from '../utils/formatCurrency';
 
 export default function SponsorshipReview() {
@@ -11,7 +10,6 @@ export default function SponsorshipReview() {
         window.scrollTo(0, 0);
     }, []);
     const { cart, removeFromCart, cartTotal, cartSubtotal, processingFee, platformFee, originalPlatformFee, coverFees, toggleCoverFees, feesWaived } = useSponsorship();
-    const { currentUser } = useAuth();
     const navigate = useNavigate();
 
     if (cart.length === 0) {
@@ -29,14 +27,8 @@ export default function SponsorshipReview() {
     }
 
     const handleProceed = () => {
-        // If logged in, go to Checkout directly
-        if (currentUser) {
-            navigate('/sponsorship/checkout');
-        } else {
-            // If not logged in, go to Auth choice (or unified auth page)
-            // Ideally we pass a 'redirect' param or store intent
-            navigate('/sponsorship/auth?redirect=/sponsorship/checkout');
-        }
+        // Go directly to checkout - it supports both guest and logged-in users
+        navigate('/sponsorship/checkout');
     };
 
     return (
