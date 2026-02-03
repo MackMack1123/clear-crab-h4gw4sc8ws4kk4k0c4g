@@ -4,6 +4,7 @@ const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fet
 const SLACK_CLIENT_ID = process.env.SLACK_CLIENT_ID;
 const SLACK_CLIENT_SECRET = process.env.SLACK_CLIENT_SECRET;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
 
 const slackService = {
     /**
@@ -16,10 +17,13 @@ const slackService = {
             throw new Error("Missing Slack Credentials in Server Environment");
         }
 
+        const redirect_uri = process.env.SLACK_REDIRECT_URI || `${API_BASE_URL}/api/slack/callback`;
+
         const params = new URLSearchParams();
         params.append('client_id', SLACK_CLIENT_ID);
         params.append('client_secret', SLACK_CLIENT_SECRET);
         params.append('code', code);
+        params.append('redirect_uri', redirect_uri);
 
         // Using oauth.v2.access
         const res = await fetch('https://slack.com/api/oauth.v2.access', {

@@ -29,16 +29,22 @@ router.get('/auth', (req, res) => {
 router.get('/callback', async (req, res) => {
     const { code, state, error } = req.query; // state is the userId
 
+    console.log('[Slack OAuth] Callback received:', { hasCode: !!code, state, error });
+
     if (error) {
-        return res.status(400).send(`Slack Auth Error: ${error}`);
+        console.error('[Slack OAuth] Error from Slack:', error);
+        return res.redirect(`${FRONTEND_URL}/dashboard?slack_error=${encodeURIComponent(error)}`);
     }
 
     if (!code || !state) {
-        return res.status(400).send("Missing code or state (userId)");
+        console.error('[Slack OAuth] Missing code or state');
+        return res.redirect(`${FRONTEND_URL}/dashboard?slack_error=missing_params`);
     }
 
     try {
+        console.log('[Slack OAuth] Exchanging code for token...');
         const data = await slackService.exchangeCodeForToken(code);
+        console.log('[Slack OAuth] Token exchange successful, team:', data.team?.name);
 
         // Data contains: access_token, app_id, team, incoming_webhook, etc.
         const userId = state;
@@ -56,16 +62,23 @@ router.get('/callback', async (req, res) => {
             }
         };
 
-        await User.findByIdAndUpdate(userId, {
+        console.log('[Slack OAuth] Updating user:', userId);
+        const updateResult = await User.findByIdAndUpdate(userId, {
             $set: { slackSettings: slackSettings }
-        });
+        }, { new: true });
 
+        if (!updateResult) {
+            console.error('[Slack OAuth] User not found:', userId);
+            return res.redirect(`${FRONTEND_URL}/dashboard?slack_error=user_not_found`);
+        }
+
+        console.log('[Slack OAuth] Success! Redirecting to dashboard');
         // Redirect back to dashboard with success param
         res.redirect(`${FRONTEND_URL}/dashboard?slack_success=true`);
 
     } catch (err) {
-        console.error("Slack Callback Error:", err);
-        res.status(500).send("Internal Server Error during Slack Auth");
+        console.error("[Slack OAuth] Callback Error:", err.message);
+        res.redirect(`${FRONTEND_URL}/dashboard?slack_error=${encodeURIComponent(err.message)}`);
     }
 });
 
