@@ -63,6 +63,8 @@ router.get('/callback', async (req, res) => {
         };
 
         console.log('[Slack OAuth] Updating user:', userId);
+        console.log('[Slack OAuth] slackSettings to save:', JSON.stringify(slackSettings, null, 2));
+
         const updateResult = await User.findByIdAndUpdate(userId, {
             $set: { slackSettings: slackSettings }
         }, { new: true });
@@ -72,6 +74,7 @@ router.get('/callback', async (req, res) => {
             return res.redirect(`${FRONTEND_URL}/dashboard?slack_error=user_not_found`);
         }
 
+        console.log('[Slack OAuth] Update successful, slackSettings saved:', updateResult.slackSettings?.connected);
         console.log('[Slack OAuth] Success! Redirecting to dashboard');
         // Redirect back to dashboard with success param
         res.redirect(`${FRONTEND_URL}/dashboard?slack_success=true`);

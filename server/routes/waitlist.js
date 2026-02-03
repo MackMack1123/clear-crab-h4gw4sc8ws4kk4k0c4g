@@ -3,6 +3,26 @@ const router = express.Router();
 const Waitlist = require('../models/Waitlist');
 const emailService = require('../services/emailService');
 
+// GET /api/waitlist - Get all waitlist entries (admin only)
+router.get('/', async (req, res) => {
+    try {
+        // Simple admin check - in production, use proper auth middleware
+        const adminKey = req.headers['x-admin-key'];
+        if (adminKey !== process.env.ADMIN_API_KEY) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        const entries = await Waitlist.find().sort({ createdAt: -1 });
+        res.json({
+            total: entries.length,
+            entries
+        });
+    } catch (error) {
+        console.error('Waitlist fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch waitlist' });
+    }
+});
+
 // POST /api/waitlist - Join the waitlist
 router.post('/', async (req, res) => {
     try {
