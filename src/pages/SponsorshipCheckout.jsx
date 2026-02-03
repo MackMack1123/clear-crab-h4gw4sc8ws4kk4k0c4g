@@ -134,6 +134,16 @@ export default function SponsorshipCheckout() {
   const organizerId =
     checkoutItems.length > 0 ? checkoutItems[0].organizerId : null;
 
+  // Helper: Only link to logged-in user if their email matches the sponsor email
+  // This prevents purchases for others from being linked to the wrong account
+  const getSponsorUserId = () => {
+    if (!currentUser) return null;
+    // Compare emails case-insensitively
+    const userEmail = currentUser.email?.toLowerCase();
+    const sponsorEmail = sponsorDetails.email?.toLowerCase();
+    return userEmail && sponsorEmail && userEmail === sponsorEmail ? currentUser.uid : null;
+  };
+
   useEffect(() => {
     systemService.getSettings().then(setSystemSettings);
     if (isFinished) return;
@@ -194,7 +204,7 @@ export default function SponsorshipCheckout() {
           amount: item.price,
           status: "pending", // Pending payment
           payerEmail: sponsorDetails.email,
-          sponsorUserId: currentUser?.uid || null, // null for guest checkout
+          sponsorUserId: getSponsorUserId(), // null for guest checkout
           sponsorName: sponsorDetails.contactName,
           sponsorEmail: sponsorDetails.email,
           sponsorPhone: sponsorDetails.phone,
@@ -264,7 +274,7 @@ export default function SponsorshipCheckout() {
           amount: item.price,
           status: "pending",
           payerEmail: sponsorDetails.email,
-          sponsorUserId: currentUser?.uid || null,
+          sponsorUserId: getSponsorUserId(),
           sponsorName: sponsorDetails.contactName,
           sponsorEmail: sponsorDetails.email,
           sponsorPhone: sponsorDetails.phone,
@@ -309,8 +319,8 @@ export default function SponsorshipCheckout() {
         clearCart();
       }
 
-      // Add sponsor role to logged-in user (if they're an organizer, they now have both roles)
-      if (currentUser && addRole) {
+      // Add sponsor role to logged-in user only if they're the sponsor (email matches)
+      if (getSponsorUserId() && addRole) {
         addRole('sponsor').catch(err => console.error('Failed to add sponsor role:', err));
       }
 
@@ -649,7 +659,7 @@ export default function SponsorshipCheckout() {
                             status: "paid",
                             isTest: true, // Flag as test data
                             payerEmail: sponsorDetails.email,
-                            sponsorUserId: currentUser?.uid || null,
+                            sponsorUserId: getSponsorUserId(),
                             paymentId: `sim_${Math.random().toString(36).substr(2, 9)}`,
                             sponsorName: sponsorDetails.contactName,
                             sponsorEmail: sponsorDetails.email,
@@ -753,7 +763,7 @@ export default function SponsorshipCheckout() {
                                   status: "pending", // Pending payment
                                   paymentMethod: "check",
                                   payerEmail: sponsorDetails.email,
-                                  sponsorUserId: currentUser?.uid || null,
+                                  sponsorUserId: getSponsorUserId(),
                                   sponsorName: sponsorDetails.contactName,
                                   sponsorEmail: sponsorDetails.email,
                                   sponsorPhone: sponsorDetails.phone,
@@ -831,7 +841,7 @@ export default function SponsorshipCheckout() {
                                   amount: item.price,
                                   status: "paid",
                                   payerEmail: sponsorDetails.email,
-                                  sponsorUserId: currentUser?.uid || null,
+                                  sponsorUserId: getSponsorUserId(),
                                   paymentId: details.id,
                                   sponsorName: sponsorDetails.contactName,
                                   sponsorEmail: sponsorDetails.email,
