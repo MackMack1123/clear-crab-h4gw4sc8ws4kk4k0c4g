@@ -26,6 +26,7 @@ export default function SponsorshipFulfilment() {
         website: '',
         adMessage: '',
         logoUrl: '',
+        showPublicEmail: false, // Whether to display email on public profile
         children: [] // { name, division }
     });
 
@@ -53,6 +54,7 @@ export default function SponsorshipFulfilment() {
                     phone: data.sponsorInfo?.phone || data.sponsorPhone || prev.phone,
                     website: data.branding?.websiteUrl || data.sponsorInfo?.website || prev.website,
                     logoUrl: data.branding?.logoUrl || prev.logoUrl,
+                    showPublicEmail: data.sponsorInfo?.showPublicEmail || false,
                     children: data.children || []
                 }));
 
@@ -145,6 +147,8 @@ export default function SponsorshipFulfilment() {
                     email: formData.email,
                     phone: formData.phone,
                     website: formData.website,
+                    showPublicEmail: formData.showPublicEmail,
+                    publicEmail: formData.showPublicEmail ? formData.email : null, // Only set if opted in
                 },
                 branding: {
                     logoUrl: formData.logoUrl,
@@ -244,6 +248,15 @@ export default function SponsorshipFulfilment() {
                                 value={formData.email}
                                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                             />
+                            <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.showPublicEmail}
+                                    onChange={e => setFormData({ ...formData, showPublicEmail: e.target.checked })}
+                                    className="w-4 h-4 rounded text-primary focus:ring-primary/20"
+                                />
+                                <span className="text-sm text-gray-600">Display email as a "Contact Us" button on my public sponsor page</span>
+                            </label>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Website URL</label>

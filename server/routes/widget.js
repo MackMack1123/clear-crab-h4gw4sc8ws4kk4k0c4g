@@ -174,6 +174,7 @@ router.get('/sponsor/:sponsorshipId', async (req, res) => {
             logo: sponsorship.branding?.logoUrl,
             tagline: sponsorship.branding?.tagline || sponsorship.sponsorInfo?.adMessage,
             website: sponsorship.branding?.websiteUrl,
+            email: sponsorship.sponsorInfo?.publicEmail || null, // Only include if sponsor opted to display
             tier: pkg?.title || 'Sponsor',
             organization: {
                 id: sponsorship.organizerId,

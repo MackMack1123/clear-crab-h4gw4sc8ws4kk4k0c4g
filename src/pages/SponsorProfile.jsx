@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ExternalLink, Building2, Award, ArrowLeft, Globe, Loader2, Sparkles, Heart } from 'lucide-react';
+import { ExternalLink, Building2, Award, ArrowLeft, Globe, Loader2, Sparkles, Heart, Mail } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 export default function SponsorProfile() {
@@ -160,19 +160,30 @@ export default function SponsorProfile() {
                             </div>
                         )}
 
-                        {/* Website CTA */}
-                        {sponsor.website && (
-                            <div className="text-center mb-12">
-                                <a
-                                    href={sponsor.website}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-2xl font-bold text-lg transition-all shadow-xl shadow-purple-500/25 hover:shadow-purple-500/40 hover:-translate-y-0.5"
-                                >
-                                    <Globe className="w-5 h-5" />
-                                    Visit Website
-                                    <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                                </a>
+                        {/* Website & Email CTAs */}
+                        {(sponsor.website || sponsor.email) && (
+                            <div className="flex flex-wrap items-center justify-center gap-4 mb-12">
+                                {sponsor.website && (
+                                    <a
+                                        href={sponsor.website}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-2xl font-bold text-lg transition-all shadow-xl shadow-purple-500/25 hover:shadow-purple-500/40 hover:-translate-y-0.5"
+                                    >
+                                        <Globe className="w-5 h-5" />
+                                        Visit Website
+                                        <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                    </a>
+                                )}
+                                {sponsor.email && (
+                                    <a
+                                        href={`mailto:${sponsor.email}`}
+                                        className="group inline-flex items-center gap-3 px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-2xl font-bold text-lg transition-all shadow-xl shadow-slate-500/15 hover:shadow-slate-500/25 hover:-translate-y-0.5"
+                                    >
+                                        <Mail className="w-5 h-5" />
+                                        Contact Us
+                                    </a>
+                                )}
                             </div>
                         )}
 
