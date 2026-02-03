@@ -115,6 +115,7 @@ app.use('/api/system', require('./routes/system'));
 app.use('/api/discover', require('./routes/discover'));
 app.use('/api/team', require('./routes/team'));
 app.use('/api/widget', require('./routes/widget'));
+app.use('/api/slack', require('./routes/slack'));
 
 // Serve widget script with permissive CORS for embedding on any site
 app.use('/widget', (req, res, next) => {

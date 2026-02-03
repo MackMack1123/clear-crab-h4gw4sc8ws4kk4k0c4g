@@ -3,11 +3,15 @@ const router = express.Router();
 const slackService = require('../services/slackService');
 const User = require('../models/User');
 
+// Get frontend URL from environment (for redirects after OAuth)
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
+
 // Step 1: Redirect to Slack
 router.get('/auth', (req, res) => {
     const scopes = 'incoming-webhook'; // We only need incoming webhook for now
     const client_id = process.env.SLACK_CLIENT_ID;
-    const redirect_uri = process.env.SLACK_REDIRECT_URI || 'http://localhost:3001/api/slack/callback';
+    const redirect_uri = process.env.SLACK_REDIRECT_URI || `${API_BASE_URL}/api/slack/callback`;
 
     // State should be random, but for MVP we might pass user ID if needed, 
     // though usually we relying on frontend handle the token or storing state in session.
@@ -57,8 +61,7 @@ router.get('/callback', async (req, res) => {
         });
 
         // Redirect back to dashboard with success param
-        // Assuming frontend is on port 5173
-        res.redirect('http://localhost:5173/dashboard?slack_success=true');
+        res.redirect(`${FRONTEND_URL}/dashboard?slack_success=true`);
 
     } catch (err) {
         console.error("Slack Callback Error:", err);

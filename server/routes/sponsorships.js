@@ -296,11 +296,33 @@ router.post("/", async (req, res) => {
 // Update Sponsorship
 router.put("/:id", async (req, res) => {
   try {
+    // Get existing sponsorship to check for branding changes
+    const existingSponsorship = await Sponsorship.findById(req.params.id);
+    const hadBranding = existingSponsorship?.branding?.logoUrl;
+    const isSubmittingBranding = req.body.branding?.logoUrl && !hadBranding;
+    const isStatusChangeToBrandingSubmitted = req.body.status === 'branding-submitted' && existingSponsorship?.status !== 'branding-submitted';
+
     const updatedSponsorship = await Sponsorship.findByIdAndUpdate(
       req.params.id,
       { $set: req.body },
       { new: true },
     );
+
+    // Send Slack notification if branding was just submitted
+    if ((isSubmittingBranding || isStatusChangeToBrandingSubmitted) && updatedSponsorship) {
+      try {
+        const organizer = await User.findById(updatedSponsorship.organizerId);
+        if (organizer?.slackSettings?.connected && organizer?.slackSettings?.incomingWebhook?.url) {
+          slackService.sendBrandingNotification(
+            organizer.slackSettings.incomingWebhook.url,
+            updatedSponsorship
+          ).catch(err => console.error("Async Slack branding notification error:", err));
+        }
+      } catch (slackErr) {
+        console.error("Error sending branding Slack notification:", slackErr);
+      }
+    }
+
     res.json(updatedSponsorship);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -3,6 +3,7 @@ const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fet
 // Load Slack credentials from env
 const SLACK_CLIENT_ID = process.env.SLACK_CLIENT_ID;
 const SLACK_CLIENT_SECRET = process.env.SLACK_CLIENT_SECRET;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 const slackService = {
     /**
@@ -43,14 +44,20 @@ const slackService = {
     sendSponsorshipNotification: async (webhookUrl, sponsorship, packageDetails) => {
         if (!webhookUrl) return;
 
+        const companyName = sponsorship.sponsorInfo?.companyName || sponsorship.sponsorName || 'Unknown';
+        const contactName = sponsorship.sponsorInfo?.contactName || sponsorship.sponsorName || 'Unknown';
+        const contactEmail = sponsorship.sponsorInfo?.email || sponsorship.sponsorEmail || sponsorship.payerEmail || 'Not provided';
+        const contactPhone = sponsorship.sponsorInfo?.phone || sponsorship.sponsorPhone || 'Not provided';
+        const amount = sponsorship.amount || packageDetails.price || 0;
+
         const message = {
-            text: `🎉 New Sponsorship! ${sponsorship.sponsorName} purchased ${packageDetails.title}`,
+            text: `🎉 New Sponsorship! ${companyName} purchased ${packageDetails.title}`,
             blocks: [
                 {
                     type: "header",
                     text: {
                         type: "plain_text",
-                        text: "🎉 New Sponsorship Recieved!",
+                        text: "🎉 New Sponsorship Received!",
                         emoji: true
                     }
                 },
@@ -59,11 +66,11 @@ const slackService = {
                     fields: [
                         {
                             type: "mrkdwn",
-                            text: `*Sponsor:*\n${sponsorship.sponsorName}`
+                            text: `*Company:*\n${companyName}`
                         },
                         {
                             type: "mrkdwn",
-                            text: `*Package:*\n${packageDetails.title} ($${packageDetails.price})`
+                            text: `*Package:*\n${packageDetails.title}`
                         }
                     ]
                 },
@@ -72,11 +79,24 @@ const slackService = {
                     fields: [
                         {
                             type: "mrkdwn",
-                            text: `*Contact Email:*\n${sponsorship.email}`
+                            text: `*Contact:*\n${contactName}`
                         },
                         {
                             type: "mrkdwn",
-                            text: `*Amount:*\n$${packageDetails.price}`
+                            text: `*Amount:*\n$${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                        }
+                    ]
+                },
+                {
+                    type: "section",
+                    fields: [
+                        {
+                            type: "mrkdwn",
+                            text: `*Email:*\n${contactEmail}`
+                        },
+                        {
+                            type: "mrkdwn",
+                            text: `*Phone:*\n${contactPhone}`
                         }
                     ]
                 },
@@ -90,7 +110,7 @@ const slackService = {
                                 text: "View in Dashboard",
                                 emoji: true
                             },
-                            url: "http://localhost:5173/dashboard", // TODO: Update with Real URL
+                            url: `${FRONTEND_URL}/dashboard`,
                             style: "primary"
                         }
                     ]
@@ -110,6 +130,95 @@ const slackService = {
             }
         } catch (error) {
             console.error("Error sending Slack notification:", error);
+        }
+    },
+
+    /**
+     * Send a branding update notification to the organizer's connected channel
+     * @param {string} webhookUrl - The incoming webhook URL
+     * @param {object} sponsorship - The sponsorship details with branding
+     */
+    sendBrandingNotification: async (webhookUrl, sponsorship) => {
+        if (!webhookUrl) return;
+
+        const companyName = sponsorship.branding?.businessName || sponsorship.sponsorInfo?.companyName || sponsorship.sponsorName || 'Unknown';
+        const logoUrl = sponsorship.branding?.logoUrl;
+        const tagline = sponsorship.branding?.tagline || 'No tagline provided';
+        const website = sponsorship.branding?.websiteUrl || 'Not provided';
+
+        const blocks = [
+            {
+                type: "header",
+                text: {
+                    type: "plain_text",
+                    text: "🎨 Branding Updated!",
+                    emoji: true
+                }
+            },
+            {
+                type: "section",
+                text: {
+                    type: "mrkdwn",
+                    text: `*${companyName}* has submitted their branding.`
+                }
+            },
+            {
+                type: "section",
+                fields: [
+                    {
+                        type: "mrkdwn",
+                        text: `*Tagline:*\n${tagline}`
+                    },
+                    {
+                        type: "mrkdwn",
+                        text: `*Website:*\n${website}`
+                    }
+                ]
+            }
+        ];
+
+        // Add logo image if available
+        if (logoUrl) {
+            blocks.push({
+                type: "image",
+                image_url: logoUrl,
+                alt_text: `${companyName} logo`
+            });
+        }
+
+        blocks.push({
+            type: "actions",
+            elements: [
+                {
+                    type: "button",
+                    text: {
+                        type: "plain_text",
+                        text: "Review Branding",
+                        emoji: true
+                    },
+                    url: `${FRONTEND_URL}/dashboard`,
+                    style: "primary"
+                }
+            ]
+        });
+
+        const message = {
+            text: `🎨 Branding updated for ${companyName}`,
+            blocks
+        };
+
+        try {
+            const res = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(message)
+            });
+
+            if (!res.ok) {
+                console.error("Failed to send Slack branding notification", await res.text());
+            }
+        } catch (error) {
+            console.error("Error sending Slack branding notification:", error);
         }
     }
 };
