@@ -21,17 +21,6 @@ const uploadRoutes = require('./routes/upload');
 
 // --- CORS Configuration ---
 
-// IMPORTANT: Widget CORS must come FIRST (before main CORS) to allow embedding on any site
-app.use('/api/widget', (req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    next();
-});
-
 const defaultOrigins = [
     'http://localhost:5173',
     'http://localhost:3000',
@@ -43,21 +32,44 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? [...new Set([...process.env.ALLOWED_ORIGINS.split(','), ...defaultOrigins])]
     : defaultOrigins;
 
-app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (mobile apps, Postman, etc.)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true);
+// Custom CORS middleware that allows any origin for widget routes
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+
+    // Widget routes: allow ANY origin (for embedding on external sites)
+    if (req.path.startsWith('/api/widget') || req.path.startsWith('/widget')) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        if (req.method === 'OPTIONS') {
+            return res.sendStatus(200);
         }
-        // Log blocked origins in development
-        if (process.env.NODE_ENV !== 'production') {
-            console.warn(`[CORS] Blocked request from origin: ${origin}`);
+        return next();
+    }
+
+    // All other routes: use standard CORS with allowed origins
+    if (!origin) {
+        // Allow requests with no origin (mobile apps, Postman, server-to-server)
+        return next();
+    }
+
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id');
+        if (req.method === 'OPTIONS') {
+            return res.sendStatus(200);
         }
-        return callback(new Error('Not allowed by CORS'), false);
-    },
-    credentials: true
-}));
+        return next();
+    }
+
+    // Block disallowed origins
+    if (process.env.NODE_ENV !== 'production') {
+        console.warn(`[CORS] Blocked request from origin: ${origin}`);
+    }
+    return res.status(403).json({ error: 'Not allowed by CORS' });
+});
 
 // --- Rate Limiting ---
 const limiter = rateLimit({
