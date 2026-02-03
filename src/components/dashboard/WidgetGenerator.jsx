@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Copy, Check, Code, Grid, LayoutList, Sun, Moon, ExternalLink } from 'lucide-react';
+import { Copy, Check, Code, Grid, LayoutList, Sun, Moon, ExternalLink, Sparkles, MousePointerClick, Palette, Type } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../../config';
 
@@ -17,10 +17,14 @@ export default function WidgetGenerator() {
         logoSize: 'medium',
         showNames: true,
         maxSponsors: 12,
-        rotationSpeed: 5
+        scrollSpeed: 30,
+        // Banner-specific options
+        buttonText: 'View Sponsorship Packages',
+        buttonColor: '#6366f1'
     });
 
     const organizerId = currentUser?.uid;
+    const orgSlug = userProfile?.organizationProfile?.slug;
 
     // Fetch sponsors for preview
     useEffect(() => {
@@ -44,19 +48,32 @@ export default function WidgetGenerator() {
         }
     };
 
-    // Generate embed code
+    // Generate embed code based on widget type
     const generateEmbedCode = () => {
-        const attrs = [
+        const baseAttrs = [
             `data-org="${organizerId}"`,
             `data-type="${config.type}"`,
             `data-theme="${config.theme}"`,
-            `data-logo-size="${config.logoSize}"`,
-            `data-show-names="${config.showNames}"`,
-            `data-max-sponsors="${config.maxSponsors}"`,
         ];
 
+        // Widget-specific attributes
+        if (config.type === 'carousel' || config.type === 'grid' || config.type === 'gallery') {
+            baseAttrs.push(
+                `data-logo-size="${config.logoSize}"`,
+                `data-show-names="${config.showNames}"`,
+                `data-max-sponsors="${config.maxSponsors}"`
+            );
+        }
+
         if (config.type === 'carousel') {
-            attrs.push(`data-rotation-speed="${config.rotationSpeed}"`);
+            baseAttrs.push(`data-scroll-speed="${config.scrollSpeed}"`);
+        }
+
+        if (config.type === 'banner') {
+            baseAttrs.push(
+                `data-button-text="${config.buttonText}"`,
+                `data-button-color="${config.buttonColor}"`
+            );
         }
 
         // Use API_BASE_URL for widget script (widget is served from API server)
@@ -64,7 +81,7 @@ export default function WidgetGenerator() {
 
         return `<!-- Fundraisr Sponsor Widget -->
 <div id="fundraisr-sponsors"
-     ${attrs.join('\n     ')}>
+     ${baseAttrs.join('\n     ')}>
 </div>
 <script src="${widgetScriptUrl}" async></script>`;
     };
@@ -83,6 +100,24 @@ export default function WidgetGenerator() {
     };
 
     const currentSize = logoSizes[config.logoSize];
+
+    // Widget type descriptions
+    const widgetTypes = [
+        { id: 'carousel', name: 'Carousel', icon: LayoutList, description: 'Auto-scrolling row of sponsor logos' },
+        { id: 'grid', name: 'Grid', icon: Grid, description: 'Responsive grid layout' },
+        { id: 'gallery', name: 'Gallery', icon: Sparkles, description: 'Full page sponsor showcase' },
+        { id: 'banner', name: 'Banner CTA', icon: MousePointerClick, description: 'Call-to-action button' },
+    ];
+
+    // Preset button colors
+    const presetColors = [
+        { name: 'Indigo', value: '#6366f1' },
+        { name: 'Purple', value: '#9333ea' },
+        { name: 'Blue', value: '#3b82f6' },
+        { name: 'Green', value: '#22c55e' },
+        { name: 'Red', value: '#ef4444' },
+        { name: 'Orange', value: '#f97316' },
+    ];
 
     return (
         <div className="space-y-8">
@@ -105,32 +140,28 @@ export default function WidgetGenerator() {
 
                         {/* Widget Type */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Layout Type</label>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setConfig({ ...config, type: 'carousel' })}
-                                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition ${config.type === 'carousel'
-                                        ? 'border-purple-600 bg-purple-50 text-purple-700'
-                                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                                        }`}
-                                >
-                                    <LayoutList className="w-5 h-5" />
-                                    <span className="font-medium">Carousel</span>
-                                </button>
-                                <button
-                                    onClick={() => setConfig({ ...config, type: 'grid' })}
-                                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition ${config.type === 'grid'
-                                        ? 'border-purple-600 bg-purple-50 text-purple-700'
-                                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                                        }`}
-                                >
-                                    <Grid className="w-5 h-5" />
-                                    <span className="font-medium">Grid</span>
-                                </button>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Widget Type</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {widgetTypes.map((type) => (
+                                    <button
+                                        key={type.id}
+                                        onClick={() => setConfig({ ...config, type: type.id })}
+                                        className={`flex flex-col items-center justify-center gap-1 px-4 py-3 rounded-xl border-2 transition ${config.type === type.id
+                                            ? 'border-purple-600 bg-purple-50 text-purple-700'
+                                            : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                                            }`}
+                                    >
+                                        <type.icon className="w-5 h-5" />
+                                        <span className="font-medium text-sm">{type.name}</span>
+                                    </button>
+                                ))}
                             </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                                {widgetTypes.find(t => t.id === config.type)?.description}
+                            </p>
                         </div>
 
-                        {/* Theme */}
+                        {/* Theme - Show for all widget types */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Theme</label>
                             <div className="flex gap-2">
@@ -157,66 +188,126 @@ export default function WidgetGenerator() {
                             </div>
                         </div>
 
-                        {/* Logo Size */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Logo Size</label>
-                            <div className="flex gap-2">
-                                {['small', 'medium', 'large'].map((size) => (
+                        {/* Sponsor Display Options - Not for banner */}
+                        {config.type !== 'banner' && (
+                            <>
+                                {/* Logo Size */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Logo Size</label>
+                                    <div className="flex gap-2">
+                                        {['small', 'medium', 'large'].map((size) => (
+                                            <button
+                                                key={size}
+                                                onClick={() => setConfig({ ...config, logoSize: size })}
+                                                className={`flex-1 px-4 py-2 rounded-xl border-2 transition capitalize ${config.logoSize === size
+                                                    ? 'border-purple-600 bg-purple-50 text-purple-700 font-medium'
+                                                    : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                                                    }`}
+                                            >
+                                                {size}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Show Names Toggle */}
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-medium text-gray-700">Show Business Names</label>
                                     <button
-                                        key={size}
-                                        onClick={() => setConfig({ ...config, logoSize: size })}
-                                        className={`flex-1 px-4 py-2 rounded-xl border-2 transition capitalize ${config.logoSize === size
-                                            ? 'border-purple-600 bg-purple-50 text-purple-700 font-medium'
-                                            : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                                            }`}
+                                        onClick={() => setConfig({ ...config, showNames: !config.showNames })}
+                                        className={`relative w-12 h-6 rounded-full transition ${config.showNames ? 'bg-purple-600' : 'bg-gray-300'}`}
                                     >
-                                        {size}
+                                        <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${config.showNames ? 'left-7' : 'left-1'}`} />
                                     </button>
-                                ))}
-                            </div>
-                        </div>
+                                </div>
 
-                        {/* Show Names Toggle */}
-                        <div className="flex items-center justify-between">
-                            <label className="text-sm font-medium text-gray-700">Show Business Names</label>
-                            <button
-                                onClick={() => setConfig({ ...config, showNames: !config.showNames })}
-                                className={`relative w-12 h-6 rounded-full transition ${config.showNames ? 'bg-purple-600' : 'bg-gray-300'}`}
-                            >
-                                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${config.showNames ? 'left-7' : 'left-1'}`} />
-                            </button>
-                        </div>
+                                {/* Max Sponsors */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Max Sponsors: <span className="text-purple-600">{config.maxSponsors}</span>
+                                    </label>
+                                    <input
+                                        type="range"
+                                        min="4"
+                                        max="50"
+                                        value={config.maxSponsors}
+                                        onChange={(e) => setConfig({ ...config, maxSponsors: parseInt(e.target.value) })}
+                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                    />
+                                </div>
+                            </>
+                        )}
 
-                        {/* Max Sponsors */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Max Sponsors: <span className="text-purple-600">{config.maxSponsors}</span>
-                            </label>
-                            <input
-                                type="range"
-                                min="4"
-                                max="30"
-                                value={config.maxSponsors}
-                                onChange={(e) => setConfig({ ...config, maxSponsors: parseInt(e.target.value) })}
-                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                            />
-                        </div>
-
-                        {/* Rotation Speed (Carousel only) */}
+                        {/* Carousel-specific: Scroll Speed */}
                         {config.type === 'carousel' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Rotation Speed: <span className="text-purple-600">{config.rotationSpeed}s</span>
+                                    Scroll Speed: <span className="text-purple-600">{config.scrollSpeed}s</span>
                                 </label>
                                 <input
                                     type="range"
-                                    min="2"
-                                    max="10"
-                                    value={config.rotationSpeed}
-                                    onChange={(e) => setConfig({ ...config, rotationSpeed: parseInt(e.target.value) })}
+                                    min="15"
+                                    max="60"
+                                    value={config.scrollSpeed}
+                                    onChange={(e) => setConfig({ ...config, scrollSpeed: parseInt(e.target.value) })}
                                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
                                 />
+                                <p className="text-xs text-gray-500 mt-1">Lower = faster scrolling</p>
                             </div>
+                        )}
+
+                        {/* Banner-specific options */}
+                        {config.type === 'banner' && (
+                            <>
+                                {/* Button Text */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                        <Type className="w-4 h-4" />
+                                        Button Text
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={config.buttonText}
+                                        onChange={(e) => setConfig({ ...config, buttonText: e.target.value })}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                                        placeholder="View Sponsorship Packages"
+                                    />
+                                </div>
+
+                                {/* Button Color */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                        <Palette className="w-4 h-4" />
+                                        Button Color
+                                    </label>
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                        {presetColors.map((color) => (
+                                            <button
+                                                key={color.value}
+                                                onClick={() => setConfig({ ...config, buttonColor: color.value })}
+                                                className={`w-8 h-8 rounded-lg border-2 transition ${config.buttonColor === color.value ? 'border-gray-900 scale-110' : 'border-transparent'}`}
+                                                style={{ backgroundColor: color.value }}
+                                                title={color.name}
+                                            />
+                                        ))}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="color"
+                                            value={config.buttonColor}
+                                            onChange={(e) => setConfig({ ...config, buttonColor: e.target.value })}
+                                            className="w-10 h-10 rounded-lg cursor-pointer"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={config.buttonColor}
+                                            onChange={(e) => setConfig({ ...config, buttonColor: e.target.value })}
+                                            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm"
+                                            placeholder="#6366f1"
+                                        />
+                                    </div>
+                                </div>
+                            </>
                         )}
                     </div>
 
@@ -248,7 +339,7 @@ export default function WidgetGenerator() {
                             <code>{generateEmbedCode()}</code>
                         </pre>
                         <p className="text-xs text-gray-500 mt-3">
-                            Paste this code into your website's HTML where you want the sponsor widget to appear.
+                            Paste this code into your website's HTML where you want the widget to appear.
                         </p>
                     </div>
                 </div>
@@ -257,13 +348,37 @@ export default function WidgetGenerator() {
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-gray-900">Live Preview</h3>
-                        {sponsors.length > 0 && (
+                        {config.type !== 'banner' && sponsors.length > 0 && (
                             <span className="text-sm text-gray-500">{sponsors.length} sponsors</span>
                         )}
                     </div>
 
                     <div className={`rounded-2xl border-2 border-dashed border-gray-300 overflow-hidden ${config.theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
-                        {previewLoading ? (
+                        {/* Banner Preview */}
+                        {config.type === 'banner' ? (
+                            <div className="p-8">
+                                <div className={`text-center py-8 px-6 rounded-xl ${config.theme === 'dark' ? 'bg-slate-800' : 'bg-gray-50'}`}>
+                                    <p className={`text-sm mb-4 ${config.theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                                        Support our organization!
+                                    </p>
+                                    <button
+                                        className="px-6 py-3 rounded-lg text-white font-semibold transition hover:opacity-90"
+                                        style={{ backgroundColor: config.buttonColor }}
+                                    >
+                                        {config.buttonText}
+                                    </button>
+                                    <div className={`mt-4 pt-4 border-t ${config.theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+                                        <span
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-medium"
+                                            style={{ backgroundColor: '#6366f1' }}
+                                        >
+                                            <Sparkles className="w-3 h-3" />
+                                            Powered by Fundraisr
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : previewLoading ? (
                             <div className="p-12 text-center">
                                 <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                                 <p className="text-gray-500">Loading preview...</p>
@@ -279,8 +394,52 @@ export default function WidgetGenerator() {
                             </div>
                         ) : (
                             <div className="p-6">
-                                {/* Simulated Widget Preview */}
-                                {config.type === 'grid' ? (
+                                {/* Gallery Preview */}
+                                {config.type === 'gallery' ? (
+                                    <div className="space-y-6">
+                                        <div className="text-center mb-6">
+                                            <h4 className={`text-xl font-bold ${config.theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                                Our Sponsors
+                                            </h4>
+                                            <p className={`text-sm ${config.theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                Thank you to all our amazing sponsors
+                                            </p>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                            {sponsors.slice(0, config.maxSponsors).map((sponsor) => (
+                                                <div key={sponsor.id} className={`p-4 rounded-xl text-center ${config.theme === 'dark' ? 'bg-slate-800' : 'bg-gray-50'}`}>
+                                                    <div
+                                                        className="mb-3 flex items-center justify-center mx-auto"
+                                                        style={{ width: currentSize.width, height: currentSize.height }}
+                                                    >
+                                                        {sponsor.logo ? (
+                                                            <img
+                                                                src={sponsor.logo}
+                                                                alt={sponsor.name}
+                                                                className="max-w-full max-h-full object-contain"
+                                                            />
+                                                        ) : (
+                                                            <div className={`w-full h-full flex items-center justify-center text-2xl font-bold rounded-lg ${config.theme === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-gray-200 text-gray-400'}`}>
+                                                                {sponsor.name?.[0] || '?'}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {config.showNames && (
+                                                        <>
+                                                            <p className={`text-sm font-semibold truncate ${config.theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                                                {sponsor.name}
+                                                            </p>
+                                                            <p className={`text-xs ${config.theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                                {sponsor.tier}
+                                                            </p>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : config.type === 'grid' ? (
+                                    /* Grid Preview */
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                         {sponsors.slice(0, config.maxSponsors).map((sponsor) => (
                                             <div key={sponsor.id} className="text-center">
@@ -314,8 +473,9 @@ export default function WidgetGenerator() {
                                         ))}
                                     </div>
                                 ) : (
+                                    /* Carousel Preview */
                                     <div className="overflow-hidden">
-                                        <div className="flex gap-4 animate-pulse">
+                                        <div className="flex gap-4">
                                             {sponsors.slice(0, 5).map((sponsor) => (
                                                 <div key={sponsor.id} className="flex-shrink-0 text-center">
                                                     <div
@@ -347,12 +507,19 @@ export default function WidgetGenerator() {
                                                 </div>
                                             ))}
                                         </div>
+                                        <p className={`text-xs text-center mt-3 ${config.theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                                            ← Continuous scroll animation →
+                                        </p>
                                     </div>
                                 )}
 
                                 {/* Powered by footer */}
                                 <div className={`mt-4 pt-4 border-t text-center ${config.theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-                                    <span className={`text-xs ${config.theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                                    <span
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-medium"
+                                        style={{ backgroundColor: '#6366f1' }}
+                                    >
+                                        <Sparkles className="w-3 h-3" />
                                         Powered by Fundraisr
                                     </span>
                                 </div>
@@ -360,29 +527,41 @@ export default function WidgetGenerator() {
                         )}
                     </div>
 
-                    {/* Instructions */}
+                    {/* Widget-specific instructions */}
                     <div className="bg-purple-50 rounded-xl p-4">
-                        <h4 className="font-medium text-purple-900 mb-2">How to use</h4>
+                        <h4 className="font-medium text-purple-900 mb-2">
+                            {config.type === 'carousel' && 'Carousel Widget'}
+                            {config.type === 'grid' && 'Grid Widget'}
+                            {config.type === 'gallery' && 'Gallery Widget'}
+                            {config.type === 'banner' && 'Banner CTA Widget'}
+                        </h4>
+                        <p className="text-sm text-purple-800 mb-3">
+                            {config.type === 'carousel' && 'Displays sponsors in a continuously scrolling row. Perfect for headers or footers.'}
+                            {config.type === 'grid' && 'Shows all sponsors in a responsive grid layout. Great for sidebar or dedicated sponsor sections.'}
+                            {config.type === 'gallery' && 'Full-featured sponsor showcase with headers. Ideal for a dedicated sponsors page.'}
+                            {config.type === 'banner' && 'A call-to-action button linking to your sponsorship page. Perfect for attracting new sponsors.'}
+                        </p>
                         <ol className="text-sm text-purple-800 space-y-1 list-decimal list-inside">
                             <li>Configure your widget settings above</li>
                             <li>Copy the embed code</li>
                             <li>Paste it into your website's HTML</li>
-                            <li>The widget will automatically display your sponsors</li>
                         </ol>
                     </div>
 
                     {/* Test on external site */}
-                    <div className="text-center">
-                        <a
-                            href={`/sponsor/${sponsors[0]?.id || ''}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`inline-flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 ${sponsors.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}
-                        >
-                            <ExternalLink className="w-4 h-4" />
-                            Preview a sponsor profile page
-                        </a>
-                    </div>
+                    {config.type !== 'banner' && sponsors.length > 0 && (
+                        <div className="text-center">
+                            <a
+                                href={`/sponsor/${sponsors[0]?.id || ''}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700"
+                            >
+                                <ExternalLink className="w-4 h-4" />
+                                Preview a sponsor profile page
+                            </a>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
