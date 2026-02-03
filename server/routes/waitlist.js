@@ -88,4 +88,58 @@ router.post('/', async (req, res) => {
     }
 });
 
+// PATCH /api/waitlist/:id/status - Update entry status (admin only)
+router.patch('/:id/status', async (req, res) => {
+    try {
+        const adminKey = req.headers['x-admin-key'];
+        if (adminKey !== process.env.ADMIN_API_KEY) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!['pending', 'approved', 'contacted'].includes(status)) {
+            return res.status(400).json({ error: 'Invalid status' });
+        }
+
+        const entry = await Waitlist.findByIdAndUpdate(
+            id,
+            { status },
+            { new: true }
+        );
+
+        if (!entry) {
+            return res.status(404).json({ error: 'Entry not found' });
+        }
+
+        res.json({ success: true, entry });
+    } catch (error) {
+        console.error('Update waitlist status error:', error);
+        res.status(500).json({ error: 'Failed to update status' });
+    }
+});
+
+// DELETE /api/waitlist/:id - Delete entry (admin only)
+router.delete('/:id', async (req, res) => {
+    try {
+        const adminKey = req.headers['x-admin-key'];
+        if (adminKey !== process.env.ADMIN_API_KEY) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        const { id } = req.params;
+        const entry = await Waitlist.findByIdAndDelete(id);
+
+        if (!entry) {
+            return res.status(404).json({ error: 'Entry not found' });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Delete waitlist error:', error);
+        res.status(500).json({ error: 'Failed to delete entry' });
+    }
+});
+
 module.exports = router;

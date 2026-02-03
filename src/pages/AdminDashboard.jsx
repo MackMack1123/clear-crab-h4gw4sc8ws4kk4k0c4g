@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Loader2, DollarSign, TrendingUp, CreditCard, Users, LayoutDashboard, Megaphone, LogOut, BarChart3, Settings, Percent, Search, Building2, X, Check, ExternalLink, Eye, Edit2, Handshake, ChevronDown, ChevronRight, Shield, Crown, UsersRound, Filter } from 'lucide-react';
+import { Loader2, DollarSign, TrendingUp, CreditCard, Users, LayoutDashboard, Megaphone, LogOut, BarChart3, Settings, Percent, Search, Building2, X, Check, ExternalLink, Eye, Edit2, Handshake, ChevronDown, ChevronRight, Shield, Crown, UsersRound, Filter, ClipboardList, Mail, Phone, Globe, Clock } from 'lucide-react';
 import { payoutService } from '../services/payoutService';
 import { userService } from '../services/userService';
 import { campaignService } from '../services/campaignService';
@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AdminAnalytics from '../components/analytics/AdminAnalytics';
 import RoleSwitcher from '../components/layout/RoleSwitcher';
+import { waitlistService } from '../services/waitlistService';
 
 export default function AdminDashboard() {
     const { logout, availableRoles } = useAuth();
@@ -27,6 +28,8 @@ export default function AdminDashboard() {
     const [campaigns, setCampaigns] = useState([]);
     const [systemSettings, setSystemSettings] = useState(null);
     const [sponsorships, setSponsorships] = useState([]);
+    const [waitlist, setWaitlist] = useState([]);
+    const [waitlistLoading, setWaitlistLoading] = useState(false);
 
     // Search/Filter States
     const [userSearch, setUserSearch] = useState('');
@@ -137,6 +140,46 @@ export default function AdminDashboard() {
             setLoading(false);
         }
     }
+
+    // Load waitlist when tab is selected
+    const loadWaitlist = async () => {
+        if (waitlist.length > 0) return; // Already loaded
+        setWaitlistLoading(true);
+        try {
+            const data = await waitlistService.getAll();
+            setWaitlist(data.entries || []);
+        } catch (error) {
+            console.error('Failed to load waitlist:', error);
+            toast.error('Failed to load waitlist');
+        } finally {
+            setWaitlistLoading(false);
+        }
+    };
+
+    const handleUpdateWaitlistStatus = async (entryId, newStatus) => {
+        try {
+            await waitlistService.updateStatus(entryId, newStatus);
+            setWaitlist(prev => prev.map(entry =>
+                entry._id === entryId ? { ...entry, status: newStatus } : entry
+            ));
+            toast.success('Status updated');
+        } catch (error) {
+            console.error('Failed to update status:', error);
+            toast.error('Failed to update status');
+        }
+    };
+
+    const handleDeleteWaitlistEntry = async (entryId) => {
+        if (!confirm('Are you sure you want to delete this entry?')) return;
+        try {
+            await waitlistService.delete(entryId);
+            setWaitlist(prev => prev.filter(entry => entry._id !== entryId));
+            toast.success('Entry deleted');
+        } catch (error) {
+            console.error('Failed to delete entry:', error);
+            toast.error('Failed to delete entry');
+        }
+    };
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -397,6 +440,7 @@ export default function AdminDashboard() {
                     <SidebarItem icon={Megaphone} label="Campaigns" active={activeTab === 'campaigns'} onClick={() => { setActiveTab('campaigns'); setIsSidebarOpen(false); }} />
                     <SidebarItem icon={DollarSign} label="Financials" active={activeTab === 'financials'} onClick={() => { setActiveTab('financials'); setIsSidebarOpen(false); }} />
                     <SidebarItem icon={Settings} label="System" active={activeTab === 'system'} onClick={() => { setActiveTab('system'); setIsSidebarOpen(false); }} />
+                    <SidebarItem icon={ClipboardList} label="Waitlist" active={activeTab === 'waitlist'} onClick={() => { setActiveTab('waitlist'); loadWaitlist(); setIsSidebarOpen(false); }} />
                 </nav>
 
                 <div className="p-4 border-t border-gray-100">
@@ -424,6 +468,7 @@ export default function AdminDashboard() {
                         {activeTab === 'campaigns' && 'Campaign Management'}
                         {activeTab === 'financials' && 'Financial Reports'}
                         {activeTab === 'system' && 'System Controls'}
+                        {activeTab === 'waitlist' && 'Waitlist Management'}
                     </h1>
                 </header>
 
@@ -1131,6 +1176,119 @@ export default function AdminDashboard() {
                                     onChange={(checked) => handleUpdateSystemSettings('registrations', 'organizationsEnabled', checked)}
                                 />
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Waitlist Tab */}
+                {activeTab === 'waitlist' && (
+                    <div className="space-y-6 animate-fadeIn">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+                                        <ClipboardList className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-gray-900">Waitlist Signups</h2>
+                                        <p className="text-gray-500 text-sm">{waitlist.length} organizations waiting</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => { setWaitlist([]); loadWaitlist(); }}
+                                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
+                                >
+                                    Refresh
+                                </button>
+                            </div>
+
+                            {waitlistLoading ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                </div>
+                            ) : waitlist.length === 0 ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <ClipboardList className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                    <p>No waitlist signups yet.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {waitlist.map((entry) => (
+                                        <div key={entry._id} className="border border-gray-200 rounded-xl p-5 hover:border-gray-300 transition">
+                                            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                                                <div className="flex-1 space-y-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <h3 className="font-bold text-gray-900 text-lg">{entry.orgName}</h3>
+                                                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
+                                                            entry.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                                            entry.status === 'contacted' ? 'bg-blue-100 text-blue-700' :
+                                                            'bg-amber-100 text-amber-700'
+                                                        }`}>
+                                                            {entry.status || 'pending'}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                                        <div className="flex items-center gap-2 text-gray-600">
+                                                            <Users className="w-4 h-4 text-gray-400" />
+                                                            <span>{entry.contactName}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-gray-600">
+                                                            <Mail className="w-4 h-4 text-gray-400" />
+                                                            <a href={`mailto:${entry.email}`} className="text-primary hover:underline">{entry.email}</a>
+                                                        </div>
+                                                        {entry.phone && (
+                                                            <div className="flex items-center gap-2 text-gray-600">
+                                                                <Phone className="w-4 h-4 text-gray-400" />
+                                                                <span>{entry.phone}</span>
+                                                            </div>
+                                                        )}
+                                                        {entry.website && (
+                                                            <div className="flex items-center gap-2 text-gray-600">
+                                                                <Globe className="w-4 h-4 text-gray-400" />
+                                                                <a href={entry.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">{entry.website}</a>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex flex-wrap gap-2 text-xs">
+                                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-md">{entry.orgType}</span>
+                                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-md">{entry.sport}</span>
+                                                        {entry.teamCount && <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-md">{entry.teamCount} teams</span>}
+                                                    </div>
+
+                                                    {entry.fundraisingGoals && (
+                                                        <p className="text-sm text-gray-500 italic">"{entry.fundraisingGoals}"</p>
+                                                    )}
+
+                                                    <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                                        <Clock className="w-3.5 h-3.5" />
+                                                        <span>Signed up {new Date(entry.createdAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex lg:flex-col gap-2">
+                                                    <select
+                                                        value={entry.status || 'pending'}
+                                                        onChange={(e) => handleUpdateWaitlistStatus(entry._id, e.target.value)}
+                                                        className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                                    >
+                                                        <option value="pending">Pending</option>
+                                                        <option value="contacted">Contacted</option>
+                                                        <option value="approved">Approved</option>
+                                                    </select>
+                                                    <button
+                                                        onClick={() => handleDeleteWaitlistEntry(entry._id)}
+                                                        className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 border border-gray-200 rounded-lg transition"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
