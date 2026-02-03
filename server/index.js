@@ -20,6 +20,18 @@ const campaignRoutes = require('./routes/campaigns');
 const uploadRoutes = require('./routes/upload');
 
 // --- CORS Configuration ---
+
+// IMPORTANT: Widget CORS must come FIRST (before main CORS) to allow embedding on any site
+app.use('/api/widget', (req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
 const defaultOrigins = [
     'http://localhost:5173',
     'http://localhost:3000',
@@ -46,17 +58,6 @@ app.use(cors({
     },
     credentials: true
 }));
-
-// Allow any origin for widget API endpoints (they're meant to be embedded)
-app.use('/api/widget', (req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    next();
-});
 
 // --- Rate Limiting ---
 const limiter = rateLimit({
