@@ -59,11 +59,14 @@ export default function WidgetGenerator() {
             attrs.push(`data-rotation-speed="${config.rotationSpeed}"`);
         }
 
+        // Use API_BASE_URL for widget script (widget is served from API server)
+        const widgetScriptUrl = `${API_BASE_URL}/widget/sponsors.js`;
+
         return `<!-- Fundraisr Sponsor Widget -->
 <div id="fundraisr-sponsors"
      ${attrs.join('\n     ')}>
 </div>
-<script src="https://getfundraisr.io/widget/sponsors.js" async></script>`;
+<script src="${widgetScriptUrl}" async></script>`;
     };
 
     const handleCopyCode = () => {
