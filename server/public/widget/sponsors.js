@@ -126,57 +126,81 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        /* Shared Styles */
+        /* Shared Styles - Premium Card Look */
         .fr-logo-container {
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 12px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 16px;
+            padding: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s;
-            margin-bottom: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.04);
         }
         .fr-widget-dark .fr-logo-container {
-            background: #334155;
+            background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .fr-carousel-item:hover .fr-logo-container,
+        .fr-grid-item:hover .fr-logo-container {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08);
+            border-color: var(--fr-primary, #7c3aed);
         }
         .fr-logo {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.05));
         }
         .fr-sponsor-name {
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 14px;
+            font-weight: 700;
             color: var(--fr-text);
             margin: 0;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            letter-spacing: -0.01em;
         }
         .fr-sponsor-tier {
             font-size: 11px;
+            font-weight: 500;
             color: var(--fr-text-secondary);
-            margin: 2px 0 0 0;
+            margin: 4px 0 0 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
-        /* Footer */
+        /* Footer - Premium Button Style */
         .fr-footer {
-            margin-top: 16px;
-            padding-top: 12px;
+            margin-top: 20px;
+            padding-top: 16px;
             border-top: 1px solid var(--fr-border);
             text-align: center;
         }
         .fr-footer a {
-            font-size: 11px;
-            color: var(--fr-text-secondary);
-            text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--fr-text-secondary);
+            text-decoration: none;
+            background: linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(124,58,237,0.04) 100%);
+            border: 1px solid rgba(124,58,237,0.15);
+            border-radius: 100px;
+            transition: all 0.2s ease;
         }
         .fr-footer a:hover {
-            color: var(--fr-primary, #7c3aed);
+            background: linear-gradient(135deg, var(--fr-primary, #7c3aed) 0%, #9333ea 100%);
+            color: white;
+            border-color: transparent;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(124,58,237,0.3);
         }
         .fr-footer svg {
             width: 14px;

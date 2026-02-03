@@ -23,6 +23,7 @@ export default function SponsorshipFulfilment() {
         contactName: '',
         email: '',
         phone: '',
+        website: '',
         adMessage: '',
         logoUrl: '',
         children: [] // { name, division }
@@ -48,8 +49,9 @@ export default function SponsorshipFulfilment() {
                     email: data.sponsorInfo?.email || data.sponsorEmail || userProfile?.email || prev.email,
                     contactName: data.sponsorInfo?.contactName || data.sponsorName || (userProfile?.firstName ? `${userProfile.firstName} ${userProfile.lastName}` : '') || prev.contactName,
                     companyName: data.sponsorInfo?.companyName || prev.companyName,
-                    adMessage: data.sponsorInfo?.adMessage || prev.adMessage,
+                    adMessage: data.sponsorInfo?.adMessage || data.branding?.tagline || prev.adMessage,
                     phone: data.sponsorInfo?.phone || data.sponsorPhone || prev.phone,
+                    website: data.branding?.websiteUrl || data.sponsorInfo?.website || prev.website,
                     logoUrl: data.branding?.logoUrl || prev.logoUrl,
                     children: data.children || []
                 }));
@@ -142,9 +144,13 @@ export default function SponsorshipFulfilment() {
                     adMessage: formData.adMessage,
                     email: formData.email,
                     phone: formData.phone,
+                    website: formData.website,
                 },
                 branding: {
-                    logoUrl: formData.logoUrl
+                    logoUrl: formData.logoUrl,
+                    businessName: formData.companyName,
+                    tagline: formData.adMessage,
+                    websiteUrl: formData.website,
                 },
                 children: formData.children
             });
@@ -238,6 +244,17 @@ export default function SponsorshipFulfilment() {
                                 value={formData.email}
                                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                             />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Website URL</label>
+                            <input
+                                type="url"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none"
+                                value={formData.website}
+                                onChange={e => setFormData({ ...formData, website: e.target.value })}
+                                placeholder="https://www.yourcompany.com"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Your website will be linked from your sponsor profile.</p>
                         </div>
                     </div>
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ExternalLink, Building2, Award, ArrowLeft, Globe, Loader2 } from 'lucide-react';
+import { ExternalLink, Building2, Award, ArrowLeft, Globe, Loader2, Sparkles, Heart } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 export default function SponsorProfile() {
@@ -41,10 +41,13 @@ export default function SponsorProfile() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
                 <div className="text-center">
-                    <Loader2 className="w-8 h-8 text-purple-400 animate-spin mx-auto mb-4" />
-                    <p className="text-slate-400">Loading sponsor profile...</p>
+                    <div className="relative">
+                        <div className="w-16 h-16 rounded-full border-4 border-purple-500/20 border-t-purple-500 animate-spin mx-auto mb-6" />
+                        <Sparkles className="w-6 h-6 text-purple-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="text-slate-400 font-medium">Loading sponsor profile...</p>
                 </div>
             </div>
         );
@@ -52,14 +55,16 @@ export default function SponsorProfile() {
 
     if (error || !sponsor) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
-                <div className="text-center">
-                    <Building2 className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                    <h1 className="text-2xl font-bold text-white mb-2">Sponsor Not Found</h1>
-                    <p className="text-slate-400 mb-6">This sponsor profile doesn't exist or is no longer available.</p>
+            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+                <div className="text-center max-w-md">
+                    <div className="w-24 h-24 bg-slate-800/50 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-slate-700">
+                        <Building2 className="w-12 h-12 text-slate-600" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-3">Sponsor Not Found</h1>
+                    <p className="text-slate-400 mb-8">This sponsor profile doesn't exist or is no longer available.</p>
                     <Link
                         to="/"
-                        className="inline-flex items-center gap-2 text-purple-400 hover:text-purple-300"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold transition"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         Back to Home
@@ -72,138 +77,171 @@ export default function SponsorProfile() {
     const { organization } = sponsor;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+            {/* Decorative Background Elements */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-purple-500/5 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
+                <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
+            </div>
+
             {/* Header */}
-            <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-800">
-                <div className="max-w-4xl mx-auto px-4 py-4">
+            <header className="relative z-10 bg-slate-900/60 backdrop-blur-xl border-b border-slate-800/50">
+                <div className="max-w-5xl mx-auto px-6 py-5">
                     <Link
                         to={organization?.sponsorshipUrl || '/'}
-                        className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition"
+                        className="inline-flex items-center gap-2.5 text-slate-400 hover:text-white transition-colors group"
                     >
-                        <ArrowLeft className="w-4 h-4" />
-                        <span>Back to {organization?.name || 'Organization'}</span>
+                        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                        <span className="font-medium">Back to {organization?.name || 'Organization'}</span>
                     </Link>
                 </div>
             </header>
 
             {/* Main Content */}
-            <main className="max-w-4xl mx-auto px-4 py-12">
-                <div className="bg-slate-800/50 backdrop-blur-sm rounded-3xl border border-slate-700 overflow-hidden">
-                    {/* Sponsor Logo Section */}
-                    <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 p-8 sm:p-12 text-center">
-                        {sponsor.logo ? (
-                            <div className="inline-block bg-white rounded-2xl p-6 shadow-xl">
-                                <img
-                                    src={sponsor.logo}
-                                    alt={sponsor.name}
-                                    className="max-w-[280px] max-h-[160px] object-contain"
-                                />
-                            </div>
-                        ) : (
-                            <div className="inline-flex items-center justify-center w-32 h-32 bg-slate-700 rounded-2xl">
-                                <Building2 className="w-16 h-16 text-slate-500" />
-                            </div>
-                        )}
-                    </div>
+            <main className="relative z-10 max-w-5xl mx-auto px-6 py-16">
+                <div className="bg-gradient-to-b from-slate-800/40 to-slate-900/40 backdrop-blur-xl rounded-[2rem] border border-slate-700/50 overflow-hidden shadow-2xl shadow-black/20">
 
-                    {/* Sponsor Details */}
-                    <div className="p-8 sm:p-12">
-                        {/* Name and Tier */}
-                        <div className="text-center mb-8">
-                            <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+                    {/* Hero Section with Logo */}
+                    <div className="relative">
+                        {/* Gradient Background */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-pink-600/10" />
+                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent" />
+
+                        <div className="relative px-8 pt-16 pb-12 sm:px-16 sm:pt-20 sm:pb-16 text-center">
+                            {/* Logo Container */}
+                            <div className="inline-block mb-8">
+                                <div className="relative">
+                                    {/* Glow Effect */}
+                                    <div className="absolute -inset-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-3xl blur-xl" />
+
+                                    {sponsor.logo ? (
+                                        <div className="relative bg-white rounded-2xl p-8 shadow-2xl shadow-black/20 border border-white/20">
+                                            <img
+                                                src={sponsor.logo}
+                                                alt={sponsor.name}
+                                                className="max-w-[320px] max-h-[180px] object-contain"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="relative w-40 h-40 bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl flex items-center justify-center border border-slate-600">
+                                            <Building2 className="w-20 h-20 text-slate-500" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Sponsor Name */}
+                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight">
                                 {sponsor.name}
                             </h1>
-                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600/20 rounded-full">
+
+                            {/* Tier Badge */}
+                            <div className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm rounded-full border border-purple-500/20">
                                 <Award className="w-5 h-5 text-purple-400" />
-                                <span className="text-purple-300 font-medium">
-                                    {sponsor.tier} of {organization?.name}
+                                <span className="text-purple-200 font-semibold">
+                                    {sponsor.tier}
+                                </span>
+                                <span className="text-purple-400/60">•</span>
+                                <span className="text-purple-300/80">
+                                    {organization?.name}
                                 </span>
                             </div>
                         </div>
+                    </div>
 
+                    {/* Details Section */}
+                    <div className="px-8 pb-12 sm:px-16 sm:pb-16">
                         {/* Tagline */}
                         {sponsor.tagline && (
-                            <div className="text-center mb-8">
-                                <p className="text-xl text-slate-300 italic">
+                            <div className="text-center mb-10 -mt-2">
+                                <blockquote className="text-xl sm:text-2xl text-slate-300 italic font-light leading-relaxed max-w-2xl mx-auto">
                                     "{sponsor.tagline}"
-                                </p>
+                                </blockquote>
                             </div>
                         )}
 
-                        {/* Website Button */}
+                        {/* Website CTA */}
                         {sponsor.website && (
-                            <div className="text-center mb-8">
+                            <div className="text-center mb-12">
                                 <a
                                     href={sponsor.website}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold transition shadow-lg hover:shadow-purple-500/25"
+                                    className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-2xl font-bold text-lg transition-all shadow-xl shadow-purple-500/25 hover:shadow-purple-500/40 hover:-translate-y-0.5"
                                 >
                                     <Globe className="w-5 h-5" />
                                     Visit Website
-                                    <ExternalLink className="w-4 h-4" />
+                                    <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                                 </a>
                             </div>
                         )}
 
                         {/* Divider */}
-                        <div className="border-t border-slate-700 my-8" />
+                        <div className="flex items-center gap-4 my-10">
+                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+                            <Heart className="w-5 h-5 text-slate-600" />
+                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+                        </div>
 
-                        {/* Organization Info */}
+                        {/* Organization Attribution */}
                         <div className="text-center">
-                            <p className="text-slate-400 mb-4">
-                                Proud sponsor of
+                            <p className="text-slate-500 font-medium mb-5 uppercase tracking-wider text-sm">
+                                Proud Sponsor of
                             </p>
                             <Link
                                 to={organization?.sponsorshipUrl || '#'}
-                                className="inline-flex items-center gap-3 px-6 py-3 bg-slate-700/50 hover:bg-slate-700 rounded-xl transition group"
+                                className="inline-flex items-center gap-4 px-8 py-4 bg-slate-800/50 hover:bg-slate-700/50 rounded-2xl transition-all group border border-slate-700/50 hover:border-slate-600/50"
                             >
                                 {organization?.logo ? (
                                     <img
                                         src={organization.logo}
                                         alt={organization.name}
-                                        className="w-10 h-10 object-contain rounded-lg"
+                                        className="w-14 h-14 object-contain rounded-xl bg-white p-1"
                                     />
                                 ) : (
-                                    <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
-                                        <span className="text-white font-bold">
+                                    <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl flex items-center justify-center shadow-lg">
+                                        <span className="text-white font-bold text-xl">
                                             {organization?.name?.[0] || 'O'}
                                         </span>
                                     </div>
                                 )}
-                                <span className="text-white font-semibold group-hover:text-purple-300 transition">
-                                    {organization?.name}
-                                </span>
-                                <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-purple-400 transition" />
+                                <div className="text-left">
+                                    <span className="block text-white font-bold text-lg group-hover:text-purple-300 transition-colors">
+                                        {organization?.name}
+                                    </span>
+                                    <span className="text-slate-400 text-sm">View sponsorship opportunities</span>
+                                </div>
+                                <ExternalLink className="w-5 h-5 text-slate-500 group-hover:text-purple-400 transition-colors ml-2" />
                             </Link>
                         </div>
                     </div>
                 </div>
 
                 {/* Become a Sponsor CTA */}
-                <div className="mt-8 text-center">
-                    <p className="text-slate-400 mb-4">
+                <div className="mt-12 text-center">
+                    <p className="text-slate-500 mb-4 font-medium">
                         Want to support {organization?.name}?
                     </p>
                     <Link
                         to={organization?.sponsorshipUrl || '#'}
-                        className="inline-flex items-center gap-2 text-purple-400 hover:text-purple-300 font-medium transition"
+                        className="inline-flex items-center gap-2 text-purple-400 hover:text-purple-300 font-semibold transition-colors group"
                     >
                         Become a Sponsor
-                        <ArrowLeft className="w-4 h-4 rotate-180" />
+                        <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
                     </Link>
                 </div>
             </main>
 
             {/* Footer */}
-            <footer className="border-t border-slate-800 mt-12">
-                <div className="max-w-4xl mx-auto px-4 py-6 text-center">
+            <footer className="relative z-10 border-t border-slate-800/50 mt-16">
+                <div className="max-w-5xl mx-auto px-6 py-8 text-center">
                     <a
                         href="https://getfundraisr.io"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-slate-500 hover:text-slate-400 text-sm transition"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 text-slate-500 hover:text-white text-sm font-medium transition-all hover:bg-slate-800/50 rounded-full"
                     >
+                        <Sparkles className="w-4 h-4" />
                         Powered by Fundraisr
                     </a>
                 </div>
