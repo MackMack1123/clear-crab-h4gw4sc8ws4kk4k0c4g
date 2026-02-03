@@ -154,6 +154,12 @@ export function AuthProvider({ children }) {
     const updateUserEmail = async (newEmail, password) => {
         if (!currentUser) throw new Error('No user logged in');
 
+        // 0. Check if email is already in use
+        const isAvailable = await userService.checkEmailAvailability(newEmail, currentUser.uid);
+        if (!isAvailable) {
+            throw new Error('This email address is already in use by another account');
+        }
+
         // 1. Re-authenticate
         const credential = EmailAuthProvider.credential(currentUser.email, password);
         await reauthenticateWithCredential(currentUser, credential);

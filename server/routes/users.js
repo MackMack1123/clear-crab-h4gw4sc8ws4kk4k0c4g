@@ -73,6 +73,24 @@ router.get('/check-slug/:slug', async (req, res) => {
     }
 });
 
+// Check email availability
+router.get('/check-email/:email', async (req, res) => {
+    try {
+        const { email } = req.params;
+        const userId = req.query.userId; // Exclude current user from check
+
+        const query = { email: email.toLowerCase() };
+        if (userId) {
+            query._id = { $ne: userId };
+        }
+
+        const existing = await User.findOne(query);
+        res.json({ available: !existing });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Get User (by ID or Slug)
 router.get('/:id', async (req, res) => {
     const idOrSlug = req.params.id;
@@ -147,6 +165,21 @@ router.post('/:id', async (req, res) => {
             }
         }
 
+        // If updating email, check for uniqueness first
+        if (updates.email) {
+            updates.email = updates.email.toLowerCase();
+            const existingUser = await User.findOne({
+                email: updates.email,
+                _id: { $ne: id }
+            });
+            if (existingUser) {
+                return res.status(400).json({
+                    error: 'Email already in use',
+                    code: 'EMAIL_EXISTS'
+                });
+            }
+        }
+
         // Upsert: Create if doesn't exist, Update if it does
         const user = await User.findByIdAndUpdate(
             id,
@@ -156,7 +189,17 @@ router.post('/:id', async (req, res) => {
         res.json(user);
 
     } catch (err) {
-        console.error("User Update Error:", err); // Added debug logging
+        console.error("User Update Error:", err);
+
+        // Handle MongoDB duplicate key error
+        if (err.code === 11000) {
+            const field = Object.keys(err.keyPattern || {})[0] || 'field';
+            return res.status(400).json({
+                error: `This ${field} is already in use`,
+                code: 'DUPLICATE_KEY'
+            });
+        }
+
         res.status(500).json({ error: err.message });
     }
 });

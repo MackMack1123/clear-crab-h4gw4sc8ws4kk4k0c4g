@@ -93,5 +93,15 @@ export const userService = {
         if (!res.ok) throw new Error('Failed to check slug availability');
         const data = await res.json();
         return data.available;
+    },
+
+    // Check email availability
+    checkEmailAvailability: async (email, userId) => {
+        let url = `${API_URL}/check-email/${encodeURIComponent(email)}`;
+        if (userId) url += `?userId=${userId}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Failed to check email availability');
+        const data = await res.json();
+        return data.available;
     }
 };

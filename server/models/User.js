@@ -26,7 +26,7 @@ const PublicContentSchema = new mongoose.Schema({
 
 const UserSchema = new mongoose.Schema({
     _id: { type: String, required: true }, // Using Firebase UID as _id
-    email: { type: String, required: true },
+    email: { type: String, required: true, unique: true, lowercase: true },
     firstName: String,
     lastName: String,
     teamName: String,
