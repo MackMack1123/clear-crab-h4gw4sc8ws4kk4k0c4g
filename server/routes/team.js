@@ -260,10 +260,11 @@ router.post('/invitation/:token/accept', async (req, res) => {
         }
 
         // Add user to team members
+        // Use the invitation email (who was invited), not the logged-in user's email
         if (!org.teamMembers) org.teamMembers = [];
         org.teamMembers.push({
             memberId: userId,
-            email: user.email,
+            email: invitation.email,
             role: invitation.role,
             joinedAt: new Date(),
             invitedBy: invitation.invitedBy,
