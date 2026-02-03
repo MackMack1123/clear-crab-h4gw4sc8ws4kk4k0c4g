@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { userService } from '../../../services/userService';
 import PaymentGatewaySettings from '../PaymentGatewaySettings';
@@ -7,9 +8,31 @@ import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../../../config';
 
 export default function OrgIntegrations() {
-    const { userProfile: initialProfile, currentUser } = useAuth();
+    const { userProfile: initialProfile, currentUser, refreshProfile } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
     const slackConnected = initialProfile?.slackSettings?.connected;
     const slackTeam = initialProfile?.slackSettings?.teamName;
+
+    // Check for Slack OAuth callback params and refresh profile
+    useEffect(() => {
+        const slackSuccess = searchParams.get('slack_success');
+        const slackError = searchParams.get('slack_error');
+
+        if (slackSuccess) {
+            toast.success('Slack connected successfully!');
+            refreshProfile(); // Refresh to get updated slackSettings
+            // Clean up URL params
+            searchParams.delete('slack_success');
+            setSearchParams(searchParams, { replace: true });
+        }
+
+        if (slackError) {
+            toast.error(`Slack connection failed: ${slackError}`);
+            // Clean up URL params
+            searchParams.delete('slack_error');
+            setSearchParams(searchParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams, refreshProfile]);
 
     // Check Settings State
     const [checkSettings, setCheckSettings] = useState({
