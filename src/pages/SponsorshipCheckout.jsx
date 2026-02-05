@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 import SquarePaymentForm from "../components/SquarePaymentForm";
 import { API_BASE_URL } from "../config";
 import { formatCurrency } from "../utils/formatCurrency";
+import { saveGuestSponsorSession } from "../utils/guestSponsorSession";
 
 // Debounce helper
 function useDebounce(value, delay) {
@@ -330,6 +331,11 @@ export default function SponsorshipCheckout() {
       // Add sponsor role to logged-in user only if they're the sponsor (email matches)
       if (getSponsorUserId() && addRole) {
         addRole('sponsor').catch(err => console.error('Failed to add sponsor role:', err));
+      }
+
+      // Save guest session for fulfilment page access (if not logged in)
+      if (!currentUser && sponsorDetails.email) {
+        saveGuestSponsorSession(sponsorDetails.email, sponsorshipIds);
       }
 
       toast.success("Payment Successful!");
@@ -758,6 +764,11 @@ export default function SponsorshipCheckout() {
                         // Simulate network delay
                         await new Promise((r) => setTimeout(r, 1000));
 
+                        // Save guest session for fulfilment page access (if not logged in)
+                        if (!currentUser && sponsorDetails.email) {
+                          saveGuestSponsorSession(sponsorDetails.email, sponsorshipIds);
+                        }
+
                         toast.success("Sandbox Payment Successful!");
                         // Navigate to success page with sponsorship IDs and guest info
                         navigate("/thank-you", {
@@ -856,7 +867,7 @@ export default function SponsorshipCheckout() {
                                 }),
                               );
 
-                              await Promise.all(promises);
+                              const sponsorshipIds = await Promise.all(promises);
                               if (isCartCheckout) {
                                 setIsFinished(true);
                                 clearCart();
@@ -865,6 +876,11 @@ export default function SponsorshipCheckout() {
                               // Add sponsor role to logged-in user only if they're the sponsor (email matches)
                               if (getSponsorUserId() && addRole) {
                                 addRole('sponsor').catch(err => console.error('Failed to add sponsor role:', err));
+                              }
+
+                              // Save guest session for fulfilment page access (if not logged in)
+                              if (!currentUser && sponsorDetails.email) {
+                                saveGuestSponsorSession(sponsorDetails.email, sponsorshipIds);
                               }
 
                               // Redirect to success page with check instructions and guest info
@@ -954,6 +970,11 @@ export default function SponsorshipCheckout() {
                               if (isCartCheckout) {
                                 setIsFinished(true);
                                 clearCart();
+                              }
+
+                              // Save guest session for fulfilment page access (if not logged in)
+                              if (!currentUser && sponsorDetails.email) {
+                                saveGuestSponsorSession(sponsorDetails.email, sponsorshipIds);
                               }
 
                               // Navigate to success page with guest info

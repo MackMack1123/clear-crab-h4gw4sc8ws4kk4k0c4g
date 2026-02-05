@@ -8,6 +8,7 @@ import { auth } from '../firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../config';
+import { saveGuestSponsorSession } from '../utils/guestSponsorSession';
 
 export default function SponsorshipSuccess() {
     const [searchParams] = useSearchParams();
@@ -62,6 +63,11 @@ export default function SponsorshipSuccess() {
             if (data.verified) {
                 setStatus('success');
                 setCount(data.count || 1);
+
+                // Save guest session for fulfilment page access (if not logged in)
+                if (isGuest && sponsorEmail && data.sponsorshipIds?.length > 0) {
+                    saveGuestSponsorSession(sponsorEmail, data.sponsorshipIds);
+                }
 
                 // Add sponsor role to logged-in user (if they're an organizer, they now have both roles)
                 if (currentUser && addRole) {

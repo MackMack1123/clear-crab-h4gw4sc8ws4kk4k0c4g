@@ -1,9 +1,33 @@
 import { API_BASE_URL } from '../config';
 import { auth } from '../firebase';
+import { getGuestSponsorEmail } from '../utils/guestSponsorSession';
+
 const API_URL = `${API_BASE_URL}/api/sponsorships`;
 
 // Helper to get current user ID for permission checks
 const getCurrentUserId = () => auth.currentUser?.uid;
+
+// Helper to get auth headers (supports both logged-in users and guest sessions)
+const getAuthHeaders = () => {
+    const headers = {};
+    const currentUser = auth.currentUser;
+
+    if (currentUser) {
+        // Logged-in user
+        headers['x-user-id'] = currentUser.uid;
+        if (currentUser.email) {
+            headers['x-user-email'] = currentUser.email;
+        }
+    } else {
+        // Check for guest sponsor session
+        const guestEmail = getGuestSponsorEmail();
+        if (guestEmail) {
+            headers['x-user-email'] = guestEmail;
+        }
+    }
+
+    return headers;
+};
 
 // Admin API key for protected endpoints
 const ADMIN_API_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
@@ -118,16 +142,10 @@ export const sponsorshipService = {
 
     // Update sponsorship
     updateSponsorship: async (id, data) => {
-        const headers = { 'Content-Type': 'application/json' };
-        const currentUser = auth.currentUser;
-
-        // Send user ID and email for authorization (supports guest checkout by email)
-        if (currentUser) {
-            headers['x-user-id'] = currentUser.uid;
-            if (currentUser.email) {
-                headers['x-user-email'] = currentUser.email;
-            }
-        }
+        const headers = {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+        };
 
         const res = await fetch(`${API_URL}/${id}`, {
             method: 'PUT',
@@ -139,17 +157,7 @@ export const sponsorshipService = {
 
     // Get a single sponsorship by ID
     getSponsorship: async (id) => {
-        const headers = {};
-        const currentUser = auth.currentUser;
-
-        // Send user ID and email for authorization (supports guest checkout by email)
-        if (currentUser) {
-            headers['x-user-id'] = currentUser.uid;
-            if (currentUser.email) {
-                headers['x-user-email'] = currentUser.email;
-            }
-        }
-
+        const headers = getAuthHeaders();
         const res = await fetch(`${API_URL}/${id}`, { headers });
         if (!res.ok) throw new Error('Failed to fetch sponsorship');
         return await res.json();

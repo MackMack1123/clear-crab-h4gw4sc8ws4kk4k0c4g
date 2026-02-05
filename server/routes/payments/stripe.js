@@ -328,7 +328,7 @@ router.get('/verify-session', async (req, res) => {
                 );
             }
 
-            res.json({ verified: true, count: sponsorshipIds.length });
+            res.json({ verified: true, count: sponsorshipIds.length, sponsorshipIds });
         } else {
             res.json({ verified: false, status: session.payment_status });
         }
