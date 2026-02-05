@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Mail } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Mail, Lock, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { userService } from '../services/userService';
+import { sponsorshipService } from '../services/sponsorshipService';
 import { useAuth } from '../context/AuthContext';
+import { auth } from '../firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../config';
 
@@ -13,10 +16,19 @@ export default function SponsorshipSuccess() {
     const sessionId = searchParams.get('session_id');
     const paymentMethod = searchParams.get('payment_method');
     const orgId = searchParams.get('org_id');
+    const sponsorEmail = searchParams.get('email');
+    const isGuest = searchParams.get('guest') === 'true';
 
     const [status, setStatus] = useState('verifying'); // verifying, success, error
     const [count, setCount] = useState(0);
     const [organizer, setOrganizer] = useState(null);
+
+    // Account creation state for guest checkout
+    const [showAccountForm, setShowAccountForm] = useState(false);
+    const [creatingAccount, setCreatingAccount] = useState(false);
+    const [accountCreated, setAccountCreated] = useState(false);
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         if (paymentMethod === 'check' && orgId) {
@@ -65,6 +77,129 @@ export default function SponsorshipSuccess() {
             console.error('Verification error:', error);
             setStatus('error');
         }
+    };
+
+    // Handle account creation for guest checkout
+    const handleCreateAccount = async (e) => {
+        e.preventDefault();
+        if (!sponsorEmail || !password) {
+            toast.error('Please enter a password');
+            return;
+        }
+        if (password.length < 6) {
+            toast.error('Password must be at least 6 characters');
+            return;
+        }
+
+        setCreatingAccount(true);
+        try {
+            // Create Firebase account
+            const userCredential = await createUserWithEmailAndPassword(auth, sponsorEmail, password);
+
+            // Create user record in MongoDB
+            await userService.updateUser(userCredential.user.uid, {
+                email: sponsorEmail,
+                role: 'sponsor',
+                roles: ['sponsor']
+            });
+
+            // Link all existing sponsorships with this email to the new account
+            await sponsorshipService.linkSponsorshipsToAccount(sponsorEmail, userCredential.user.uid);
+
+            setAccountCreated(true);
+            toast.success('Account created! Your sponsorships are now linked.');
+        } catch (error) {
+            console.error('Account creation error:', error);
+            if (error.code === 'auth/email-already-in-use') {
+                toast.error('An account with this email already exists. Please sign in instead.');
+            } else {
+                toast.error(error.message || 'Failed to create account');
+            }
+        } finally {
+            setCreatingAccount(false);
+        }
+    };
+
+    // Account Creation UI Component
+    const AccountCreationSection = () => {
+        if (!isGuest || !sponsorEmail || currentUser || accountCreated) return null;
+
+        if (accountCreated) {
+            return (
+                <div className="bg-green-50 p-4 rounded-xl border border-green-200 text-center">
+                    <CheckCircle2 className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                    <p className="text-green-800 font-medium">Account created successfully!</p>
+                    <p className="text-sm text-green-600">You can now access your sponsor dashboard anytime.</p>
+                </div>
+            );
+        }
+
+        if (!showAccountForm) {
+            return (
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                    <div className="flex items-start gap-3">
+                        <UserPlus className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <p className="font-medium text-blue-900">Create an account to manage your sponsorship</p>
+                            <p className="text-sm text-blue-700 mt-1">Track your sponsorships, upload ad materials, and more.</p>
+                            <button
+                                onClick={() => setShowAccountForm(true)}
+                                className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition"
+                            >
+                                Create Account
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <form onSubmit={handleCreateAccount} className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                <div className="text-center">
+                    <h3 className="font-bold text-gray-900">Create Your Account</h3>
+                    <p className="text-sm text-gray-500">Using: {sponsorEmail}</p>
+                </div>
+
+                <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Choose a password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none"
+                        minLength={6}
+                        required
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                </div>
+
+                <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setShowAccountForm(false)}
+                        className="flex-1 py-3 rounded-xl border border-gray-200 font-medium text-gray-600 hover:bg-gray-50 transition"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={creatingAccount}
+                        className="flex-1 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                        {creatingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                        {creatingAccount ? 'Creating...' : 'Create Account'}
+                    </button>
+                </div>
+            </form>
+        );
     };
 
     if (status === 'verifying') {
@@ -132,6 +267,9 @@ export default function SponsorshipSuccess() {
                         </div>
                     </div>
 
+                    {/* Account Creation for Guest Checkout */}
+                    <AccountCreationSection />
+
                     <div className="pt-2 space-y-3">
                         <Link
                             to="/sponsor/dashboard"
@@ -145,7 +283,7 @@ export default function SponsorshipSuccess() {
         );
     }
 
-    // STANDARD SUCCESS UI (STRIPE/PAYPAL)
+    // STANDARD SUCCESS UI (STRIPE/SQUARE)
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
             <div className="bg-white p-8 rounded-3xl shadow-soft max-w-md w-full text-center space-y-6">
@@ -164,6 +302,9 @@ export default function SponsorshipSuccess() {
                 <div className="bg-gray-50 p-4 rounded-xl text-sm text-gray-500">
                     A receipt has been sent to your email. You can now upload your ad materials and track your sponsorship performance.
                 </div>
+
+                {/* Account Creation for Guest Checkout */}
+                <AccountCreationSection />
 
                 <div className="pt-2 space-y-3">
                     <Link
