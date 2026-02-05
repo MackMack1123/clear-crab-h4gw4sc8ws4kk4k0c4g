@@ -325,16 +325,19 @@ router.put("/:id", async (req, res) => {
     }
 
     const requesterId = req.headers['x-user-id'] || req.body.userId;
+    const requesterEmail = req.headers['x-user-email'] || req.body.email;
 
     // Determine who can update:
     // - Organizer (owner) can update anything
-    // - Sponsor can update their branding/sponsorInfo
+    // - Sponsor can update their branding/sponsorInfo (by userId OR email for guest checkout)
     // - Team members with editContent permission can update
     const isOrganizer = requesterId === existingSponsorship.organizerId;
-    const isSponsor = requesterId === existingSponsorship.sponsorUserId;
+    const isSponsorById = requesterId && requesterId === existingSponsorship.sponsorUserId;
+    const isSponsorByEmail = requesterEmail && requesterEmail.toLowerCase() === existingSponsorship.sponsorEmail?.toLowerCase();
+    const isSponsor = isSponsorById || isSponsorByEmail;
 
     let isTeamMember = false;
-    if (requesterId && !isOrganizer && !isSponsor) {
+    if (requesterId && !isOrganizer && !isSponsorById) {
       const { canAccess, role } = await checkOrgAccess(requesterId, existingSponsorship.organizerId);
       isTeamMember = canAccess && canPerformAction(role, 'editContent');
     }
@@ -578,21 +581,23 @@ router.get("/:id", async (req, res) => {
     }
 
     const requesterId = req.headers['x-user-id'] || req.query.userId;
+    const requesterEmail = req.headers['x-user-email'] || req.query.email;
 
     // Allow access if:
     // 1. Requester is the organizer (owner)
-    // 2. Requester is the sponsor
+    // 2. Requester is the sponsor (by userId OR by email for guest checkout)
     // 3. Requester is a team member of the organizer
     const isOrganizer = requesterId === sponsorship.organizerId;
-    const isSponsor = requesterId === sponsorship.sponsorUserId;
+    const isSponsorById = requesterId && requesterId === sponsorship.sponsorUserId;
+    const isSponsorByEmail = requesterEmail && requesterEmail.toLowerCase() === sponsorship.sponsorEmail?.toLowerCase();
 
     let isTeamMember = false;
-    if (requesterId && !isOrganizer && !isSponsor) {
+    if (requesterId && !isOrganizer && !isSponsorById) {
       const { canAccess } = await checkOrgAccess(requesterId, sponsorship.organizerId);
       isTeamMember = canAccess;
     }
 
-    if (!isOrganizer && !isSponsor && !isTeamMember) {
+    if (!isOrganizer && !isSponsorById && !isSponsorByEmail && !isTeamMember) {
       return res.status(403).json({ error: "Access denied" });
     }
 

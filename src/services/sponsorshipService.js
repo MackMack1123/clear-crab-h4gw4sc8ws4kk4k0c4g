@@ -118,22 +118,20 @@ export const sponsorshipService = {
 
     // Update sponsorship
     updateSponsorship: async (id, data) => {
-        // Note: For now we might need a specific endpoint or just reuse a general update if we add one
-        // Looking at our routes, we didn't add a PUT /:id for sponsorships yet. 
-        // I will assume we might need to add it or this will fail.
-        // Actually, let's strictly follow the implementation_plan steps. 
-        // If I missed adding the route, I should fix the backend too.
-        // For now, I will implement this as if the route exists or I will add it shortly.
-        // Let's assume standard REST, PUT /api/sponsorships/:id
+        const headers = { 'Content-Type': 'application/json' };
+        const currentUser = auth.currentUser;
 
-        // Wait, looking back at my server/routes/sponsorships.js file, I did NOT add a PUT /:id route for sponsorships.
-        // I only added POST /, GET /:id, GET /organizer/:id.
-        // I need to add that route to the backend file first or soon.
+        // Send user ID and email for authorization (supports guest checkout by email)
+        if (currentUser) {
+            headers['x-user-id'] = currentUser.uid;
+            if (currentUser.email) {
+                headers['x-user-email'] = currentUser.email;
+            }
+        }
 
-        // Let's implement this fetch call assuming I will fix the backend in the next step.
         const res = await fetch(`${API_URL}/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify(data)
         });
         if (!res.ok) throw new Error('Failed to update sponsorship');
@@ -141,10 +139,19 @@ export const sponsorshipService = {
 
     // Get a single sponsorship by ID
     getSponsorship: async (id) => {
-        const res = await fetch(`${API_URL}/${id}`);
+        const headers = {};
+        const currentUser = auth.currentUser;
+
+        // Send user ID and email for authorization (supports guest checkout by email)
+        if (currentUser) {
+            headers['x-user-id'] = currentUser.uid;
+            if (currentUser.email) {
+                headers['x-user-email'] = currentUser.email;
+            }
+        }
+
+        const res = await fetch(`${API_URL}/${id}`, { headers });
         if (!res.ok) throw new Error('Failed to fetch sponsorship');
-        // If 404/null handled by backend? backend returns 200 with null or 404? 
-        // My backend returns 200 with result.
         return await res.json();
     },
 
