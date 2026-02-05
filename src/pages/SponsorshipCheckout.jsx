@@ -57,6 +57,9 @@ export default function SponsorshipCheckout() {
     email: ''
   });
 
+  // Payment method selection (for showing fee differences)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('card');
+
   // Returning sponsor recognition
   const [returningSponsorship, setReturningSponsor] = useState(null);
   const [checkingEmail, setCheckingEmail] = useState(false);
@@ -126,9 +129,14 @@ export default function SponsorshipCheckout() {
   // For consistency, let's assume this feature is primarily for the Cart flow.
   // But we should support it for single item too if we want.
   // For now, let's use the context's totalAmount if in cart mode.
-  const displayTotal = isCartCheckout ? cartTotal : singlePkg?.price || 0;
   const displaySubtotal = isCartCheckout ? cartSubtotal : singlePkg?.price || 0;
   const displayFee = isCartCheckout ? processingFee : 0;
+
+  // Check payments have NO fees - sponsor pays base price, org receives 100%
+  const isCheckPayment = selectedPaymentMethod === 'check';
+  const displayTotal = isCheckPayment
+    ? displaySubtotal
+    : (isCartCheckout ? cartTotal : singlePkg?.price || 0);
 
   // Get the organizer ID from the first item (assuming single organizer cart for now)
   const organizerId =
@@ -434,61 +442,84 @@ export default function SponsorshipCheckout() {
               </div>
             ))}
 
-            {/* Fee Breakdown - Always visible */}
+            {/* Fee Breakdown - Shows different info for check vs card */}
             <div className="pt-3 border-t border-gray-200 border-dashed space-y-2">
-              <div className="flex justify-between items-center text-sm text-gray-500">
-                <span>Credit Card Fees</span>
-                <span className={coverFees ? "text-gray-700" : "text-gray-400"}>
-                  -${formatCurrency(processingFee)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-sm text-gray-500">
-                <span className="flex items-center gap-1">
-                  Platform Fee
-                  {feesWaived && (
-                    <span className="text-green-600 font-bold text-xs">
-                      (Waived)
+              {isCheckPayment ? (
+                <>
+                  {/* Check payment - no fees */}
+                  <div className="flex justify-between items-center text-sm text-gray-500">
+                    <span>Processing Fees</span>
+                    <span className="text-gray-400">N/A</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-gray-500">
+                    <span>Platform Fee</span>
+                    <span className="text-gray-400">N/A</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm font-medium text-gray-700 pt-2 border-t border-gray-200">
+                    <span>Amount to Team</span>
+                    <span>${formatCurrency(displaySubtotal)}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Card payment - normal fee display */}
+                  <div className="flex justify-between items-center text-sm text-gray-500">
+                    <span>Credit Card Fees</span>
+                    <span className={coverFees ? "text-gray-700" : "text-gray-400"}>
+                      -${formatCurrency(processingFee)}
                     </span>
-                  )}
-                </span>
-                {feesWaived ? (
-                  <span className="line-through text-gray-300">
-                    -${formatCurrency(originalPlatformFee)}
-                  </span>
-                ) : (
-                  <span className={coverFees ? "text-gray-700" : "text-gray-400"}>
-                    -${formatCurrency(platformFee)}
-                  </span>
-                )}
-              </div>
-              <div className="flex justify-between items-center text-sm font-medium text-green-700 pt-2 border-t border-gray-200">
-                <span>Amount to Team</span>
-                <span>
-                  ${coverFees
-                    ? formatCurrency(displaySubtotal)
-                    : formatCurrency(displaySubtotal - processingFee - platformFee)
-                  }
-                </span>
-              </div>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-gray-500">
+                    <span className="flex items-center gap-1">
+                      Platform Fee
+                      {feesWaived && (
+                        <span className="text-green-600 font-bold text-xs">
+                          (Waived)
+                        </span>
+                      )}
+                    </span>
+                    {feesWaived ? (
+                      <span className="line-through text-gray-300">
+                        -${formatCurrency(originalPlatformFee)}
+                      </span>
+                    ) : (
+                      <span className={coverFees ? "text-gray-700" : "text-gray-400"}>
+                        -${formatCurrency(platformFee)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center text-sm font-medium text-green-700 pt-2 border-t border-gray-200">
+                    <span>Amount to Team</span>
+                    <span>
+                      ${coverFees
+                        ? formatCurrency(displaySubtotal)
+                        : formatCurrency(displaySubtotal - processingFee - platformFee)
+                      }
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* Cover Fees Checkbox */}
-            <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-primary hover:bg-white transition group bg-white">
-              <input
-                type="checkbox"
-                checked={coverFees}
-                onChange={toggleCoverFees}
-                className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary mt-0.5"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-900 group-hover:text-primary transition">
-                  Cover the fees (+${formatCurrency(platformFee + processingFee)})
-                </span>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Ensure the team receives the full ${formatCurrency(displaySubtotal)}
-                </p>
-              </div>
-            </label>
+            {/* Cover Fees Checkbox - Only show for card payments */}
+            {!isCheckPayment && (
+              <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-primary hover:bg-white transition group bg-white">
+                <input
+                  type="checkbox"
+                  checked={coverFees}
+                  onChange={toggleCoverFees}
+                  className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary mt-0.5"
+                />
+                <div>
+                  <span className="text-sm font-medium text-gray-900 group-hover:text-primary transition">
+                    Cover the fees (+${formatCurrency(platformFee + processingFee)})
+                  </span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Ensure the team receives the full ${formatCurrency(displaySubtotal)}
+                  </p>
+                </div>
+              </label>
+            )}
 
             <div className="border-t border-gray-200 pt-3 flex justify-between items-center text-lg">
               <span className="font-bold text-gray-900">Your Total</span>
@@ -625,6 +656,49 @@ export default function SponsorshipCheckout() {
             )}
           </div>
 
+          {/* Payment Method Selection - Show if check is enabled */}
+          {organizerProfile?.checkSettings?.enabled && (
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-gray-700 mb-3">Payment Method</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('card')}
+                  className={`p-4 rounded-xl border-2 transition text-left ${
+                    selectedPaymentMethod === 'card'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <CreditCard className={`w-5 h-5 ${selectedPaymentMethod === 'card' ? 'text-primary' : 'text-gray-400'}`} />
+                    <span className={`font-bold ${selectedPaymentMethod === 'card' ? 'text-primary' : 'text-gray-700'}`}>
+                      Credit Card
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">Pay now online</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('check')}
+                  className={`p-4 rounded-xl border-2 transition text-left ${
+                    selectedPaymentMethod === 'check'
+                      ? 'border-slate-400 bg-slate-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-lg ${selectedPaymentMethod === 'check' ? 'text-slate-600' : 'text-gray-400'}`}>✉</span>
+                    <span className={`font-bold ${selectedPaymentMethod === 'check' ? 'text-slate-700' : 'text-gray-700'}`}>
+                      Pay by Check
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">Mail payment</p>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Payment Options */}
           <>
             {/* SANDBOX / TEST MODE */}
@@ -707,38 +781,44 @@ export default function SponsorshipCheckout() {
                 </div>
               ) : (
                 <>
-                  {/* SQUARE CHECKOUT */}
-                  {activeGateway === "square" &&
-                    systemSettings?.payments?.square !== false && (
-                      <div className="mt-4">
-                        <SquarePaymentForm
-                          amount={displayTotal}
-                          onSubmit={handleSquarePayment}
-                          loading={initializingPayment}
-                        />
-                      </div>
-                    )}
-
-                  {/* STRIPE CHECKOUT (Real) */}
-                  {activeGateway === "stripe" &&
-                    systemSettings?.payments?.stripe !== false && (
-                      <button
-                        onClick={handleStripeCheckout}
-                        disabled={initializingPayment}
-                        className="w-full bg-[#635BFF] text-white py-4 rounded-xl font-bold hover:bg-[#534be0] transition shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
-                      >
-                        {initializingPayment ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <CreditCard className="w-5 h-5" />
+                  {/* Card payment options - only show when card is selected */}
+                  {selectedPaymentMethod === 'card' && (
+                    <>
+                      {/* SQUARE CHECKOUT */}
+                      {activeGateway === "square" &&
+                        systemSettings?.payments?.square !== false && (
+                          <div className="mt-4">
+                            <SquarePaymentForm
+                              amount={displayTotal}
+                              onSubmit={handleSquarePayment}
+                              loading={initializingPayment}
+                            />
+                          </div>
                         )}
-                        Pay with Card
-                      </button>
-                    )}
 
-                  {/* PAY BY CHECK OPTION */}
+                      {/* STRIPE CHECKOUT (Real) */}
+                      {activeGateway === "stripe" &&
+                        systemSettings?.payments?.stripe !== false && (
+                          <button
+                            onClick={handleStripeCheckout}
+                            disabled={initializingPayment}
+                            className="w-full bg-[#635BFF] text-white py-4 rounded-xl font-bold hover:bg-[#534be0] transition shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
+                          >
+                            {initializingPayment ? (
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                              <CreditCard className="w-5 h-5" />
+                            )}
+                            Pay with Card
+                          </button>
+                        )}
+                    </>
+                  )}
+
+                  {/* PAY BY CHECK OPTION - Show when check is selected */}
                   {organizerProfile?.checkSettings?.enabled &&
-                    systemSettings?.payments?.check !== false && (
+                    systemSettings?.payments?.check !== false &&
+                    selectedPaymentMethod === 'check' && (
                       <button
                         onClick={async () => {
                           // Validate sponsor details
@@ -749,7 +829,7 @@ export default function SponsorshipCheckout() {
 
                           if (
                             window.confirm(
-                              `You are pledging to pay $${formatCurrency(displayTotal)} by check. Proceed?`,
+                              `You are pledging to pay $${formatCurrency(displaySubtotal)} by check. Proceed?`,
                             )
                           ) {
                             setInitializingPayment(true);
@@ -759,7 +839,7 @@ export default function SponsorshipCheckout() {
                                   organizerId: item.organizerId,
                                   packageId: item.id,
                                   packageTitle: item.title,
-                                  amount: item.price,
+                                  amount: item.price, // Base price - no fees for check payments
                                   status: "pending", // Pending payment
                                   paymentMethod: "check",
                                   payerEmail: sponsorDetails.email,
@@ -782,6 +862,11 @@ export default function SponsorshipCheckout() {
                                 clearCart();
                               }
 
+                              // Add sponsor role to logged-in user only if they're the sponsor (email matches)
+                              if (getSponsorUserId() && addRole) {
+                                addRole('sponsor').catch(err => console.error('Failed to add sponsor role:', err));
+                              }
+
                               // Redirect to success page with check instructions and guest info
                               navigate(
                                 `/sponsorship/success?payment_method=check&org_id=${organizerId}&email=${encodeURIComponent(sponsorDetails.email)}&guest=${currentUser ? 'false' : 'true'}`,
@@ -794,14 +879,21 @@ export default function SponsorshipCheckout() {
                           }
                         }}
                         disabled={initializingPayment}
-                        className="w-full bg-white border-2 border-slate-200 text-slate-700 py-4 rounded-xl font-bold hover:bg-slate-50 transition flex items-center justify-center gap-2 mt-3"
+                        className="w-full bg-slate-700 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg shadow-slate-200 flex items-center justify-center gap-2"
                       >
-                        Pay by Check / Verification
+                        {initializingPayment ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <>
+                            Confirm Check Payment - ${formatCurrency(displaySubtotal)}
+                          </>
+                        )}
                       </button>
                     )}
 
-                  {/* PAYPAL CHECKOUT (Fallback or Explicit) */}
-                  {(!activeGateway || activeGateway === "paypal") &&
+                  {/* PAYPAL CHECKOUT (Fallback or Explicit) - only for card payments */}
+                  {selectedPaymentMethod === 'card' &&
+                    (!activeGateway || activeGateway === "paypal") &&
                     systemSettings?.payments?.paypal !== false && (
                       <div className="space-y-4 pt-4">
                         {/* Default/Legacy PayPal Flow */}

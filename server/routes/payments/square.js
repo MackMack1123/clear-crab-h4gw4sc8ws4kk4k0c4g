@@ -60,7 +60,7 @@ router.get('/callback', async (req, res) => {
 
     if (error) {
         console.error('Square OAuth error:', error, error_description);
-        return res.redirect(`${FRONTEND_URL}/dashboard/settings?square_error=${error}`);
+        return res.redirect(`${FRONTEND_URL}/dashboard?square_error=${error}`);
     }
 
     // Decode state to get userId
@@ -69,7 +69,7 @@ router.get('/callback', async (req, res) => {
         const decoded = JSON.parse(Buffer.from(state, 'base64').toString());
         userId = decoded.userId;
     } catch (e) {
-        return res.redirect(`${FRONTEND_URL}/dashboard/settings?square_error=invalid_state`);
+        return res.redirect(`${FRONTEND_URL}/dashboard?square_error=invalid_state`);
     }
 
     try {
@@ -104,11 +104,11 @@ router.get('/callback', async (req, res) => {
 
         console.log(`Square connected for user ${userId}: ${merchantId}`);
 
-        res.redirect(`${FRONTEND_URL}/dashboard/settings?square_success=true`);
+        res.redirect(`${FRONTEND_URL}/dashboard?square_success=true`);
     } catch (err) {
         console.error('Square OAuth token error:', err);
         const errorMsg = err.result?.errors ? JSON.stringify(err.result.errors) : err.message;
-        res.redirect(`${FRONTEND_URL}/dashboard/settings?square_error=token_exchange_failed`);
+        res.redirect(`${FRONTEND_URL}/dashboard?square_error=token_exchange_failed`);
     }
 });
 

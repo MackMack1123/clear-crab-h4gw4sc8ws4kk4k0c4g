@@ -2,6 +2,9 @@ import { API_BASE_URL } from '../config';
 import { auth } from '../firebase';
 const API_URL = `${API_BASE_URL}/api/users`;
 
+// Admin API key for protected endpoints
+const ADMIN_API_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
+
 // Helper to get current user ID for permission checks
 const getCurrentUserId = () => auth.currentUser?.uid;
 
@@ -37,9 +40,13 @@ export const userService = {
         return await res.json();
     },
 
-    // Get all users (Admin)
+    // Get all users (Admin only)
     getAllUsers: async () => {
-        const res = await fetch(API_URL);
+        const res = await fetch(API_URL, {
+            headers: {
+                'x-admin-key': ADMIN_API_KEY
+            }
+        });
         if (!res.ok) throw new Error('Failed to fetch users');
         return await res.json();
     },

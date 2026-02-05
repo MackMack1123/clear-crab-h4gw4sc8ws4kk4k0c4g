@@ -34,6 +34,24 @@ router.post('/', upload.single('file'), (req, res) => {
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
+        // Require userId for organization/tracking purposes
+        const userId = req.body.userId || req.headers['x-user-id'];
+        if (!userId) {
+            // Clean up uploaded file
+            const tempPath = path.join(uploadDir, req.file.filename);
+            if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+            return res.status(400).json({ error: 'userId is required for uploads' });
+        }
+
+        // Validate file type (images only)
+        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+        if (!allowedMimeTypes.includes(req.file.mimetype)) {
+            // Clean up uploaded file
+            const tempPath = path.join(uploadDir, req.file.filename);
+            if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+            return res.status(400).json({ error: 'Only image files are allowed' });
+        }
+
         // Use slug if provided, otherwise generate a random prefix
         const slug = req.body.slug;
         const prefix = slug || `org-${Math.random().toString(36).substring(2, 10)}`;

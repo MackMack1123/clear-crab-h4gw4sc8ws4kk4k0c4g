@@ -59,7 +59,13 @@ router.post("/packages", async (req, res) => {
       }
     }
 
-    const newPackage = new Package(req.body);
+    // Generate a unique ID since schema has _id: false (auto-generation disabled)
+    const packageData = {
+      ...req.body,
+      _id: `pkg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    };
+
+    const newPackage = new Package(packageData);
     const savedPackage = await newPackage.save();
     res.json({ id: savedPackage._id, ...savedPackage.toObject() });
   } catch (err) {
@@ -172,10 +178,12 @@ router.get("/lookup-by-email/:email", async (req, res) => {
       .map(o => o.organizationProfile?.orgName)
       .filter(Boolean);
 
+    // Don't expose organization names to prevent data leakage
+    // Only return that they're a returning sponsor and prefill data
     res.json({
       found: true,
       sponsorshipCount: sponsorships.length,
-      organizations: orgNames,
+      // Removed: organizations: orgNames (privacy concern - don't expose who they've sponsored)
       // Pre-fill data from most recent sponsorship
       prefill: {
         companyName: mostRecent.sponsorInfo?.companyName || '',
@@ -193,12 +201,26 @@ router.get("/lookup-by-email/:email", async (req, res) => {
 });
 
 // Link all sponsorships with matching email to a new user account
+// Security: Only links if the user's verified email matches the sponsorship email
 router.post("/link-account", async (req, res) => {
   try {
     const { email, userId } = req.body;
 
     if (!email || !userId) {
       return res.status(400).json({ error: "Email and userId are required" });
+    }
+
+    // Verify that the userId's account email matches the email being linked
+    // This prevents malicious users from claiming others' sponsorships
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (user.email.toLowerCase() !== email.toLowerCase()) {
+      return res.status(403).json({
+        error: "Email mismatch - can only link sponsorships matching your account email"
+      });
     }
 
     // Update all sponsorships with matching email to include the new userId
@@ -293,11 +315,48 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Update Sponsorship
+// Update Sponsorship (requires authorization)
 router.put("/:id", async (req, res) => {
   try {
-    // Get existing sponsorship to check for branding changes
+    // Get existing sponsorship to check ownership and branding changes
     const existingSponsorship = await Sponsorship.findById(req.params.id);
+    if (!existingSponsorship) {
+      return res.status(404).json({ error: "Sponsorship not found" });
+    }
+
+    const requesterId = req.headers['x-user-id'] || req.body.userId;
+
+    // Determine who can update:
+    // - Organizer (owner) can update anything
+    // - Sponsor can update their branding/sponsorInfo
+    // - Team members with editContent permission can update
+    const isOrganizer = requesterId === existingSponsorship.organizerId;
+    const isSponsor = requesterId === existingSponsorship.sponsorUserId;
+
+    let isTeamMember = false;
+    if (requesterId && !isOrganizer && !isSponsor) {
+      const { canAccess, role } = await checkOrgAccess(requesterId, existingSponsorship.organizerId);
+      isTeamMember = canAccess && canPerformAction(role, 'editContent');
+    }
+
+    if (!isOrganizer && !isSponsor && !isTeamMember) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Sponsors can only update certain fields (branding, sponsorInfo, children)
+    if (isSponsor && !isOrganizer) {
+      const allowedFields = ['branding', 'sponsorInfo', 'children', 'status'];
+      const updateKeys = Object.keys(req.body);
+      const hasDisallowedFields = updateKeys.some(key => !allowedFields.includes(key) && key !== 'userId');
+      if (hasDisallowedFields) {
+        return res.status(403).json({ error: "Sponsors can only update branding and contact info" });
+      }
+      // Sponsors can only set status to 'branding-submitted', not 'paid' etc.
+      if (req.body.status && req.body.status !== 'branding-submitted') {
+        return res.status(403).json({ error: "Invalid status update" });
+      }
+    }
+
     const hadBranding = existingSponsorship?.branding?.logoUrl;
     const isSubmittingBranding = req.body.branding?.logoUrl && !hadBranding;
     const isStatusChangeToBrandingSubmitted = req.body.status === 'branding-submitted' && existingSponsorship?.status !== 'branding-submitted';
@@ -329,28 +388,28 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// Delete Sponsorship (for cleaning up failed payments)
+// Delete Sponsorship (for cleaning up failed payments - organizer only)
 router.delete("/:id", async (req, res) => {
   try {
     const sponsorship = await Sponsorship.findById(req.params.id);
+    if (!sponsorship) {
+      return res.status(404).json({ error: "Sponsorship not found" });
+    }
+
+    const requesterId = req.headers['x-user-id'] || req.query.userId;
+
+    // Only organizer can delete sponsorships
+    if (requesterId !== sponsorship.organizerId) {
+      return res.status(403).json({ error: "Only the organizer can delete sponsorships" });
+    }
 
     // Only allow deletion of pending sponsorships (safety check)
-    if (sponsorship && sponsorship.status === 'paid') {
+    if (sponsorship.status === 'paid') {
       return res.status(400).json({ error: "Cannot delete a paid sponsorship" });
     }
 
     await Sponsorship.findByIdAndDelete(req.params.id);
     res.json({ message: "Sponsorship deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get specific sponsorship
-router.get("/:id", async (req, res) => {
-  try {
-    const sponsorship = await Sponsorship.findById(req.params.id);
-    res.json(sponsorship);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -382,7 +441,12 @@ router.get("/organizer/:organizerId", async (req, res) => {
 // Get ALL sponsorships (Admin only)
 router.get("/admin/all", async (req, res) => {
   try {
-    // TODO: Add admin authentication check
+    // Require admin API key
+    const adminKey = req.headers['x-admin-key'];
+    if (adminKey !== process.env.ADMIN_API_KEY) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
     const sponsorships = await Sponsorship.find({})
       .sort({ createdAt: -1 })
       .lean();
@@ -497,6 +561,40 @@ router.get("/sponsor/:userId", async (req, res) => {
     res.json(sponsorships);
   } catch (err) {
     console.error("[Sponsor Lookup Error]", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get specific sponsorship by ID (requires authorization)
+// IMPORTANT: This must be AFTER all other specific routes like /organizer/:id, /admin/all, /sponsor/:id
+router.get("/:id", async (req, res) => {
+  try {
+    const sponsorship = await Sponsorship.findById(req.params.id);
+    if (!sponsorship) {
+      return res.status(404).json({ error: "Sponsorship not found" });
+    }
+
+    const requesterId = req.headers['x-user-id'] || req.query.userId;
+
+    // Allow access if:
+    // 1. Requester is the organizer (owner)
+    // 2. Requester is the sponsor
+    // 3. Requester is a team member of the organizer
+    const isOrganizer = requesterId === sponsorship.organizerId;
+    const isSponsor = requesterId === sponsorship.sponsorUserId;
+
+    let isTeamMember = false;
+    if (requesterId && !isOrganizer && !isSponsor) {
+      const { canAccess } = await checkOrgAccess(requesterId, sponsorship.organizerId);
+      isTeamMember = canAccess;
+    }
+
+    if (!isOrganizer && !isSponsor && !isTeamMember) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    res.json(sponsorship);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

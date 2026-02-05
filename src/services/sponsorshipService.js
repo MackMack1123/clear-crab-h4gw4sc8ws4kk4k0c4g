@@ -5,6 +5,9 @@ const API_URL = `${API_BASE_URL}/api/sponsorships`;
 // Helper to get current user ID for permission checks
 const getCurrentUserId = () => auth.currentUser?.uid;
 
+// Admin API key for protected endpoints
+const ADMIN_API_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
+
 export const sponsorshipService = {
     // --- Sponsorship Packages ---
 
@@ -161,7 +164,11 @@ export const sponsorshipService = {
 
     // Get ALL sponsorships (Admin only)
     getAllSponsorships: async () => {
-        const res = await fetch(`${API_URL}/admin/all`);
+        const res = await fetch(`${API_URL}/admin/all`, {
+            headers: {
+                'x-admin-key': ADMIN_API_KEY
+            }
+        });
         if (!res.ok) throw new Error('Failed to fetch all sponsorships');
         return await res.json();
     },

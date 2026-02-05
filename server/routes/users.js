@@ -204,9 +204,15 @@ router.post('/:id', async (req, res) => {
     }
 });
 
-// Get All Users (Admin)
+// Get All Users (Admin only)
 router.get('/', async (req, res) => {
     try {
+        // Require admin API key
+        const adminKey = req.headers['x-admin-key'];
+        if (adminKey !== process.env.ADMIN_API_KEY) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
         const users = await User.find();
         res.json(users);
     } catch (err) {

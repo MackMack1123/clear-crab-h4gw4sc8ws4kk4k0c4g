@@ -57,10 +57,12 @@ export default function PaymentGatewaySettings() {
         handleUrlParams();
     }, [currentUser]);
 
-    const handleUrlParams = () => {
+    const handleUrlParams = async () => {
         const params = new URLSearchParams(window.location.search);
         if (params.get('stripe_success')) {
             toast.success('Stripe connected successfully!');
+            // Refresh profile to get updated payment settings
+            if (refreshProfile) await refreshProfile();
             window.history.replaceState({}, '', window.location.pathname);
         }
         if (params.get('stripe_error')) {
@@ -69,6 +71,8 @@ export default function PaymentGatewaySettings() {
         }
         if (params.get('square_success')) {
             toast.success('Square connected successfully!');
+            // Refresh profile to get updated payment settings
+            if (refreshProfile) await refreshProfile();
             window.history.replaceState({}, '', window.location.pathname);
         }
         if (params.get('square_error')) {

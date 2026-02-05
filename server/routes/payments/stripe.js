@@ -51,12 +51,12 @@ router.get('/callback', async (req, res) => {
         const decoded = JSON.parse(Buffer.from(state, 'base64').toString());
         userId = decoded.userId;
     } catch (e) {
-        return res.redirect(`${FRONTEND_URL}/dashboard/settings?stripe_error=invalid_state`);
+        return res.redirect(`${FRONTEND_URL}/dashboard?stripe_error=invalid_state`);
     }
 
     if (error) {
         console.error('Stripe OAuth error:', error, error_description);
-        return res.redirect(`${FRONTEND_URL}/dashboard/settings?stripe_error=${error}`);
+        return res.redirect(`${FRONTEND_URL}/dashboard?stripe_error=${error}`);
     }
 
     try {
@@ -89,10 +89,10 @@ router.get('/callback', async (req, res) => {
 
         console.log(`Stripe connected for user ${userId}: ${stripe_user_id}`);
 
-        res.redirect(`${FRONTEND_URL}/dashboard/settings?stripe_success=true`);
+        res.redirect(`${FRONTEND_URL}/dashboard?stripe_success=true`);
     } catch (err) {
         console.error('Stripe OAuth token error:', err);
-        res.redirect(`${FRONTEND_URL}/dashboard/settings?stripe_error=token_exchange_failed`);
+        res.redirect(`${FRONTEND_URL}/dashboard?stripe_error=token_exchange_failed`);
     }
 });
 

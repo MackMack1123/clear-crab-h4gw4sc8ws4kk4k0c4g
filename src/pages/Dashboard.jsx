@@ -72,6 +72,16 @@ export default function Dashboard() {
     }
   }, [activeRole, availableRoles, switchRole]);
 
+  // Handle OAuth callback params - auto-switch to settings tab
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('stripe_success') || params.get('stripe_error') ||
+        params.get('square_success') || params.get('square_error') ||
+        params.get('slack_success') || params.get('slack_error')) {
+      setActiveTab('settings');
+    }
+  }, []);
+
   useEffect(() => {
     if (userProfile?.email) {
       setNewEmail(userProfile.email);

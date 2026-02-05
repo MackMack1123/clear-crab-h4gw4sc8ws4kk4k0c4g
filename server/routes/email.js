@@ -7,13 +7,28 @@ const User = require('../models/User');
 // For MVP, we'll assume this is protected by frontend logic or basic session checks if integrated. 
 // Ideally should use `authenticate` middleware.
 
-// Send Test Email
+// Send Test Email (requires authorization - only org owner or team manager)
 router.post('/send-test', async (req, res) => {
     try {
         const { to, type, userId, templateOverride } = req.body;
+        const requesterId = req.headers['x-user-id'] || req.body.requesterId;
 
         if (!userId || !to) {
             return res.status(400).json({ error: 'Missing userId or recipient email' });
+        }
+
+        // Verify requester has permission to send emails for this organization
+        if (!requesterId) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        if (requesterId !== userId) {
+            // Check if requester is a team member with appropriate permissions
+            const { checkOrgAccess, canPerformAction } = require('../middleware/teamAuth');
+            const { canAccess, role } = await checkOrgAccess(requesterId, userId);
+            if (!canAccess || !canPerformAction(role, 'editSettings')) {
+                return res.status(403).json({ error: 'Only the organization owner or managers can send test emails' });
+            }
         }
 
         const user = await User.findById(userId);
