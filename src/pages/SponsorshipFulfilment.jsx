@@ -7,7 +7,7 @@ import SignPreviewEditor from '../components/sponsor/SignPreviewEditor';
 import { API_BASE_URL } from '../config';
 
 export default function SponsorshipFulfilment() {
-    const { currentUser, userProfile } = useAuth();
+    const { currentUser, userProfile, loading: authLoading } = useAuth();
     const { sponsorshipId } = useParams();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
@@ -31,10 +31,12 @@ export default function SponsorshipFulfilment() {
     });
 
     useEffect(() => {
-        if (sponsorshipId) {
+        // Wait for auth to finish loading before attempting to fetch
+        // This ensures x-user-id header is sent with the request
+        if (sponsorshipId && !authLoading) {
             loadSponsorship();
         }
-    }, [sponsorshipId, userProfile]); // Re-run if userProfile loads later
+    }, [sponsorshipId, authLoading, currentUser, userProfile]); // Re-run when auth is ready
 
     const loadSponsorship = async () => {
         try {
