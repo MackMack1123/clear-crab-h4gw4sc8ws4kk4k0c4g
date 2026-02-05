@@ -543,9 +543,10 @@ router.get("/sponsor/:userId", async (req, res) => {
         packageMap[p._id] = p;
       });
 
-      // Attach populated data
+      // Attach populated data and ensure id field exists
       sponsorships = sponsorships.map((s) => ({
         ...s,
+        id: s._id, // Ensure id field is present for frontend
         organizerId: organizerMap[s.organizerId] || {
           _id: s.organizerId,
           organizationProfile: null,
@@ -558,7 +559,9 @@ router.get("/sponsor/:userId", async (req, res) => {
       }));
     }
 
-    res.json(sponsorships);
+    // Ensure id field exists even if no population was needed
+    const result = sponsorships.map(s => ({ ...s, id: s._id || s.id }));
+    res.json(result);
   } catch (err) {
     console.error("[Sponsor Lookup Error]", err);
     res.status(500).json({ error: err.message });

@@ -147,7 +147,7 @@ export default function SponsorDashboard() {
                                             </div>
                                         </div>
                                         <Link
-                                            to={`/sponsorship/fulfilment/${item._id}`}
+                                            to={`/sponsorship/fulfilment/${item.id || item._id}`}
                                             className="w-full sm:w-auto px-6 py-2 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition text-center shadow-lg shadow-amber-500/20"
                                         >
                                             {item.status === 'rejected' ? 'Fix Issues' : 'Complete Setup'}
@@ -215,7 +215,7 @@ export default function SponsorDashboard() {
                                             </div>
 
                                             <Link
-                                                to={`/sponsorship/fulfilment/${item._id}`}
+                                                to={`/sponsorship/fulfilment/${item.id || item._id}`}
                                                 className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-xl hover:border-primary hover:text-primary transition whitespace-nowrap"
                                             >
                                                 <Edit3 className="w-4 h-4" /> Manage Ad
