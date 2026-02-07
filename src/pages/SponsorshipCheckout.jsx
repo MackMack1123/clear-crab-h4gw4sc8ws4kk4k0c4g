@@ -227,8 +227,9 @@ export default function SponsorshipCheckout() {
         }),
       );
 
-      const sponsorships = await Promise.all(promises);
-      const sponsorshipIds = sponsorships.map((s) => s.id);
+      const results = await Promise.all(promises);
+      // createSponsorship returns the ID directly, not an object
+      const sponsorshipIds = results.map((r) => typeof r === 'string' ? r : r.id);
 
       // 2. Create Stripe Checkout Session
       const session = await sponsorshipService.createStripeCheckoutSession({
@@ -296,8 +297,9 @@ export default function SponsorshipCheckout() {
         }),
       );
 
-      const sponsorships = await Promise.all(promises);
-      sponsorshipIds = sponsorships.map((s) => s.id);
+      const results = await Promise.all(promises);
+      // createSponsorship returns the ID directly, not an object
+      sponsorshipIds = results.map((r) => typeof r === 'string' ? r : r.id);
 
       // 2. Process Payment on Backend
       const response = await fetch(
