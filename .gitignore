@@ -28,3 +28,7 @@ dist-ssr
 server/.env
 server/prod_env
 
+# Debug scripts with credentials
+server/debug*.js
+server/getSquare*.js
+

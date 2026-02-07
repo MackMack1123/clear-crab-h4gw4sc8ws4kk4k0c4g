@@ -162,6 +162,7 @@ const UserSchema = new mongoose.Schema({
             accessToken: String,
             refreshToken: String,
             expiresAt: Date,
+            mainLocationId: String,
             connectedAt: Date
         },
 

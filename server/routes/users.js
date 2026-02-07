@@ -3,6 +3,23 @@ const router = express.Router();
 const User = require('../models/User');
 const { checkOrgAccess, canPerformAction } = require('../middleware/teamAuth');
 
+// Strip sensitive OAuth tokens from user objects before sending to client
+function sanitizeUser(user) {
+    if (!user) return user;
+    const obj = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+
+    if (obj.paymentSettings?.square) {
+        delete obj.paymentSettings.square.accessToken;
+        delete obj.paymentSettings.square.refreshToken;
+    }
+    if (obj.paymentSettings?.stripe) {
+        delete obj.paymentSettings.stripe.accessToken;
+        delete obj.paymentSettings.stripe.refreshToken;
+    }
+
+    return obj;
+}
+
 // Helper to determine what permission level is needed for specific fields
 function getRequiredPermissionForUpdate(updates) {
     const ownerOnlyFields = [
@@ -113,7 +130,7 @@ router.get('/:id', async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        res.json(user);
+        res.json(sanitizeUser(user));
     } catch (err) {
         // If findById throws a CastError (invalid ObjectId format), try slug lookup
         if (err.name === 'CastError') {
@@ -127,7 +144,7 @@ router.get('/:id', async (req, res) => {
                 if (!user) {
                     return res.status(404).json({ message: 'User not found' });
                 }
-                return res.json(user);
+                return res.json(sanitizeUser(user));
             } catch (slugErr) {
                 return res.status(500).json({ error: slugErr.message });
             }
@@ -186,7 +203,7 @@ router.post('/:id', async (req, res) => {
             { $set: updates },
             { new: true, upsert: true } // Upsert option
         );
-        res.json(user);
+        res.json(sanitizeUser(user));
 
     } catch (err) {
         console.error("User Update Error:", err);
@@ -214,7 +231,7 @@ router.get('/', async (req, res) => {
         }
 
         const users = await User.find();
-        res.json(users);
+        res.json(users.map(sanitizeUser));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

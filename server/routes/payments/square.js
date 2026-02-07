@@ -3,6 +3,7 @@ const router = express.Router();
 const { Client, Environment } = require('square');
 const User = require('../../models/User');
 const Sponsorship = require('../../models/Sponsorship');
+const { ensureValidSquareToken } = require('../../utils/squareTokenManager');
 
 // Initialize Square Client
 // Note: We use the platform credentials (your app creds) for these operations
@@ -88,6 +89,24 @@ router.get('/callback', async (req, res) => {
             merchantId
         } = response.result;
 
+        // Fetch the merchant's main location
+        let mainLocationId = null;
+        try {
+            const merchantClient = new Client({
+                environment: process.env.SQUARE_ENVIRONMENT === 'production' ? Environment.Production : Environment.Sandbox,
+                accessToken: accessToken
+            });
+            const locationsResponse = await merchantClient.locationsApi.listLocations();
+            const locations = locationsResponse.result.locations || [];
+            const activeLocation = locations.find(l => l.status === 'ACTIVE');
+            if (activeLocation) {
+                mainLocationId = activeLocation.id;
+            }
+        } catch (locErr) {
+            console.warn('Could not fetch Square locations during OAuth:', locErr.message);
+            // Non-fatal: continue without mainLocationId
+        }
+
         // Update user with Square credentials
         await User.findByIdAndUpdate(userId, {
             $set: {
@@ -97,12 +116,13 @@ router.get('/callback', async (req, res) => {
                     accessToken: accessToken,
                     refreshToken: refreshToken,
                     expiresAt: expiresAt,
+                    mainLocationId: mainLocationId,
                     connectedAt: new Date()
                 }
             }
         });
 
-        console.log(`Square connected for user ${userId}: ${merchantId}`);
+        console.log(`Square connected for user ${userId}: ${merchantId} (location: ${mainLocationId})`);
 
         res.redirect(`${FRONTEND_URL}/dashboard?square_success=true`);
     } catch (err) {
@@ -131,21 +151,15 @@ router.post('/process-payment', async (req, res) => {
             throw new Error('Missing required payment fields');
         }
 
-        // Get organizer's Square credentials
+        // Ensure organizer's Square token is valid (refreshes if needed)
+        const validAccessToken = await ensureValidSquareToken(organizerId);
+
+        // Re-fetch organizer for waiveFees check (token refresh may have updated the doc)
         const organizer = await User.findById(organizerId);
-        const squareSettings = organizer?.paymentSettings?.square;
 
-        if (!squareSettings?.accessToken) {
-            throw new Error('Organizer has not connected Square');
-        }
-
-        // Create a dedicated client for this merchant?
-        // Actually, with Square OAuth, we can use the specific access token 
-        // OR use our app token + 'Authorization: Bearer <UsersToken>'
-        // The Square Node SDK allows creating a client with a specific accessToken.
         const merchantClient = new Client({
             environment: process.env.SQUARE_ENVIRONMENT === 'production' ? Environment.Production : Environment.Sandbox,
-            accessToken: squareSettings.accessToken
+            accessToken: validAccessToken
         });
 
         // Calculate amount in cents

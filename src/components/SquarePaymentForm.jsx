@@ -2,9 +2,9 @@ import React from 'react';
 import { PaymentForm, CreditCard } from 'react-square-web-payments-sdk';
 import { Loader2 } from 'lucide-react';
 
-export default function SquarePaymentForm({ amount, onSubmit, loading }) {
+export default function SquarePaymentForm({ amount, onSubmit, loading, locationId: locationIdProp }) {
     const appId = import.meta.env.VITE_SQUARE_APP_ID;
-    const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
+    const locationId = locationIdProp || import.meta.env.VITE_SQUARE_LOCATION_ID;
 
     if (!appId || !locationId) {
         return (

@@ -803,6 +803,7 @@ export default function SponsorshipCheckout() {
                               amount={displayTotal}
                               onSubmit={handleSquarePayment}
                               loading={initializingPayment}
+                              locationId={organizerProfile?.paymentSettings?.square?.mainLocationId}
                             />
                           </div>
                         )}
