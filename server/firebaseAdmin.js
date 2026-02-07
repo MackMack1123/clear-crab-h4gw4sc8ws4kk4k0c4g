@@ -2,31 +2,48 @@ const admin = require('firebase-admin');
 
 let serviceAccount;
 
-if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+const rawKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+if (rawKey) {
+    console.log('[Firebase Admin] Found env var, length:', rawKey.length, 'starts with:', rawKey.substring(0, 20));
     try {
-        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+        // Strip surrounding quotes if Coolify/Docker wraps the value
+        let cleaned = rawKey.trim();
+        if ((cleaned.startsWith("'") && cleaned.endsWith("'")) ||
+            (cleaned.startsWith('"') && cleaned.endsWith('"'))) {
+            cleaned = cleaned.slice(1, -1);
+        }
+        serviceAccount = JSON.parse(cleaned);
         // Fix private key newlines — env vars often store \n as literal strings
         if (serviceAccount.private_key) {
             serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
         }
+        console.log('[Firebase Admin] Parsed service account for project:', serviceAccount.project_id);
     } catch (e) {
-        console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', e.message);
+        console.error('[Firebase Admin] Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', e.message);
+        console.error('[Firebase Admin] First 100 chars:', rawKey.substring(0, 100));
     }
+} else {
+    console.log('[Firebase Admin] No FIREBASE_SERVICE_ACCOUNT_KEY env var found');
 }
 
 if (!serviceAccount) {
     try {
         serviceAccount = require('./firebase-service-account.json');
+        console.log('[Firebase Admin] Loaded from file for project:', serviceAccount.project_id);
     } catch (e) {
-        console.warn('No Firebase service account found (env var or file). Firebase Admin features will be unavailable.');
+        console.warn('[Firebase Admin] No service account found (env var or file). Admin features unavailable.');
     }
 }
 
 if (serviceAccount && !admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-    });
-    console.log('[Firebase Admin] Initialized for project:', serviceAccount.project_id);
+    try {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+        console.log('[Firebase Admin] Initialized successfully');
+    } catch (e) {
+        console.error('[Firebase Admin] Failed to initialize:', e.message);
+    }
 }
 
 module.exports = admin;
