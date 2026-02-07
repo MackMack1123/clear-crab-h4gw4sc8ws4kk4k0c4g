@@ -7,6 +7,104 @@ import ContactModal from '../components/public/ContactModal';
 import { useSponsorship } from '../context/SponsorshipContext';
 import { API_BASE_URL } from '../config';
 
+function SponsorWallBlock({ block, organizerId, primaryColor }) {
+    const [sponsors, setSponsors] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!organizerId) return;
+        fetch(`${API_BASE_URL}/api/widget/sponsors/${organizerId}?maxSponsors=${block.maxSponsors || 20}&sortBy=tier&requireLogo=false`)
+            .then(res => res.json())
+            .then(data => setSponsors(data.sponsors || []))
+            .catch(() => setSponsors([]))
+            .finally(() => setLoading(false));
+    }, [organizerId, block.maxSponsors]);
+
+    if (loading) {
+        return (
+            <div className="text-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto" />
+            </div>
+        );
+    }
+
+    if (sponsors.length === 0) {
+        return (
+            <div className="text-center py-16">
+                <HeartHandshake className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 font-medium">Be the first to sponsor!</p>
+            </div>
+        );
+    }
+
+    // Group sponsors by tier
+    const tiers = {};
+    sponsors.forEach(s => {
+        const tier = s.tier || 'Sponsor';
+        if (!tiers[tier]) tiers[tier] = [];
+        tiers[tier].push(s);
+    });
+
+    const useTiered = (block.layout || 'tiered') === 'tiered' && block.showTiers !== false;
+
+    return (
+        <div>
+            {block.title && (
+                <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center tracking-tight">{block.title}</h2>
+            )}
+
+            {useTiered ? (
+                <div className="space-y-12">
+                    {Object.entries(tiers).map(([tierName, tierSponsors]) => (
+                        <div key={tierName}>
+                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-6 text-center border-b border-gray-100 pb-3">
+                                {tierName}
+                            </h3>
+                            <div className="flex flex-wrap justify-center gap-6">
+                                {tierSponsors.map(sponsor => (
+                                    <a
+                                        key={sponsor.id}
+                                        href={`/sponsor/${sponsor.id}`}
+                                        className="group flex flex-col items-center text-center transition-transform hover:-translate-y-0.5"
+                                    >
+                                        <div className="w-[140px] h-[90px] bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center overflow-hidden mb-2 group-hover:border-gray-300 group-hover:shadow-md transition-all">
+                                            {sponsor.logo ? (
+                                                <img src={sponsor.logo} alt={sponsor.name} className="max-w-[80%] max-h-[80%] object-contain" />
+                                            ) : (
+                                                <span className="text-2xl font-bold text-gray-300">{sponsor.name?.[0] || '?'}</span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm font-semibold text-gray-700 truncate max-w-[140px]">{sponsor.name}</p>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    {sponsors.map(sponsor => (
+                        <a
+                            key={sponsor.id}
+                            href={`/sponsor/${sponsor.id}`}
+                            className="group flex flex-col items-center text-center transition-transform hover:-translate-y-0.5"
+                        >
+                            <div className="w-full aspect-[16/10] bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center overflow-hidden mb-2 group-hover:border-gray-300 group-hover:shadow-md transition-all">
+                                {sponsor.logo ? (
+                                    <img src={sponsor.logo} alt={sponsor.name} className="max-w-[80%] max-h-[80%] object-contain" />
+                                ) : (
+                                    <span className="text-2xl font-bold text-gray-300">{sponsor.name?.[0] || '?'}</span>
+                                )}
+                            </div>
+                            <p className="text-sm font-semibold text-gray-700 truncate w-full">{sponsor.name}</p>
+                        </a>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function SponsorshipLanding() {
     const { organizerId } = useParams(); // Note: Route param might strictly be 'organizerId' in App.jsx, but we treat it as idOrSlug
     const navigate = useNavigate();
@@ -674,6 +772,15 @@ export default function SponsorshipLanding() {
                                                 </div>
                                             ))}
                                         </div>
+                                    </Wrapper>
+                                );
+                            }
+
+                            // SPONSOR WALL
+                            if (block.type === 'sponsor_wall') {
+                                return (
+                                    <Wrapper key={block.id}>
+                                        <SponsorWallBlock block={block} organizerId={organizer._id} primaryColor={primaryColor} />
                                     </Wrapper>
                                 );
                             }

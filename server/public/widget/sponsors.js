@@ -7,6 +7,7 @@
  * - grid: Responsive grid of all sponsors
  * - gallery: Full-page sponsor showcase with large cards
  * - banner: CTA button to view sponsorship packages
+ * - wall: Tier-grouped sponsor showcase
  *
  * Usage:
  * <div id="fundraisr-sponsors" data-org="ORGANIZER_ID" data-type="carousel"></div>
@@ -345,6 +346,57 @@
         @keyframes fr-spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Wall Styles */
+        .fr-wall {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        .fr-wall-tier {
+            margin-bottom: 32px;
+        }
+        .fr-wall-tier:last-child {
+            margin-bottom: 0;
+        }
+        .fr-wall-tier-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--fr-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border-bottom: 1px solid var(--fr-border);
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .fr-wall-tier-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+        .fr-wall-tier-grid[data-priority="high"] .fr-logo-container {
+            width: 180px;
+            height: 110px;
+        }
+        .fr-wall-tier-grid[data-priority="medium"] .fr-logo-container {
+            width: 140px;
+            height: 90px;
+        }
+        .fr-wall-tier-grid[data-priority="low"] .fr-logo-container {
+            width: 100px;
+            height: 70px;
+        }
+        .fr-wall-item {
+            text-align: center;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            transition: transform 0.2s ease;
+        }
+        .fr-wall-item:hover {
+            transform: translateY(-2px);
+        }
     `;
 
     // Inject styles once
@@ -540,6 +592,67 @@
         `;
     }
 
+    // Render wall (tier-grouped showcase)
+    function renderWall(container, data, config) {
+        const { sponsors, organization } = data;
+
+        // Group sponsors by tier preserving API sort order
+        const tierOrder = [];
+        const tierMap = {};
+        sponsors.forEach(s => {
+            const tier = s.tier || 'Sponsor';
+            if (!tierMap[tier]) {
+                tierMap[tier] = [];
+                tierOrder.push(tier);
+            }
+            tierMap[tier].push(s);
+        });
+
+        // Assign priority: top 1/3 = high, middle = medium, bottom = low
+        const tierCount = tierOrder.length;
+        const highCutoff = Math.ceil(tierCount / 3);
+        const medCutoff = Math.ceil((tierCount * 2) / 3);
+
+        const tiersHtml = tierOrder.map((tierName, idx) => {
+            const priority = idx < highCutoff ? 'high' : idx < medCutoff ? 'medium' : 'low';
+            const tierSponsors = tierMap[tierName];
+
+            const sponsorsHtml = tierSponsors.map(sponsor => {
+                const profileUrl = `${PROFILE_BASE}/sponsor/${sponsor.id}`;
+                const logoHtml = sponsor.logo
+                    ? `<img src="${sponsor.logo}" alt="${sponsor.name}" class="fr-logo" loading="lazy">`
+                    : `<span style="font-size:24px;font-weight:700;color:var(--fr-text-secondary)">${(sponsor.name || '?')[0]}</span>`;
+
+                return `
+                    <a href="${profileUrl}" target="_blank" rel="noopener" class="fr-wall-item">
+                        <div class="fr-logo-container">${logoHtml}</div>
+                        ${config.showNames ? `<p class="fr-sponsor-name">${sponsor.name}</p>` : ''}
+                    </a>
+                `;
+            }).join('');
+
+            return `
+                <div class="fr-wall-tier">
+                    <div class="fr-wall-tier-name">${tierName}</div>
+                    <div class="fr-wall-tier-grid" data-priority="${priority}">
+                        ${sponsorsHtml}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = `
+            <div class="fr-widget fr-widget-${config.theme}">
+                <div class="fr-widget-container">
+                    <div class="fr-wall">
+                        ${tiersHtml}
+                    </div>
+                    ${renderFooter(organization)}
+                </div>
+            </div>
+        `;
+    }
+
     // Render footer
     function renderFooter(organization) {
         const orgUrl = organization?.slug
@@ -592,6 +705,9 @@
             }
 
             switch (config.type) {
+                case 'wall':
+                    renderWall(container, data, config);
+                    break;
                 case 'gallery':
                     renderGallery(container, data, config);
                     break;

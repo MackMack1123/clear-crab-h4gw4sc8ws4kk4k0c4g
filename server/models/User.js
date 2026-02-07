@@ -21,7 +21,10 @@ const PublicContentSchema = new mongoose.Schema({
     showImages: Boolean,
     showBadge: Boolean, // For hero_standard
     badgeText: String, // For hero_standard
-    stats: [{ value: String, label: String }]
+    stats: [{ value: String, label: String }],
+    showTiers: Boolean, // For sponsor_wall: group by tier
+    layout: String, // For sponsor_wall: 'grid' or 'tiered'
+    maxSponsors: Number // For sponsor_wall: limit displayed sponsors
 }, { _id: false });
 
 const UserSchema = new mongoose.Schema({

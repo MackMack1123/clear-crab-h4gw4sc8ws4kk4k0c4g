@@ -3,7 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useOrgPermissions } from '../../../hooks/useOrgPermissions';
 import { userService } from '../../../services/userService';
 import { sponsorshipService } from '../../../services/sponsorshipService';
-import { Plus, Trash2, GripVertical, Image as ImageIcon, Save, ArrowUp, ArrowDown, Type, Megaphone, Layout, LayoutGrid, List, X, BarChart3, Lock } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Image as ImageIcon, Save, ArrowUp, ArrowDown, Type, Megaphone, Layout, LayoutGrid, List, X, BarChart3, Lock, Users } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../../common/ConfirmModal';
@@ -71,7 +71,10 @@ export default function PageContentBuilder({ setActiveTab }) {
                 { value: '50+', label: 'Active Teams' },
                 { value: '12k', label: 'Annual Visitors' },
                 { value: '100%', label: 'Community Focused' }
-            ]
+            ],
+            layout: 'tiered', // For sponsor_wall
+            maxSponsors: 20, // For sponsor_wall
+            showTiers: true // For sponsor_wall
         };
         setBlocks([...blocks, newBlock]);
     };
@@ -267,6 +270,7 @@ export default function PageContentBuilder({ setActiveTab }) {
                                     {block.type === 'package_gallery' && 'PACKAGE GALLERY'}
                                     {block.type === 'package_list' && 'PACKAGE LIST'}
                                     {block.type === 'stats' && 'IMPACT STATS'}
+                                    {block.type === 'sponsor_wall' && 'SPONSOR WALL'}
                                 </span>
                                 {canEditContent && (
                                     <div className="flex gap-1">
@@ -339,7 +343,7 @@ export default function PageContentBuilder({ setActiveTab }) {
                                 </div>
                             )}
 
-                            {block.type !== 'cta' && block.type !== 'stats' && (
+                            {block.type !== 'cta' && block.type !== 'stats' && block.type !== 'sponsor_wall' && (
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">Body Text</label>
                                     <textarea
@@ -723,6 +727,53 @@ export default function PageContentBuilder({ setActiveTab }) {
                                     <p className="text-xs text-gray-500">These stats will appear in a 4-column layout on the sponsorship page.</p>
                                 </div>
                             )}
+
+                            {/* Sponsor Wall Fields */}
+                            {block.type === 'sponsor_wall' && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Layout</label>
+                                        <select
+                                            className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none"
+                                            value={block.layout || 'tiered'}
+                                            onChange={e => updateBlock(block.id, 'layout', e.target.value)}
+                                        >
+                                            <option value="tiered">Tiered (Grouped by Package)</option>
+                                            <option value="grid">Simple Grid</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">
+                                            Max Sponsors: {block.maxSponsors || 20}
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="4"
+                                            max="50"
+                                            className="w-full accent-primary"
+                                            value={block.maxSponsors || 20}
+                                            onChange={e => updateBlock(block.id, 'maxSponsors', parseInt(e.target.value))}
+                                        />
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
+                                        <div>
+                                            <label className="text-sm font-bold text-gray-700">Group by Tier</label>
+                                            <p className="text-xs text-gray-500">Show tier headings above sponsor groups</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateBlock(block.id, 'showTiers', !(block.showTiers !== false))}
+                                            className={`relative w-12 h-6 rounded-full transition-colors ${block.showTiers !== false ? 'bg-primary' : 'bg-gray-300'}`}
+                                        >
+                                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${block.showTiers !== false ? 'translate-x-6' : ''}`} />
+                                        </button>
+                                    </div>
+
+                                    <p className="text-xs text-gray-500">Displays logos and names of your current sponsors. Data is fetched live.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -857,6 +908,24 @@ export default function PageContentBuilder({ setActiveTab }) {
                                 <div>
                                     <h3 className="font-bold text-gray-900 mb-1 group-hover:text-primary transition-colors">Call to Action</h3>
                                     <p className="text-xs text-gray-500">Footer or mid-page call to action banner.</p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Social Proof</h4>
+                        <div className="grid grid-cols-1">
+                            <button
+                                onClick={() => addBlock('sponsor_wall')}
+                                className="group p-4 bg-white border border-gray-200 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 rounded-2xl transition-all text-left flex items-start gap-4"
+                            >
+                                <div className="p-3 bg-gray-50 rounded-xl group-hover:bg-primary/10 transition-colors">
+                                    <Users className="w-6 h-6 text-gray-400 group-hover:text-primary transition-colors" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900 mb-1 group-hover:text-primary transition-colors">Sponsor Wall</h3>
+                                    <p className="text-xs text-gray-500">Showcase your sponsors with logos and names.</p>
                                 </div>
                             </button>
                         </div>

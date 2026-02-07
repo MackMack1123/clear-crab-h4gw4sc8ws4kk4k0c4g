@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Copy, Check, Code, Grid, LayoutList, Sun, Moon, ExternalLink, Sparkles, MousePointerClick, Palette, Type } from 'lucide-react';
+import { Copy, Check, Code, Grid, LayoutList, Sun, Moon, ExternalLink, Sparkles, MousePointerClick, Palette, Type, Layers } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../../config';
 
@@ -57,7 +57,7 @@ export default function WidgetGenerator() {
         ];
 
         // Widget-specific attributes
-        if (config.type === 'carousel' || config.type === 'grid' || config.type === 'gallery') {
+        if (config.type === 'carousel' || config.type === 'grid' || config.type === 'gallery' || config.type === 'wall') {
             baseAttrs.push(
                 `data-logo-size="${config.logoSize}"`,
                 `data-show-names="${config.showNames}"`,
@@ -105,6 +105,7 @@ export default function WidgetGenerator() {
     const widgetTypes = [
         { id: 'carousel', name: 'Carousel', icon: LayoutList, description: 'Auto-scrolling row of sponsor logos' },
         { id: 'grid', name: 'Grid', icon: Grid, description: 'Responsive grid layout' },
+        { id: 'wall', name: 'Sponsor Wall', icon: Layers, description: 'Tier-grouped sponsor showcase' },
         { id: 'gallery', name: 'Gallery', icon: Sparkles, description: 'Full page sponsor showcase' },
         { id: 'banner', name: 'Banner CTA', icon: MousePointerClick, description: 'Call-to-action button' },
     ];
@@ -438,6 +439,54 @@ export default function WidgetGenerator() {
                                             ))}
                                         </div>
                                     </div>
+                                ) : config.type === 'wall' ? (
+                                    /* Wall Preview */
+                                    <div className="space-y-6">
+                                        {(() => {
+                                            const tiers = {};
+                                            const tierOrder = [];
+                                            sponsors.slice(0, config.maxSponsors).forEach(s => {
+                                                const tier = s.tier || 'Sponsor';
+                                                if (!tiers[tier]) { tiers[tier] = []; tierOrder.push(tier); }
+                                                tiers[tier].push(s);
+                                            });
+                                            return tierOrder.map(tierName => (
+                                                <div key={tierName}>
+                                                    <p className={`text-xs font-bold uppercase tracking-wider text-center border-b pb-2 mb-3 ${config.theme === 'dark' ? 'text-slate-400 border-slate-700' : 'text-gray-400 border-gray-200'}`}>
+                                                        {tierName}
+                                                    </p>
+                                                    <div className="flex flex-wrap justify-center gap-4">
+                                                        {tiers[tierName].map(sponsor => (
+                                                            <div key={sponsor.id} className="text-center">
+                                                                <div
+                                                                    className={`rounded-lg p-3 mb-2 flex items-center justify-center ${config.theme === 'dark' ? 'bg-slate-800' : 'bg-gray-100'}`}
+                                                                    style={{ width: currentSize.width, height: currentSize.height }}
+                                                                >
+                                                                    {sponsor.logo ? (
+                                                                        <img src={sponsor.logo} alt={sponsor.name} className="max-w-full max-h-full object-contain" />
+                                                                    ) : (
+                                                                        <div className={`text-2xl font-bold ${config.theme === 'dark' ? 'text-slate-600' : 'text-gray-300'}`}>
+                                                                            {sponsor.name?.[0] || '?'}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                {config.showNames && (
+                                                                    <>
+                                                                        <p className={`text-sm font-semibold truncate ${config.theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ maxWidth: currentSize.width }}>
+                                                                            {sponsor.name}
+                                                                        </p>
+                                                                        <p className={`text-xs ${config.theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                                            {sponsor.tier}
+                                                                        </p>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ));
+                                        })()}
+                                    </div>
                                 ) : config.type === 'grid' ? (
                                     /* Grid Preview */
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -532,12 +581,14 @@ export default function WidgetGenerator() {
                         <h4 className="font-medium text-purple-900 mb-2">
                             {config.type === 'carousel' && 'Carousel Widget'}
                             {config.type === 'grid' && 'Grid Widget'}
+                            {config.type === 'wall' && 'Sponsor Wall Widget'}
                             {config.type === 'gallery' && 'Gallery Widget'}
                             {config.type === 'banner' && 'Banner CTA Widget'}
                         </h4>
                         <p className="text-sm text-purple-800 mb-3">
                             {config.type === 'carousel' && 'Displays sponsors in a continuously scrolling row. Perfect for headers or footers.'}
                             {config.type === 'grid' && 'Shows all sponsors in a responsive grid layout. Great for sidebar or dedicated sponsor sections.'}
+                            {config.type === 'wall' && 'Groups sponsors by tier with scaled logo sizes. Top-tier sponsors get larger logos. Ideal for a dedicated sponsors page or section.'}
                             {config.type === 'gallery' && 'Full-featured sponsor showcase with headers. Ideal for a dedicated sponsors page.'}
                             {config.type === 'banner' && 'A call-to-action button linking to your sponsorship page. Perfect for attracting new sponsors.'}
                         </p>
