@@ -32,3 +32,6 @@ server/prod_env
 server/debug*.js
 server/getSquare*.js
 
+# Firebase service account
+server/firebase-service-account.json
+

@@ -21,6 +21,7 @@ import SponsorDashboard from './pages/SponsorDashboard';
 import SponsorshipSuccess from './pages/SponsorshipSuccess';
 import AcceptInvite from './pages/AcceptInvite';
 import SponsorProfile from './pages/SponsorProfile';
+import MagicLinkVerify from './pages/MagicLinkVerify';
 
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 
@@ -75,6 +76,7 @@ function App() {
                                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                                 <Route path="/invite/:token" element={<AcceptInvite />} />
                                 <Route path="/sponsor/:sponsorshipId" element={<SponsorProfile />} />
+                                <Route path="/auth/magic-link/verify" element={<MagicLinkVerify />} />
                             </Routes>
                             <ComplianceFooter />
                         </div>

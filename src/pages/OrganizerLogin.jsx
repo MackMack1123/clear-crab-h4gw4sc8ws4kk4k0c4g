@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { Loader2, ArrowRight, Github, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Loader2, ArrowRight, Github, Mail, ArrowLeft, CheckCircle, Sparkles } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 export default function OrganizerLogin() {
     const [email, setEmail] = useState('');
@@ -14,6 +15,9 @@ export default function OrganizerLogin() {
     const [resetSent, setResetSent] = useState(false);
     const [resetLoading, setResetLoading] = useState(false);
     const [resetError, setResetError] = useState('');
+    const [magicLinkLoading, setMagicLinkLoading] = useState(false);
+    const [magicLinkSent, setMagicLinkSent] = useState(false);
+    const [magicLinkEmail, setMagicLinkEmail] = useState('');
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const redirectTo = searchParams.get('redirect') || '/dashboard';
@@ -52,19 +56,38 @@ export default function OrganizerLogin() {
         setResetLoading(true);
         setResetError('');
         try {
-            await sendPasswordResetEmail(auth, resetEmail);
+            const res = await fetch(`${API_BASE_URL}/api/auth/magic-link/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: resetEmail })
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to send reset email');
+            }
             setResetSent(true);
         } catch (err) {
             console.error("Password reset error:", err);
-            if (err.code === 'auth/user-not-found') {
-                setResetError('No account found with this email address.');
-            } else if (err.code === 'auth/invalid-email') {
-                setResetError('Please enter a valid email address.');
-            } else {
-                setResetError('Failed to send reset email. Please try again.');
-            }
+            setResetError(err.message || 'Failed to send reset email. Please try again.');
         } finally {
             setResetLoading(false);
+        }
+    };
+
+    const handleMagicLink = async (e) => {
+        e.preventDefault();
+        setMagicLinkLoading(true);
+        try {
+            await fetch(`${API_BASE_URL}/api/auth/magic-link/send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: magicLinkEmail, role: 'organizer' })
+            });
+            setMagicLinkSent(true);
+        } catch (err) {
+            console.error("Magic link error:", err);
+        } finally {
+            setMagicLinkLoading(false);
         }
     };
 
@@ -239,6 +262,51 @@ export default function OrganizerLogin() {
                             </p>
                         </div>
                     </form>
+
+                    {/* Magic Link Sign-In */}
+                    <div className="mt-6 pt-6 border-t border-gray-100">
+                        {magicLinkSent ? (
+                            <div className="text-center py-2">
+                                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <CheckCircle className="w-6 h-6 text-green-600" />
+                                </div>
+                                <p className="font-bold text-gray-900 mb-1">Check your email</p>
+                                <p className="text-sm text-gray-500 mb-3">
+                                    We sent a sign-in link to <strong>{magicLinkEmail}</strong>
+                                </p>
+                                <button
+                                    onClick={() => { setMagicLinkSent(false); setMagicLinkEmail(''); }}
+                                    className="text-sm text-primary font-medium hover:underline"
+                                >
+                                    Try a different email
+                                </button>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleMagicLink} className="space-y-3">
+                                <p className="text-center text-sm text-gray-500 mb-2">Or sign in with an email link (no password needed)</p>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <input
+                                            type="email"
+                                            required
+                                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition text-sm bg-gray-50 focus:bg-white"
+                                            placeholder="your@email.com"
+                                            value={magicLinkEmail}
+                                            onChange={(e) => setMagicLinkEmail(e.target.value)}
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={magicLinkLoading}
+                                        className="px-4 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition flex items-center gap-1.5 disabled:opacity-70"
+                                    >
+                                        {magicLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Sparkles className="w-4 h-4" /> Send</>}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

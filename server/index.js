@@ -123,6 +123,7 @@ app.use('/api/payments/stripe', require('./routes/payments/stripe'));
 app.use('/api/payments/square', require('./routes/payments/square'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/auth/github', authLimiter, require('./routes/auth/github')); // Auth rate limited
+app.use('/api/auth/magic-link', authLimiter, require('./routes/auth/magicLink'));
 app.use('/api/email', require('./routes/email'));
 app.use('/api/system', require('./routes/system'));
 app.use('/api/discover', require('./routes/discover'));
