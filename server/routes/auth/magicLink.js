@@ -8,37 +8,54 @@ const emailService = require('../../services/emailService');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-// Branded email HTML wrapper
+// Table-based email template for Gmail/Outlook compatibility
 const buildEmailHtml = (title, body) => `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f9fafb; }
-        .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .header { background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); padding: 30px; text-align: center; }
-        .header h1 { color: white; margin: 0; font-size: 24px; }
-        .content { padding: 40px 30px; font-size: 16px; }
-        .button { display: inline-block; padding: 14px 28px; background-color: #7c3aed; color: white !important; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
-        .footer { background-color: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #f0f0f0; }
-        .footer a { color: #7c3aed; text-decoration: none; }
-    </style>
+    <!--[if mso]><style>table,td{font-family:Arial,Helvetica,sans-serif!important}</style><![endif]-->
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>${title}</h1>
-        </div>
-        <div class="content">
-            ${body}
-        </div>
-        <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Fundraisr. All rights reserved.</p>
-            <p><a href="${FRONTEND_URL}">getfundraisr.io</a></p>
-        </div>
-    </div>
+<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;">
+        <tr><td align="center" style="padding:32px 16px;">
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+                <!-- Logo -->
+                <tr>
+                    <td align="center" style="padding:32px 24px 16px;">
+                        <table role="presentation" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td style="background-color:#7c3aed;width:40px;height:40px;border-radius:10px;text-align:center;vertical-align:middle;color:#ffffff;font-weight:bold;font-size:20px;font-family:Arial,sans-serif;">F</td>
+                                <td style="padding-left:10px;font-size:20px;font-weight:bold;color:#1e293b;font-family:Arial,sans-serif;">Fundraisr</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <!-- Title -->
+                <tr>
+                    <td align="center" style="padding:8px 40px 24px;">
+                        <h1 style="margin:0;font-size:24px;font-weight:bold;color:#1e293b;font-family:Arial,sans-serif;">${title}</h1>
+                    </td>
+                </tr>
+                <!-- Divider -->
+                <tr><td style="padding:0 40px;"><hr style="border:none;border-top:1px solid #e5e7eb;margin:0;"></td></tr>
+                <!-- Content -->
+                <tr>
+                    <td style="padding:32px 40px;font-size:16px;line-height:1.6;color:#374151;font-family:Arial,sans-serif;">
+                        ${body}
+                    </td>
+                </tr>
+                <!-- Footer -->
+                <tr>
+                    <td style="padding:24px 40px;background-color:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
+                        <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;font-family:Arial,sans-serif;">&copy; ${new Date().getFullYear()} Fundraisr. All rights reserved.</p>
+                        <p style="margin:0;font-size:12px;font-family:Arial,sans-serif;"><a href="${FRONTEND_URL}" style="color:#7c3aed;text-decoration:none;">getfundraisr.io</a></p>
+                    </td>
+                </tr>
+            </table>
+        </td></tr>
+    </table>
 </body>
 </html>`;
 
@@ -62,13 +79,15 @@ router.post('/send', async (req, res) => {
         const magicLink = `${FRONTEND_URL}/auth/magic-link/verify?token=${token}`;
 
         const html = buildEmailHtml('Sign In to Fundraisr', `
-            <p>Hi there,</p>
-            <p>Click the button below to sign in to your Fundraisr account. This link expires in 15 minutes.</p>
-            <p style="text-align: center;">
-                <a href="${magicLink}" class="button">Sign In to Fundraisr</a>
-            </p>
-            <p style="font-size: 14px; color: #666;">If you didn't request this link, you can safely ignore this email.</p>
-            <p style="font-size: 12px; color: #999; word-break: break-all;">Or copy this link: ${magicLink}</p>
+            <p style="margin:0 0 16px;">Hi there,</p>
+            <p style="margin:0 0 24px;">Click the button below to sign in to your Fundraisr account. This link expires in 15 minutes.</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                <tr><td align="center" style="padding:8px 0 24px;">
+                    <a href="${magicLink}" style="display:inline-block;padding:14px 32px;background-color:#7c3aed;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;font-family:Arial,sans-serif;">Sign In to Fundraisr</a>
+                </td></tr>
+            </table>
+            <p style="margin:0 0 12px;font-size:14px;color:#6b7280;">If you didn't request this link, you can safely ignore this email.</p>
+            <p style="margin:0;font-size:12px;color:#9ca3af;word-break:break-all;">Or copy this link: ${magicLink}</p>
         `);
 
         await emailService.sendRawEmail(normalizedEmail, 'Sign in to Fundraisr', html);
@@ -85,6 +104,11 @@ router.post('/send', async (req, res) => {
 // POST /verify — Verify magic link token
 router.post('/verify', async (req, res) => {
     try {
+        if (!admin.apps.length) {
+            console.error('Magic link verify: Firebase Admin SDK not initialized');
+            return res.status(500).json({ error: 'Server configuration error. Please contact support.' });
+        }
+
         const { token } = req.body;
         if (!token) return res.status(400).json({ error: 'Token is required' });
 
@@ -144,7 +168,7 @@ router.post('/verify', async (req, res) => {
 
         res.json({ customToken, isNewUser });
     } catch (error) {
-        console.error('Magic link verify error:', error);
+        console.error('Magic link verify error:', error.code || error.message, error.stack);
         res.status(500).json({ error: 'Failed to verify link. Please try again.' });
     }
 });
@@ -161,13 +185,15 @@ router.post('/reset-password', async (req, res) => {
             const resetLink = await admin.auth().generatePasswordResetLink(normalizedEmail);
 
             const html = buildEmailHtml('Reset Your Password', `
-                <p>Hi there,</p>
-                <p>We received a request to reset your Fundraisr password. Click the button below to choose a new password.</p>
-                <p style="text-align: center;">
-                    <a href="${resetLink}" class="button">Reset Password</a>
-                </p>
-                <p style="font-size: 14px; color: #666;">This link will expire shortly. If you didn't request a password reset, you can safely ignore this email.</p>
-                <p style="font-size: 12px; color: #999; word-break: break-all;">Or copy this link: ${resetLink}</p>
+                <p style="margin:0 0 16px;">Hi there,</p>
+                <p style="margin:0 0 24px;">We received a request to reset your Fundraisr password. Click the button below to choose a new password.</p>
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                    <tr><td align="center" style="padding:8px 0 24px;">
+                        <a href="${resetLink}" style="display:inline-block;padding:14px 32px;background-color:#7c3aed;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;font-family:Arial,sans-serif;">Reset Password</a>
+                    </td></tr>
+                </table>
+                <p style="margin:0 0 12px;font-size:14px;color:#6b7280;">This link will expire shortly. If you didn't request a password reset, you can safely ignore this email.</p>
+                <p style="margin:0;font-size:12px;color:#9ca3af;word-break:break-all;">Or copy this link: ${resetLink}</p>
             `);
 
             await emailService.sendRawEmail(normalizedEmail, 'Reset your Fundraisr password', html);
