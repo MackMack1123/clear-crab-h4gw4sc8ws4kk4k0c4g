@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { CheckCircle, ArrowRight, Home, Trophy, UserPlus, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { auth } from "../firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, fetchSignInMethodsForEmail } from "firebase/auth";
 import { userService } from "../services/userService";
 import { sponsorshipService } from "../services/sponsorshipService";
 import toast from "react-hot-toast";
@@ -22,6 +22,24 @@ export default function ThankYou() {
   const [accountCreated, setAccountCreated] = useState(false);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [existingAccount, setExistingAccount] = useState(false);
+  const [checkingAccount, setCheckingAccount] = useState(false);
+
+  // Check if account already exists when user clicks button
+  const handleShowAccountForm = async () => {
+    setCheckingAccount(true);
+    try {
+      const methods = await fetchSignInMethodsForEmail(auth, sponsorEmail);
+      if (methods.length > 0) {
+        setExistingAccount(true);
+      }
+    } catch (err) {
+      console.warn('Could not check existing account:', err);
+    } finally {
+      setCheckingAccount(false);
+      setShowAccountForm(true);
+    }
+  };
 
   // Handle account creation for guest checkout
   const handleCreateAccount = async (e) => {
@@ -37,17 +55,14 @@ export default function ThankYou() {
 
     setCreatingAccount(true);
     try {
-      // Create Firebase account
       const userCredential = await createUserWithEmailAndPassword(auth, sponsorEmail, password);
 
-      // Create user record in MongoDB
       await userService.updateUser(userCredential.user.uid, {
         email: sponsorEmail,
         role: 'sponsor',
         roles: ['sponsor']
       });
 
-      // Link all existing sponsorships with this email to the new account
       await sponsorshipService.linkSponsorshipsToAccount(sponsorEmail, userCredential.user.uid);
 
       setAccountCreated(true);
@@ -55,9 +70,38 @@ export default function ThankYou() {
     } catch (error) {
       console.error("Account creation error:", error);
       if (error.code === 'auth/email-already-in-use') {
-        toast.error("An account with this email already exists. Please sign in instead.");
+        setExistingAccount(true);
+        toast.error("An account with this email already exists. Please sign in below.");
       } else {
         toast.error(error.message || "Failed to create account");
+      }
+    } finally {
+      setCreatingAccount(false);
+    }
+  };
+
+  // Handle sign-in for existing accounts
+  const handleSignIn = async (e) => {
+    e.preventDefault();
+    if (!sponsorEmail || !password) {
+      toast.error("Please enter your password");
+      return;
+    }
+
+    setCreatingAccount(true);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, sponsorEmail, password);
+
+      await sponsorshipService.linkSponsorshipsToAccount(sponsorEmail, userCredential.user.uid);
+
+      setAccountCreated(true);
+      toast.success("Signed in! Your sponsorships are linked.");
+    } catch (error) {
+      console.error("Sign-in error:", error);
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        toast.error("Incorrect password. Please try again.");
+      } else {
+        toast.error(error.message || "Failed to sign in");
       }
     } finally {
       setCreatingAccount(false);
@@ -107,7 +151,7 @@ export default function ThankYou() {
             {message || "Your sponsorship has been processed successfully."}
           </p>
 
-          {/* Guest Account Creation Option */}
+          {/* Guest Account Creation / Sign-In Option */}
           {isGuest && sponsorEmail && !accountCreated && (
             <div className="mb-6">
               {!showAccountForm ? (
@@ -117,17 +161,68 @@ export default function ThankYou() {
                     <div className="flex-1">
                       <p className="font-bold text-blue-800 text-sm">Want to manage your sponsorship?</p>
                       <p className="text-blue-700 text-xs mt-1">
-                        Create a free account to update your ad, view your history, and manage future sponsorships.
+                        Sign in or create a free account to update your ad, view your history, and manage future sponsorships.
                       </p>
                       <button
-                        onClick={() => setShowAccountForm(true)}
-                        className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition"
+                        onClick={handleShowAccountForm}
+                        disabled={checkingAccount}
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
                       >
-                        Create Account
+                        {checkingAccount && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {checkingAccount ? "Checking..." : "Continue"}
                       </button>
                     </div>
                   </div>
                 </div>
+              ) : existingAccount ? (
+                <form onSubmit={handleSignIn} className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-left space-y-3">
+                  <h3 className="font-bold text-gray-900 text-sm">Welcome Back!</h3>
+                  <p className="text-xs text-gray-500">Sign in to link this sponsorship to your account</p>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm text-gray-600">
+                      <Mail className="w-4 h-4" />
+                      {sponsorEmail}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Password</label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full pl-9 pr-10 py-2 rounded-lg border border-gray-200 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                        placeholder="Enter your password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={creatingAccount}
+                      className="flex-1 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-700 transition flex items-center justify-center gap-2"
+                    >
+                      {creatingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign In"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowAccountForm(false); setExistingAccount(false); setPassword(""); }}
+                      className="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               ) : (
                 <form onSubmit={handleCreateAccount} className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-left space-y-3">
                   <h3 className="font-bold text-gray-900 text-sm">Create Your Account</h3>
@@ -170,7 +265,7 @@ export default function ThankYou() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setShowAccountForm(false)}
+                      onClick={() => { setShowAccountForm(false); setPassword(""); }}
                       className="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition"
                     >
                       Cancel
