@@ -262,46 +262,48 @@ export default function SignPreviewEditor({
     return (
         <div className="space-y-4">
             {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
-                <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                    <Type className="w-4 h-4 text-gray-400" />
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 rounded-xl border border-gray-200">
+                <div className="flex items-center gap-2 flex-1">
+                    <Type className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     <input
                         type="text"
-                        placeholder="Add text (e.g., company name, phone)"
-                        className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                        placeholder="Add text (e.g., company name)"
+                        className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
                         value={newTextInput}
                         onChange={(e) => setNewTextInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && addText()}
                     />
                     <button
                         onClick={addText}
-                        className="px-3 py-1.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-700 transition"
+                        className="px-3 py-1.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-700 transition flex-shrink-0"
                     >
                         Add
                     </button>
                 </div>
 
-                {selectedId && selectedId.startsWith('text-') && (
-                    <button
-                        onClick={() => removeText(selectedId)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 text-sm font-bold rounded-lg hover:bg-red-100 transition"
-                    >
-                        <Trash2 className="w-4 h-4" /> Remove Text
-                    </button>
-                )}
+                <div className="flex items-center gap-2">
+                    {selectedId && selectedId.startsWith('text-') && (
+                        <button
+                            onClick={() => removeText(selectedId)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 text-sm font-bold rounded-lg hover:bg-red-100 transition"
+                        >
+                            <Trash2 className="w-4 h-4" /> Remove
+                        </button>
+                    )}
 
-                <button
-                    onClick={handleExport}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-black transition ml-auto"
-                >
-                    <Download className="w-4 h-4" /> Download Preview
-                </button>
+                    <button
+                        onClick={handleExport}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-black transition ml-auto"
+                    >
+                        <Download className="w-4 h-4" /> <span className="hidden sm:inline">Download</span> <span className="sm:hidden">Save</span>
+                    </button>
+                </div>
             </div>
 
             {/* Canvas */}
             <div
                 ref={containerRef}
-                className="relative rounded-2xl overflow-hidden border-4 border-gray-200 shadow-lg bg-gray-100"
+                className="relative rounded-2xl overflow-hidden border-2 sm:border-4 border-gray-200 shadow-lg bg-gray-100"
             >
                 <Stage
                     ref={stageRef}

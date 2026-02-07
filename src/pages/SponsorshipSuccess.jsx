@@ -5,7 +5,7 @@ import { userService } from '../services/userService';
 import { sponsorshipService } from '../services/sponsorshipService';
 import { useAuth } from '../context/AuthContext';
 import { auth } from '../firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../config';
 import { saveGuestSponsorSession } from '../utils/guestSponsorSession';
@@ -30,6 +30,8 @@ export default function SponsorshipSuccess() {
     const [accountCreated, setAccountCreated] = useState(false);
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [existingAccount, setExistingAccount] = useState(false); // true if email already has a Firebase account
+    const [checkingAccount, setCheckingAccount] = useState(false);
 
     useEffect(() => {
         if (paymentMethod === 'check' && orgId) {
@@ -85,6 +87,23 @@ export default function SponsorshipSuccess() {
         }
     };
 
+    // Check if account already exists when user clicks "Create Account"
+    const handleShowAccountForm = async () => {
+        setCheckingAccount(true);
+        try {
+            const methods = await fetchSignInMethodsForEmail(auth, sponsorEmail);
+            if (methods.length > 0) {
+                setExistingAccount(true);
+            }
+        } catch (err) {
+            // If check fails, default to create flow
+            console.warn('Could not check existing account:', err);
+        } finally {
+            setCheckingAccount(false);
+            setShowAccountForm(true);
+        }
+    };
+
     // Handle account creation for guest checkout
     const handleCreateAccount = async (e) => {
         e.preventDefault();
@@ -117,9 +136,39 @@ export default function SponsorshipSuccess() {
         } catch (error) {
             console.error('Account creation error:', error);
             if (error.code === 'auth/email-already-in-use') {
-                toast.error('An account with this email already exists. Please sign in instead.');
+                setExistingAccount(true);
+                toast.error('An account with this email already exists. Please sign in below.');
             } else {
                 toast.error(error.message || 'Failed to create account');
+            }
+        } finally {
+            setCreatingAccount(false);
+        }
+    };
+
+    // Handle sign-in for existing accounts
+    const handleSignIn = async (e) => {
+        e.preventDefault();
+        if (!sponsorEmail || !password) {
+            toast.error('Please enter your password');
+            return;
+        }
+
+        setCreatingAccount(true);
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, sponsorEmail, password);
+
+            // Link any unlinked sponsorships to this account
+            await sponsorshipService.linkSponsorshipsToAccount(sponsorEmail, userCredential.user.uid);
+
+            setAccountCreated(true);
+            toast.success('Signed in! Your sponsorships are linked.');
+        } catch (error) {
+            console.error('Sign-in error:', error);
+            if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                toast.error('Incorrect password. Please try again.');
+            } else {
+                toast.error(error.message || 'Failed to sign in');
             }
         } finally {
             setCreatingAccount(false);
@@ -134,7 +183,7 @@ export default function SponsorshipSuccess() {
             return (
                 <div className="bg-green-50 p-4 rounded-xl border border-green-200 text-center">
                     <CheckCircle2 className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                    <p className="text-green-800 font-medium">Account created successfully!</p>
+                    <p className="text-green-800 font-medium">Account linked successfully!</p>
                     <p className="text-sm text-green-600">You can now access your sponsor dashboard anytime.</p>
                 </div>
             );
@@ -146,13 +195,15 @@ export default function SponsorshipSuccess() {
                     <div className="flex items-start gap-3">
                         <UserPlus className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
-                            <p className="font-medium text-blue-900">Create an account to manage your sponsorship</p>
+                            <p className="font-medium text-blue-900">Sign in or create an account to manage your sponsorship</p>
                             <p className="text-sm text-blue-700 mt-1">Track your sponsorships, upload ad materials, and more.</p>
                             <button
-                                onClick={() => setShowAccountForm(true)}
-                                className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition"
+                                onClick={handleShowAccountForm}
+                                disabled={checkingAccount}
+                                className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
                             >
-                                Create Account
+                                {checkingAccount && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {checkingAccount ? 'Checking...' : 'Continue'}
                             </button>
                         </div>
                     </div>
@@ -160,6 +211,57 @@ export default function SponsorshipSuccess() {
             );
         }
 
+        // Sign-in form for existing accounts
+        if (existingAccount) {
+            return (
+                <form onSubmit={handleSignIn} className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                    <div className="text-center">
+                        <h3 className="font-bold text-gray-900">Welcome Back!</h3>
+                        <p className="text-sm text-gray-500">Sign in to link this sponsorship to your account</p>
+                        <p className="text-sm font-medium text-gray-700 mt-1">{sponsorEmail}</p>
+                    </div>
+
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="Enter your password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none"
+                            required
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => { setShowAccountForm(false); setExistingAccount(false); setPassword(''); }}
+                            className="flex-1 py-3 rounded-xl border border-gray-200 font-medium text-gray-600 hover:bg-gray-50 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={creatingAccount}
+                            className="flex-1 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            {creatingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                            {creatingAccount ? 'Signing in...' : 'Sign In'}
+                        </button>
+                    </div>
+                </form>
+            );
+        }
+
+        // Create account form for new users
         return (
             <form onSubmit={handleCreateAccount} className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
                 <div className="text-center">
@@ -190,7 +292,7 @@ export default function SponsorshipSuccess() {
                 <div className="flex gap-2">
                     <button
                         type="button"
-                        onClick={() => setShowAccountForm(false)}
+                        onClick={() => { setShowAccountForm(false); setPassword(''); }}
                         className="flex-1 py-3 rounded-xl border border-gray-200 font-medium text-gray-600 hover:bg-gray-50 transition"
                     >
                         Cancel

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const User = require('../../models/User');
 const Sponsorship = require('../../models/Sponsorship');
+const Package = require('../../models/Package');
+const emailService = require('../../services/emailService');
 
 // Stripe SDK - will be initialized with your platform's secret key
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -326,6 +328,30 @@ router.get('/verify-session', async (req, res) => {
                         }
                     }
                 );
+
+                // Send confirmation emails for each sponsorship
+                const sponsorships = await Sponsorship.find({ _id: { $in: sponsorshipIds } });
+                for (const sp of sponsorships) {
+                    if (sp.sponsorEmail && sp.organizerId) {
+                        const organizer = await User.findById(sp.organizerId);
+                        if (organizer) {
+                            const pkg = sp.packageId ? await Package.findById(sp.packageId) : null;
+                            const portalUrl = `${process.env.FRONTEND_URL || 'https://getfundraisr.io'}/sponsor/dashboard`;
+                            emailService.sendTemplateEmail(
+                                organizer,
+                                'sponsorship_confirmation',
+                                sp.sponsorEmail,
+                                {
+                                    donorName: sp.sponsorName || 'Valued Sponsor',
+                                    contactName: sp.sponsorName || 'Valued Sponsor',
+                                    amount: `$${sp.amount}`,
+                                    packageTitle: pkg?.title || sp.packageTitle || 'Sponsorship Package',
+                                    portalUrl: portalUrl,
+                                }
+                            ).catch(err => console.error('Stripe verify-session email error:', err));
+                        }
+                    }
+                }
             }
 
             res.json({ verified: true, count: sponsorshipIds.length, sponsorshipIds });

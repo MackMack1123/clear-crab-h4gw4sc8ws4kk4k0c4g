@@ -3,6 +3,8 @@ const router = express.Router();
 const { Client, Environment } = require('square');
 const User = require('../../models/User');
 const Sponsorship = require('../../models/Sponsorship');
+const Package = require('../../models/Package');
+const emailService = require('../../services/emailService');
 const { ensureValidSquareToken } = require('../../utils/squareTokenManager');
 
 // Initialize Square Client
@@ -209,6 +211,27 @@ router.post('/process-payment', async (req, res) => {
                         }
                     }
                 );
+
+                // Send confirmation emails for each sponsorship
+                const sponsorships = await Sponsorship.find({ _id: { $in: sponsorshipIds } });
+                for (const sp of sponsorships) {
+                    if (sp.sponsorEmail) {
+                        const pkg = sp.packageId ? await Package.findById(sp.packageId) : null;
+                        const portalUrl = `${process.env.FRONTEND_URL || 'https://getfundraisr.io'}/sponsor/dashboard`;
+                        emailService.sendTemplateEmail(
+                            organizer,
+                            'sponsorship_confirmation',
+                            sp.sponsorEmail,
+                            {
+                                donorName: sp.sponsorName || 'Valued Sponsor',
+                                contactName: sp.sponsorName || 'Valued Sponsor',
+                                amount: `$${sp.amount}`,
+                                packageTitle: pkg?.title || sp.packageTitle || 'Sponsorship Package',
+                                portalUrl: portalUrl,
+                            }
+                        ).catch(err => console.error('Square payment email error:', err));
+                    }
+                }
             }
 
             res.json({
