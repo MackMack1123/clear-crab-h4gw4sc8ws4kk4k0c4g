@@ -1,6 +1,0 @@
-traefik.http.routers.api-org-pages.rule=Host(`getfundraisr.io`) && PathPrefix(`/org/`)
-traefik.http.routers.api-org-pages.entryPoints=https
-traefik.http.routers.api-org-pages.tls=true
-traefik.http.routers.api-org-pages.tls.certresolver=letsencrypt
-traefik.http.routers.api-org-pages.service=https-0-v8g8w8c0w8koogk08o88gow8
-traefik.http.routers.api-org-pages.priority=110

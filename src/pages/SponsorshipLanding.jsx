@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { sponsorshipService } from '../services/sponsorshipService';
 import { userService } from '../services/userService';
 import { Check, ArrowRight, HeartHandshake, Star, ShoppingCart, Loader2 } from 'lucide-react';
@@ -115,7 +115,27 @@ export default function SponsorshipLanding() {
     const [showContactModal, setShowContactModal] = useState(false);
     const { addToCart, cart } = useSponsorship();
     const [addingId, setAddingId] = useState(null);
+    const [searchParams] = useSearchParams();
     usePageTracking('landing', organizer?._id);
+
+    // Deep-link: scroll to and highlight a specific package from ?pkg= param
+    const highlightPackage = useCallback(() => {
+        const pkgParam = searchParams.get('pkg');
+        if (!pkgParam || packages.length === 0) return;
+        const el = document.getElementById('pkg-' + pkgParam);
+        if (!el) return;
+        const color = organizer?.organizationProfile?.primaryColor || '#6366f1';
+        // Scroll into view
+        setTimeout(() => {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Add highlight ring animation
+            el.style.boxShadow = '0 0 0 4px ' + color;
+            el.style.transition = 'box-shadow 0.3s ease';
+            setTimeout(() => {
+                el.style.boxShadow = '';
+            }, 2000);
+        }, 300);
+    }, [searchParams, packages, organizer]);
 
     const handleAddToCart = (pkg) => {
         setAddingId(pkg.id);
@@ -202,6 +222,13 @@ export default function SponsorshipLanding() {
             setLoading(false);
         }
     };
+
+    // Deep-link scroll effect when packages finish loading
+    useEffect(() => {
+        if (!loading && packages.length > 0) {
+            highlightPackage();
+        }
+    }, [loading, packages, highlightPackage]);
 
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -323,6 +350,7 @@ export default function SponsorshipLanding() {
                                     {packages.map(pkg => (
                                         <div
                                             key={pkg.id || pkg._id}
+                                            id={`pkg-${pkg.id || pkg._id}`}
                                             className="group relative bg-white rounded-3xl p-8 border border-gray-200 shadow-sm hover:shadow-xl hover:shadow-gray-200/50 hover:border-gray-300 transition-all duration-300 flex flex-col"
                                         >
                                             {pkg.imageUrl && (
@@ -605,7 +633,7 @@ export default function SponsorshipLanding() {
                                 if (!pkg) return null;
                                 return (
                                     <Wrapper key={block.id}>
-                                        <div id="packages-section" className="bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-xl shadow-gray-200/50 flex flex-col lg:flex-row group">
+                                        <div id={`pkg-${pkg.id || pkg._id}`} className="bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-xl shadow-gray-200/50 flex flex-col lg:flex-row group">
                                             <div className="lg:w-1/2 relative min-h-[400px] overflow-hidden">
                                                 {pkg.imageUrl ? (
                                                     <img src={getImageUrl(pkg.imageUrl)} alt={pkg.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
@@ -677,6 +705,7 @@ export default function SponsorshipLanding() {
                                                 {galleryPackages.map(pkg => (
                                                     <div
                                                         key={pkg.id}
+                                                        id={`pkg-${pkg.id || pkg._id}`}
                                                         className="group relative bg-white rounded-3xl p-8 border border-gray-200 shadow-sm hover:shadow-xl hover:shadow-gray-200/50 hover:border-gray-300 transition-all duration-300 flex flex-col"
                                                     >
                                                         <div className="mb-6">
@@ -734,7 +763,7 @@ export default function SponsorshipLanding() {
                                         <div className="space-y-8">
                                             {block.title && <h2 className="text-3xl font-heading font-bold text-gray-900 text-center mb-12">{block.title}</h2>}
                                             {listPackages.map(pkg => (
-                                                <div key={pkg.id} className={`relative bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-8 items-center ${block.listStyle === 'image_left' ? '' : 'lg:flex-row-reverse'}`}>
+                                                <div key={pkg.id} id={`pkg-${pkg.id || pkg._id}`} className={`relative bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-8 items-center ${block.listStyle === 'image_left' ? '' : 'lg:flex-row-reverse'}`}>
                                                     {block.showImages !== false && block.showImages !== 'false' && pkg.imageUrl && (
                                                         <div className="w-full lg:w-1/3 aspect-[4/3] rounded-2xl overflow-hidden shadow-inner">
                                                             <img src={getImageUrl(pkg.imageUrl)} alt={pkg.title} className="w-full h-full object-cover" />

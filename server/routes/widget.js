@@ -207,6 +207,71 @@ router.get('/sponsor/:sponsorshipId', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/widget/packages/:organizerId
+ * Returns active packages for widget display, with page builder blocks and org branding
+ */
+router.get('/packages/:organizerId', async (req, res) => {
+    try {
+        const { organizerId } = req.params;
+
+        // Get organization info + page builder config
+        const org = await User.findById(organizerId)
+            .select('organizationProfile publicContent slug')
+            .lean();
+
+        if (!org) {
+            return res.status(404).json({ error: 'Organization not found' });
+        }
+
+        // Get active packages sorted by price ascending
+        const packages = await Package.find({ organizerId, active: { $ne: false } })
+            .sort({ price: 1 })
+            .lean();
+
+        // Transform packages
+        const transformedPackages = packages.map(pkg => ({
+            id: pkg._id,
+            title: pkg.title,
+            price: pkg.price,
+            description: pkg.description,
+            features: pkg.features || [],
+            imageUrl: pkg.imageUrl
+        }));
+
+        // Extract package blocks from publicContent
+        const packageBlocks = (org.publicContent || [])
+            .filter(block => block.type && block.type.startsWith('package_'))
+            .map(block => {
+                const out = { type: block.type };
+                if (block.packageId) out.packageId = block.packageId;
+                if (block.packageIds) out.packageIds = block.packageIds;
+                if (block.title) out.title = block.title;
+                if (block.showImages !== undefined) out.showImages = block.showImages;
+                if (block.listStyle) out.listStyle = block.listStyle;
+                return out;
+            });
+
+        const slug = org.slug || org.organizationProfile?.slug;
+
+        res.json({
+            organization: {
+                id: organizerId,
+                name: org.organizationProfile?.orgName || 'Organization',
+                slug,
+                primaryColor: org.organizationProfile?.primaryColor || '#7c3aed',
+                logo: org.organizationProfile?.logoUrl
+            },
+            packages: transformedPackages,
+            packageBlocks,
+            total: transformedPackages.length
+        });
+    } catch (error) {
+        console.error('Widget Packages Error:', error);
+        res.status(500).json({ error: 'Failed to fetch packages' });
+    }
+});
+
 // ========================================
 // WIDGET TRACKING ENDPOINTS
 // Public (no auth) — fire-and-forget analytics

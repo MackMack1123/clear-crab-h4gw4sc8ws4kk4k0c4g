@@ -35,3 +35,6 @@ server/getSquare*.js
 # Firebase service account
 server/firebase-service-account.json
 
+# Traefik config notes (deploy-specific, not code)
+traefik-org-crawler-labels.txt
+
