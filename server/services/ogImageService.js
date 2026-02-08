@@ -3,7 +3,8 @@ const opentype = require('opentype.js');
 const path = require('path');
 const fs = require('fs');
 
-const OG_DIR = path.join(__dirname, '../public/og');
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../public/uploads');
+const OG_DIR = path.join(uploadDir, 'og');
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
 

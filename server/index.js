@@ -112,8 +112,9 @@ const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, 'public/uploads
 console.log(`[Storage] Serving uploads from: ${uploadDir}`);
 app.use('/uploads', express.static(uploadDir));
 
-// Serve OG images — static cache first, then dynamic fallback
-app.use('/og', express.static(path.join(__dirname, 'public/og'), {
+// Serve OG images from persistent storage — static cache first, then dynamic fallback
+const ogDir = path.join(uploadDir, 'og');
+app.use('/og', express.static(ogDir, {
     maxAge: '7d',
     immutable: false,
 }));
