@@ -112,11 +112,33 @@ const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, 'public/uploads
 console.log(`[Storage] Serving uploads from: ${uploadDir}`);
 app.use('/uploads', express.static(uploadDir));
 
-// Serve OG images with long cache
+// Serve OG images — static cache first, then dynamic fallback
 app.use('/og', express.static(path.join(__dirname, 'public/og'), {
     maxAge: '7d',
     immutable: false,
 }));
+// Dynamic fallback: generate on-demand if cached file doesn't exist
+app.get('/og/:slug.png', async (req, res) => {
+    try {
+        const User = require('./models/User');
+        const { generateAndSaveOgImage, OG_DIR } = require('./services/ogImageService');
+        const slug = req.params.slug;
+        const user = await User.findOne({
+            $or: [{ slug }, { 'organizationProfile.slug': slug }]
+        }).lean();
+        if (!user || !user.organizationProfile) {
+            return res.status(404).send('Not found');
+        }
+        const filename = await generateAndSaveOgImage(String(user._id), user.organizationProfile);
+        if (!filename) {
+            return res.status(500).send('Image generation failed');
+        }
+        res.sendFile(path.join(OG_DIR, filename));
+    } catch (err) {
+        console.error('[OG] Dynamic generation failed:', err.message);
+        res.status(500).send('Image generation failed');
+    }
+});
 
 // Routes
 const contactRoutes = require('./routes/contact');

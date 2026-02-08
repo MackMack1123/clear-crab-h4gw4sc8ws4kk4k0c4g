@@ -4,10 +4,10 @@ const nodemailer = require('nodemailer');
 
 // Create reusable transporter using MXRoute
 const createTransporter = () => {
-    return nodemailer.createTransporter({
-        host: process.env.MXROUTE_SERVER || 'smtp.gmail.com',
-        port: parseInt(process.env.MXROUTE_PORT) || 587,
-        secure: false,
+    return nodemailer.createTransport({
+        host: process.env.MXROUTE_SERVER || 'heracles.mxrouting.net',
+        port: parseInt(process.env.MXROUTE_PORT) || 465,
+        secure: true,
         auth: {
             user: process.env.MXROUTE_USER,
             pass: process.env.MXROUTE_PASSWORD
@@ -38,7 +38,7 @@ router.post('/', async (req, res) => {
         const transporter = createTransporter();
 
         const mailOptions = {
-            from: `"${name} via Fundraisr" <${process.env.SMTP_USER}>`,
+            from: `"${name} via Fundraisr" <${process.env.MXROUTE_USER}>`,
             replyTo: email,
             to: toEmail,
             subject: subject || `New Contact from ${name} - Sponsorship Inquiry`,
@@ -68,7 +68,7 @@ router.post('/', async (req, res) => {
         // Send Auto-Reply to User
         try {
             const autoReplyOptions = {
-                from: `"${orgName} (via Fundraisr)" <${process.env.SMTP_USER}>`,
+                from: `"${orgName} (via Fundraisr)" <${process.env.MXROUTE_USER}>`,
                 to: email,
                 subject: `We received your message: ${subject || 'Sponsorship Inquiry'}`,
                 html: `
