@@ -108,8 +108,29 @@ export default function OrgBranding() {
             return;
         }
 
-        // Immediate preview
+        // Check image dimensions before uploading (min 400px shortest side)
         const objectUrl = URL.createObjectURL(file);
+        try {
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = objectUrl;
+            });
+            if (img.naturalWidth < 1000) {
+                toast.error(`Logo must be at least 1000px wide. Your image is ${img.naturalWidth}x${img.naturalHeight}px.`);
+                URL.revokeObjectURL(objectUrl);
+                e.target.value = '';
+                return;
+            }
+        } catch {
+            toast.error("Could not read image. Please try a different file.");
+            URL.revokeObjectURL(objectUrl);
+            e.target.value = '';
+            return;
+        }
+
+        // Immediate preview
         setProfile(prev => ({ ...prev, logoUrl: objectUrl }));
         setUploading(true);
 
@@ -118,6 +139,7 @@ export default function OrgBranding() {
 
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('type', 'logo');
             if (profile.slug) {
                 formData.append('slug', profile.slug);
             }
@@ -228,7 +250,7 @@ export default function OrgBranding() {
                 </div>
                 <div>
                     <h3 className="font-bold text-gray-900">Organization Logo</h3>
-                    <p className="text-sm text-gray-500">Upload a high-res PNG or JPG. This will appear on all sponsorship pages.</p>
+                    <p className="text-sm text-gray-500">Upload a PNG or JPG (minimum 1000px wide). This will appear on sponsorship pages and social previews.</p>
                     {uploading && <p className="text-xs text-primary mt-1">Uploading...</p>}
                 </div>
             </div>

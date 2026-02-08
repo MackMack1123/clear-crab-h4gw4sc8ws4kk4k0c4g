@@ -168,7 +168,10 @@ app.use('/widget', (req, res, next) => {
 }, express.static(path.join(__dirname, 'public/widget')));
 
 // Share page — dynamic OG tags for social media crawlers
-app.use('/s', require('./routes/share'));
+// /s/ is the dedicated share link; /org/ is proxied by Traefik for crawler UAs only
+const shareRouter = require('./routes/share');
+app.use('/s', shareRouter);
+app.use('/org', shareRouter);
 
 app.get('/', (req, res) => {
     res.send('Fundraisr API is running');

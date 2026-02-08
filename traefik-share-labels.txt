@@ -1,0 +1,43 @@
+traefik.http.routers.api-share-links.rule=Host(`getfundraisr.io`) && PathPrefix(`/s/`)
+traefik.http.routers.api-share-links.entryPoints=https
+traefik.http.routers.api-share-links.tls=true
+traefik.http.routers.api-share-links.tls.certresolver=letsencrypt
+traefik.http.routers.api-share-links.service=https-0-v8g8w8c0w8koogk08o88gow8
+traefik.http.routers.api-share-links.priority=100
+
+# Proxy /org/* to API ONLY for social media crawlers (so they get dynamic OG tags).
+# Normal browsers bypass this and get the SPA as usual.
+traefik.http.routers.api-org-crawlers.rule=Host(`getfundraisr.io`) && PathPrefix(`/org/`) && HeadersRegexp(`User-Agent`, `.*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|TelegramBot|Slackbot|Discordbot|Pinterest|Googlebot|bingbot|redditbot|Applebot|iMessageLinkPreviews).*`)
+traefik.http.routers.api-org-crawlers.entryPoints=https
+traefik.http.routers.api-org-crawlers.tls=true
+traefik.http.routers.api-org-crawlers.tls.certresolver=letsencrypt
+traefik.http.routers.api-org-crawlers.service=https-0-v8g8w8c0w8koogk08o88gow8
+traefik.http.routers.api-org-crawlers.priority=110
+
+
+
+
+
+ORIGINAL: 
+traefik.enable=true
+traefik.http.middlewares.gzip.compress=true
+traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+traefik.http.routers.http-0-v8g8w8c0w8koogk08o88gow8.entryPoints=http
+traefik.http.routers.http-0-v8g8w8c0w8koogk08o88gow8.middlewares=redirect-to-https
+traefik.http.routers.http-0-v8g8w8c0w8koogk08o88gow8.rule=Host(`api.getfundraisr.io`) && PathPrefix(`/`)
+traefik.http.routers.http-0-v8g8w8c0w8koogk08o88gow8.service=http-0-v8g8w8c0w8koogk08o88gow8
+traefik.http.routers.https-0-v8g8w8c0w8koogk08o88gow8.entryPoints=https
+traefik.http.routers.https-0-v8g8w8c0w8koogk08o88gow8.middlewares=gzip
+traefik.http.routers.https-0-v8g8w8c0w8koogk08o88gow8.rule=Host(`api.getfundraisr.io`) && PathPrefix(`/`)
+traefik.http.routers.https-0-v8g8w8c0w8koogk08o88gow8.service=https-0-v8g8w8c0w8koogk08o88gow8
+traefik.http.routers.https-0-v8g8w8c0w8koogk08o88gow8.tls.certresolver=letsencrypt
+traefik.http.routers.https-0-v8g8w8c0w8koogk08o88gow8.tls=true
+traefik.http.services.http-0-v8g8w8c0w8koogk08o88gow8.loadbalancer.server.port=3001
+traefik.http.services.https-0-v8g8w8c0w8koogk08o88gow8.loadbalancer.server.port=3001
+caddy_0.encode=zstd gzip
+caddy_0.handle_path.0_reverse_proxy={{upstreams 3001}}
+caddy_0.handle_path=/*
+caddy_0.header=-Server
+caddy_0.try_files={path} /index.html /index.php
+caddy_0=https://api.getfundraisr.io
+caddy_ingress_network=coolify

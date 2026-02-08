@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 
 // Ensure upload directory exists
 // Ensure upload directory exists
@@ -28,7 +29,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-router.post('/', upload.single('file'), (req, res) => {
+router.post('/', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
@@ -50,6 +51,22 @@ router.post('/', upload.single('file'), (req, res) => {
             const tempPath = path.join(uploadDir, req.file.filename);
             if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
             return res.status(400).json({ error: 'Only image files are allowed' });
+        }
+
+        // Enforce minimum resolution for logo uploads (400px shortest side)
+        if (req.body.type === 'logo' && req.file.mimetype !== 'image/svg+xml') {
+            const tempPath = path.join(uploadDir, req.file.filename);
+            try {
+                const meta = await sharp(tempPath).metadata();
+                if ((meta.width || 0) < 1000) {
+                    fs.unlinkSync(tempPath);
+                    return res.status(400).json({
+                        error: `Logo must be at least 1000px wide. Your image is ${meta.width}x${meta.height}px.`
+                    });
+                }
+            } catch (err) {
+                console.warn('[Upload] Could not read image metadata:', err.message);
+            }
         }
 
         // Use slug if provided, otherwise generate a random prefix
