@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { SponsorshipProvider } from './context/SponsorshipContext';
 import PrivateRoute from './components/layout/PrivateRoute';
@@ -32,6 +32,12 @@ import SponsorDiscovery from './pages/SponsorDiscovery';
 
 import { Toaster } from 'react-hot-toast';
 
+function ScrollToTop() {
+    const { pathname } = useLocation();
+    React.useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+    return null;
+}
+
 function App() {
     const initialOptions = {
         "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID,
@@ -47,6 +53,7 @@ function App() {
             <SponsorshipProvider>
                 <AuthProvider>
                     <Router>
+                        <ScrollToTop />
                         <div className="flex flex-col min-h-screen font-sans text-foreground bg-background">
                             <Toaster position="top-right" />
                             <Routes>
