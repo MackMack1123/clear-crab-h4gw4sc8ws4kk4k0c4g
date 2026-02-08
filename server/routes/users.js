@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const { checkOrgAccess, canPerformAction } = require('../middleware/teamAuth');
+const { generateAndSaveOgImage } = require('../services/ogImageService');
 
 // Strip sensitive OAuth tokens from user objects before sending to client
 function sanitizeUser(user) {
@@ -203,6 +204,16 @@ router.post('/:id', async (req, res) => {
             { $set: updates },
             { new: true, upsert: true } // Upsert option
         );
+
+        // Regenerate OG image if branding-related fields changed (fire-and-forget)
+        const ogFields = ['organizationProfile.orgName', 'organizationProfile.logoUrl', 'organizationProfile.primaryColor', 'organizationProfile.slug'];
+        const touchedOg = Object.keys(updates).some(key => ogFields.includes(key));
+        if (touchedOg && user.organizationProfile) {
+            generateAndSaveOgImage(String(user._id), user.organizationProfile).catch(err => {
+                console.error('[OG Image] Background regeneration failed:', err.message);
+            });
+        }
+
         res.json(sanitizeUser(user));
 
     } catch (err) {

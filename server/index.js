@@ -112,6 +112,12 @@ const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, 'public/uploads
 console.log(`[Storage] Serving uploads from: ${uploadDir}`);
 app.use('/uploads', express.static(uploadDir));
 
+// Serve OG images with long cache
+app.use('/og', express.static(path.join(__dirname, 'public/og'), {
+    maxAge: '7d',
+    immutable: false,
+}));
+
 // Routes
 const contactRoutes = require('./routes/contact');
 const waitlistRoutes = require('./routes/waitlist');
@@ -160,6 +166,9 @@ app.use('/widget', (req, res, next) => {
     res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minute cache
     next();
 }, express.static(path.join(__dirname, 'public/widget')));
+
+// Share page — dynamic OG tags for social media crawlers
+app.use('/s', require('./routes/share'));
 
 app.get('/', (req, res) => {
     res.send('Fundraisr API is running');

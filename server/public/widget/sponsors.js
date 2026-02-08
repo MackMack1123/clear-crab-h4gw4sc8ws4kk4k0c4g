@@ -458,24 +458,64 @@
         /* Empty State */
         .fr-empty {
             text-align: center;
-            padding: 48px 24px;
+            padding: 40px 24px 32px;
+        }
+        .fr-empty-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, var(--fr-primary), color-mix(in srgb, var(--fr-primary) 70%, #000));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px color-mix(in srgb, var(--fr-primary) 30%, transparent);
+        }
+        .fr-empty-icon svg {
+            width: 28px;
+            height: 28px;
+            color: #ffffff;
+        }
+        .fr-empty-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--fr-text);
+            margin: 0 0 6px;
+        }
+        .fr-empty-desc {
+            font-size: 14px;
             color: var(--fr-text-secondary);
+            margin: 0 0 20px;
+            line-height: 1.5;
+            max-width: 320px;
+            margin-left: auto;
+            margin-right: auto;
         }
-        .fr-empty p {
-            margin: 0 0 16px 0;
-            font-size: 15px;
-        }
-        .fr-empty a {
+        .fr-empty-cta {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            color: var(--fr-primary);
-            text-decoration: none;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 28px;
+            font-size: 15px;
             font-weight: 600;
-            font-size: 14px;
+            color: #ffffff;
+            background: var(--fr-primary);
+            border: none;
+            border-radius: 12px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--fr-primary) 30%, transparent);
         }
-        .fr-empty a:hover {
-            text-decoration: underline;
+        .fr-empty-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px color-mix(in srgb, var(--fr-primary) 40%, transparent);
+            filter: brightness(1.1);
+        }
+        .fr-empty-cta svg {
+            width: 16px;
+            height: 16px;
         }
 
         /* Loading */
@@ -982,18 +1022,30 @@
             ? `${PROFILE_BASE}/org/${orgData.slug}`
             : `${PROFILE_BASE}/org/${orgData?.id || ''}`;
 
+        const orgName = orgData?.name || 'this organization';
+
         container.innerHTML = `
-            <div class="fr-widget fr-widget-${theme}">
+            <div class="fr-widget fr-widget-${theme}" style="${orgColorStyle(orgData)}">
                 <div class="fr-widget-container">
                     <div class="fr-empty">
-                        <p>Sponsorship opportunities available!</p>
-                        <a href="${sponsorUrl}" target="_blank" rel="noopener">
-                            Become a Sponsor
+                        <div class="fr-empty-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                                <path d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08c.82.82 2.13.85 3 .07l2.07-1.9a2.82 2.82 0 0 1 3.79 0l2.96 2.66"/>
+                                <path d="m18 15-2-2"/>
+                                <path d="m15 18-2-2"/>
+                            </svg>
+                        </div>
+                        <h3 class="fr-empty-title">Become a Sponsor</h3>
+                        <p class="fr-empty-desc">Support ${orgName} by becoming a sponsor. Browse available packages and make an impact today.</p>
+                        <a href="${sponsorUrl}" target="_blank" rel="noopener" class="fr-empty-cta">
+                            View Sponsorship Packages
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M5 12h14M12 5l7 7-7 7"/>
                             </svg>
                         </a>
                     </div>
+                    ${renderFooter(orgData)}
                 </div>
             </div>
         `;

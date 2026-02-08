@@ -35,7 +35,8 @@ import {
   Copy,
   Trophy,
   TrendingUp,
-  HeartHandshake
+  HeartHandshake,
+  Share2
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -46,6 +47,7 @@ export default function Dashboard() {
   const [savingPayout, setSavingPayout] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
   const [sponsorships, setSponsorships] = useState([]);
+  const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCampaignId, setSelectedCampaignId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'campaigns', 'settings', 'sponsorships', 'team'
@@ -187,12 +189,14 @@ export default function Dashboard() {
 
   async function loadDashboardData() {
     try {
-      const [campaignData, sponsorshipData] = await Promise.all([
+      const [campaignData, sponsorshipData, packageData] = await Promise.all([
         campaignService.getOrganizerCampaigns(currentUser.uid),
-        sponsorshipService.getOrganizerSponsorships(currentUser.uid)
+        sponsorshipService.getOrganizerSponsorships(currentUser.uid),
+        sponsorshipService.getPackages(activeOrganization?.id || currentUser.uid).catch(() => [])
       ]);
       setCampaigns(campaignData);
       setSponsorships(sponsorshipData || []);
+      setPackages(packageData || []);
 
       if (campaignData.length > 0 && !selectedCampaignId) {
         setSelectedCampaignId(campaignData[0].id);
@@ -226,6 +230,13 @@ export default function Dashboard() {
     const url = `${window.location.origin}/campaign/${id}`;
     navigator.clipboard.writeText(url);
     toast.success("Link copied!");
+  };
+
+  const copyShareLink = () => {
+    const pageSlug = userProfile?.organizationProfile?.slug || currentUser?.uid;
+    const url = `${API_BASE_URL}/s/${pageSlug}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Share link copied!");
   };
 
   // Sidebar Component
@@ -332,6 +343,13 @@ export default function Dashboard() {
                     View Public Page
                     <ExternalLink className="w-3 h-3 opacity-0 group-hover/link:opacity-100 transition-opacity" />
                   </a>
+                  <button
+                    onClick={copyShareLink}
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-purple-400 hover:text-purple-300 hover:bg-white/5 flex items-center gap-1.5 transition-all"
+                  >
+                    <Share2 className="w-3 h-3" />
+                    Copy Share Link
+                  </button>
                 </div>
               </div>
             </div>
@@ -457,31 +475,57 @@ export default function Dashboard() {
           )}
 
           {/* Empty State Hero - only show on overview when there's nothing */}
-          {campaigns.length === 0 && sponsorships.length === 0 && !loading && activeTab === 'overview' && (
+          {sponsorships.length === 0 && !loading && activeTab === 'overview' && (
             <div className="bg-white rounded-3xl shadow-glow border border-gray-100 p-12 text-center relative overflow-hidden">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-purple-600/5 to-transparent pointer-events-none"></div>
               <div className="relative z-10 max-w-lg mx-auto">
                 <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6 text-purple-600">
                   <HeartHandshake className="w-10 h-10" />
                 </div>
-                <h2 className="font-heading text-3xl font-bold text-gray-900 mb-4">Start Accepting Sponsorships</h2>
-                <p className="text-gray-500 mb-8 text-lg">Create packages and share your page with local businesses to raise funds effortlessly.</p>
-                <div className="flex justify-center gap-4 flex-wrap">
-                  <button
-                    onClick={() => { setActiveTab('sponsorships'); setSponsorshipTab('packages'); }}
-                    className="inline-flex items-center gap-2 px-8 py-4 bg-purple-600 text-white rounded-xl font-bold text-lg hover:bg-purple-700 transition shadow-xl shadow-purple-600/30 hover:-translate-y-1"
-                  >
-                    Create Package
-                  </button>
-                  {enableFundraising && (
-                    <Link
-                      to="/campaign/new"
-                      className="inline-flex items-center gap-2 px-8 py-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-50 transition"
-                    >
-                      Start Fundraiser
-                    </Link>
-                  )}
-                </div>
+                {packages.length > 0 ? (
+                  <>
+                    <h2 className="font-heading text-3xl font-bold text-gray-900 mb-4">You're All Set!</h2>
+                    <p className="text-gray-500 mb-8 text-lg">Your packages are live. Share your page with local businesses to start receiving sponsorships.</p>
+                    <div className="flex justify-center gap-4 flex-wrap">
+                      <Link
+                        to={`/sponsor/${activeOrganization?.id || currentUser?.uid}`}
+                        target="_blank"
+                        className="inline-flex items-center gap-2 px-8 py-4 bg-purple-600 text-white rounded-xl font-bold text-lg hover:bg-purple-700 transition shadow-xl shadow-purple-600/30 hover:-translate-y-1"
+                      >
+                        <ExternalLink className="w-5 h-5" />
+                        View Public Page
+                      </Link>
+                      <button
+                        onClick={copyShareLink}
+                        className="inline-flex items-center gap-2 px-8 py-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-50 transition"
+                      >
+                        <Share2 className="w-5 h-5" />
+                        Copy Share Link
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="font-heading text-3xl font-bold text-gray-900 mb-4">Start Accepting Sponsorships</h2>
+                    <p className="text-gray-500 mb-8 text-lg">Create packages and share your page with local businesses to raise funds effortlessly.</p>
+                    <div className="flex justify-center gap-4 flex-wrap">
+                      <button
+                        onClick={() => { setActiveTab('sponsorships'); setSponsorshipTab('packages'); }}
+                        className="inline-flex items-center gap-2 px-8 py-4 bg-purple-600 text-white rounded-xl font-bold text-lg hover:bg-purple-700 transition shadow-xl shadow-purple-600/30 hover:-translate-y-1"
+                      >
+                        Create Package
+                      </button>
+                      {enableFundraising && (
+                        <Link
+                          to="/campaign/new"
+                          className="inline-flex items-center gap-2 px-8 py-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-50 transition"
+                        >
+                          Start Fundraiser
+                        </Link>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -590,6 +634,13 @@ export default function Dashboard() {
                       <span className="text-sm font-medium text-gray-700 group-hover:text-purple-700">View Public Page</span>
                       <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-purple-600" />
                     </a>
+                    <button
+                      onClick={copyShareLink}
+                      className="w-full flex items-center justify-between p-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-left transition group"
+                    >
+                      <span className="text-sm font-medium text-purple-700 group-hover:text-purple-800">Copy Share Link</span>
+                      <Share2 className="w-4 h-4 text-purple-400 group-hover:text-purple-600" />
+                    </button>
                   </div>
                 </div>
 
