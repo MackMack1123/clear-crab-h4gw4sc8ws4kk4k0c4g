@@ -41,6 +41,7 @@
         scrollSpeed: 30, // pixels per second
         sortBy: 'tier',
         showTiers: true, // Wall: group by tier or randomize
+        showHeader: false, // Show "View our Sponsors" header
         // Banner specific
         buttonText: 'View Sponsorship Packages',
         buttonColor: BRAND.primary
@@ -141,11 +142,24 @@
             cursor: pointer;
         }
 
+        /* Widget Header */
+        .fr-header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .fr-header-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--fr-text);
+            margin: 0;
+        }
+
         /* Continuous Scroll Carousel */
         .fr-carousel {
             position: relative;
             width: 100%;
             overflow: hidden;
+            padding: 8px 0;
             mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
             -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
         }
@@ -721,6 +735,7 @@
         if (container.dataset.scrollSpeed) config.scrollSpeed = parseInt(container.dataset.scrollSpeed);
         if (container.dataset.sortBy) config.sortBy = container.dataset.sortBy;
         if (container.dataset.showTiers !== undefined) config.showTiers = container.dataset.showTiers !== 'false';
+        if (container.dataset.showHeader !== undefined) config.showHeader = container.dataset.showHeader === 'true';
         // Banner config
         if (container.dataset.buttonText) config.buttonText = container.dataset.buttonText;
         if (container.dataset.buttonColor) config.buttonColor = container.dataset.buttonColor;
@@ -976,6 +991,7 @@
         container.innerHTML = `
             <div class="fr-widget fr-widget-${config.theme}">
                 <div class="fr-widget-container">
+                    ${renderHeader(config)}
                     <div class="fr-carousel">
                         <div class="fr-carousel-track" style="--scroll-duration: ${duration}s;">
                             ${sponsorsHtml}
@@ -997,6 +1013,7 @@
         container.innerHTML = `
             <div class="fr-widget fr-widget-${config.theme}">
                 <div class="fr-widget-container">
+                    ${renderHeader(config)}
                     <div class="fr-grid">
                         ${sponsorsHtml}
                     </div>
@@ -1016,6 +1033,7 @@
         container.innerHTML = `
             <div class="fr-widget fr-widget-${config.theme}">
                 <div class="fr-widget-container" style="border: none; padding: 0; background: transparent;">
+                    ${renderHeader(config)}
                     <div class="fr-gallery">
                         ${sponsorsHtml}
                     </div>
@@ -1138,6 +1156,7 @@
         container.innerHTML = `
             <div class="fr-widget fr-widget-${config.theme}">
                 <div class="fr-widget-container">
+                    ${renderHeader(config)}
                     <div class="fr-wall">
                         ${wallHtml}
                     </div>
@@ -1147,6 +1166,16 @@
         `;
 
         attachModalHandlers(container);
+    }
+
+    // Render header
+    function renderHeader(config) {
+        if (!config.showHeader) return '';
+        return `
+            <div class="fr-header">
+                <h2 class="fr-header-title">View our Sponsors</h2>
+            </div>
+        `;
     }
 
     // Render footer
