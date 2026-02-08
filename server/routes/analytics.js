@@ -3,6 +3,8 @@ const router = express.Router();
 const Sponsorship = require('../models/Sponsorship');
 const Package = require('../models/Package');
 const User = require('../models/User');
+const PageViewEvent = require('../models/PageViewEvent');
+const FunnelDailyStat = require('../models/FunnelDailyStat');
 
 // Helper: Get date range based on period
 function getDateRange(period = '30d') {
@@ -18,6 +20,50 @@ function getDateRange(period = '30d') {
     start.setDate(start.getDate() - days);
     return { start, end: now };
 }
+
+// ==========================================
+// PAGE VIEW TRACKING (public, no auth)
+// ==========================================
+
+const VALID_PAGES = ['landing', 'review', 'auth', 'checkout', 'success'];
+
+// POST /api/analytics/track/page-view
+router.post('/track/page-view', async (req, res) => {
+    try {
+        const { organizerId, page, sessionId, referrer } = req.body;
+        if (!organizerId || !page || !VALID_PAGES.includes(page)) {
+            return res.sendStatus(204);
+        }
+
+        // Insert raw event
+        PageViewEvent.create({ organizerId, page, sessionId, referrer }).catch(() => {});
+
+        // Upsert daily stat
+        const today = new Date().toISOString().split('T')[0];
+        const update = { $inc: { [page]: 1 } };
+        if (page === 'landing' && referrer) {
+            update.$addToSet = { referrers: { $each: [referrer].slice(0, 1) } };
+        }
+        FunnelDailyStat.findOneAndUpdate(
+            { organizerId, date: today },
+            update,
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        ).then(doc => {
+            // Cap referrers at 50
+            if (doc && doc.referrers && doc.referrers.length > 50) {
+                FunnelDailyStat.updateOne(
+                    { _id: doc._id },
+                    { $set: { referrers: doc.referrers.slice(0, 50) } }
+                ).catch(() => {});
+            }
+        }).catch(() => {});
+
+        res.sendStatus(204);
+    } catch (err) {
+        // Silent — never break the page
+        res.sendStatus(204);
+    }
+});
 
 // ==========================================
 // ORG OWNER ANALYTICS
@@ -254,6 +300,91 @@ router.get('/org/:orgId/widget', async (req, res) => {
 
     } catch (err) {
         console.error('Widget analytics error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/analytics/org/:orgId/funnel - Funnel performance metrics
+router.get('/org/:orgId/funnel', async (req, res) => {
+    try {
+        const { orgId } = req.params;
+        const { period = '30d' } = req.query;
+        const { start } = getDateRange(period);
+        const startDate = start.toISOString().split('T')[0];
+
+        const dailyStats = await FunnelDailyStat.find({
+            organizerId: orgId,
+            date: { $gte: startDate }
+        }).sort({ date: 1 }).lean();
+
+        if (dailyStats.length === 0) {
+            return res.json({
+                overview: {
+                    landing: 0, review: 0, checkout: 0, success: 0,
+                    landingToReview: 0, reviewToCheckout: 0, checkoutToSuccess: 0, overallConversion: 0
+                },
+                trends: [],
+                topReferrers: []
+            });
+        }
+
+        // Aggregate totals
+        let landing = 0, review = 0, checkout = 0, success = 0;
+        const referrerCounts = {};
+
+        dailyStats.forEach(day => {
+            landing += day.landing || 0;
+            review += day.review || 0;
+            checkout += day.checkout || 0;
+            success += day.success || 0;
+
+            (day.referrers || []).forEach(r => {
+                referrerCounts[r] = (referrerCounts[r] || 0) + 1;
+            });
+        });
+
+        const landingToReview = landing > 0 ? Math.round((review / landing) * 1000) / 10 : 0;
+        const reviewToCheckout = review > 0 ? Math.round((checkout / review) * 1000) / 10 : 0;
+        const checkoutToSuccess = checkout > 0 ? Math.round((success / checkout) * 1000) / 10 : 0;
+        const overallConversion = landing > 0 ? Math.round((success / landing) * 1000) / 10 : 0;
+
+        // Build trends (fill missing days)
+        const trends = [];
+        const current = new Date(start);
+        const end = new Date();
+        const dailyMap = {};
+        dailyStats.forEach(d => { dailyMap[d.date] = d; });
+
+        while (current <= end) {
+            const dayStr = current.toISOString().split('T')[0];
+            const stat = dailyMap[dayStr];
+            trends.push({
+                date: dayStr,
+                landing: stat?.landing || 0,
+                review: stat?.review || 0,
+                checkout: stat?.checkout || 0,
+                success: stat?.success || 0
+            });
+            current.setDate(current.getDate() + 1);
+        }
+
+        // Top referrers
+        const topReferrers = Object.entries(referrerCounts)
+            .map(([url, count]) => ({ url, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
+        res.json({
+            overview: {
+                landing, review, checkout, success,
+                landingToReview, reviewToCheckout, checkoutToSuccess, overallConversion
+            },
+            trends,
+            topReferrers
+        });
+
+    } catch (err) {
+        console.error('Funnel analytics error:', err);
         res.status(500).json({ error: err.message });
     }
 });

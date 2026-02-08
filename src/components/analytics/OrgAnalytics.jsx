@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, DollarSign, Users, Package, TrendingUp, Calendar, Eye, MousePointerClick, Percent, Globe } from 'lucide-react';
+import { Loader2, DollarSign, Users, Package, TrendingUp, Calendar, Eye, MousePointerClick, Percent, Globe, ArrowRight, Filter } from 'lucide-react';
 import { analyticsService } from '../../services/analyticsService';
 import AnalyticsCard from './AnalyticsCard';
 import RevenueChart from './RevenueChart';
@@ -10,6 +10,7 @@ export default function OrgAnalytics({ orgId }) {
     const [data, setData] = useState(null);
     const [trends, setTrends] = useState([]);
     const [widgetMetrics, setWidgetMetrics] = useState(null);
+    const [funnelMetrics, setFunnelMetrics] = useState(null);
 
     useEffect(() => {
         loadAnalytics();
@@ -18,14 +19,16 @@ export default function OrgAnalytics({ orgId }) {
     async function loadAnalytics() {
         setLoading(true);
         try {
-            const [analyticsData, trendsData, widgetData] = await Promise.all([
+            const [analyticsData, trendsData, widgetData, funnelData] = await Promise.all([
                 analyticsService.getOrgAnalytics(orgId, period),
                 analyticsService.getOrgTrends(orgId, period),
-                analyticsService.getWidgetMetrics(orgId, period).catch(() => null)
+                analyticsService.getWidgetMetrics(orgId, period).catch(() => null),
+                analyticsService.getFunnelMetrics(orgId, period).catch(() => null)
             ]);
             setData(analyticsData);
             setTrends(trendsData);
             setWidgetMetrics(widgetData);
+            setFunnelMetrics(funnelData);
         } catch (err) {
             console.error('Failed to load analytics:', err);
         } finally {
@@ -51,6 +54,7 @@ export default function OrgAnalytics({ orgId }) {
 
     const { overview, packageStats, topSponsors, recentActivity } = data;
     const hasWidgetData = widgetMetrics && widgetMetrics.overview.totalImpressions > 0;
+    const hasFunnelData = funnelMetrics && funnelMetrics.overview.landing > 0;
 
     return (
         <div className="space-y-8 animate-fadeIn">
@@ -252,6 +256,132 @@ export default function OrgAnalytics({ orgId }) {
                                 </div>
                             </div>
                         </div>
+                    </>
+                )}
+            </div>
+
+            {/* Sponsorship Funnel */}
+            <div className="space-y-6">
+                <h3 className="text-xl font-bold text-gray-900">Sponsorship Funnel</h3>
+
+                {!hasFunnelData ? (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+                        <Filter className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 font-medium mb-1">No page view data yet</p>
+                        <p className="text-sm text-gray-400">Page views are tracked automatically when visitors view your sponsorship pages.</p>
+                    </div>
+                ) : (
+                    <>
+                        {/* Funnel Visualization */}
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                            <div className="space-y-3">
+                                {[
+                                    { label: 'Landing Page', key: 'landing', color: 'bg-blue-500' },
+                                    { label: 'Review Cart', key: 'review', color: 'bg-indigo-500' },
+                                    { label: 'Checkout', key: 'checkout', color: 'bg-purple-500' },
+                                    { label: 'Success', key: 'success', color: 'bg-green-500' }
+                                ].map((step, i, arr) => {
+                                    const count = funnelMetrics.overview[step.key];
+                                    const maxCount = funnelMetrics.overview.landing || 1;
+                                    const widthPct = Math.max((count / maxCount) * 100, 4);
+                                    const nextStep = arr[i + 1];
+                                    const nextCount = nextStep ? funnelMetrics.overview[nextStep.key] : null;
+                                    const dropoff = nextCount !== null && count > 0
+                                        ? Math.round((nextCount / count) * 100)
+                                        : null;
+
+                                    return (
+                                        <div key={step.key}>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-sm font-medium text-gray-700">{step.label}</span>
+                                                <span className="text-sm font-bold text-gray-900">{count.toLocaleString()}</span>
+                                            </div>
+                                            <div className="w-full bg-gray-100 rounded-full h-6 overflow-hidden">
+                                                <div
+                                                    className={`${step.color} h-6 rounded-full transition-all duration-500`}
+                                                    style={{ width: `${widthPct}%` }}
+                                                />
+                                            </div>
+                                            {dropoff !== null && (
+                                                <div className="flex items-center justify-center my-1">
+                                                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                                                        <ArrowRight className="w-3 h-3 rotate-90" />
+                                                        {dropoff}% continue
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Conversion Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <AnalyticsCard
+                                title="Landing → Review"
+                                value={`${funnelMetrics.overview.landingToReview}%`}
+                                subtitle="of visitors review cart"
+                                icon={ArrowRight}
+                                color="text-indigo-600"
+                                bgColor="bg-indigo-50"
+                            />
+                            <AnalyticsCard
+                                title="Review → Checkout"
+                                value={`${funnelMetrics.overview.reviewToCheckout}%`}
+                                subtitle="of reviewers check out"
+                                icon={ArrowRight}
+                                color="text-purple-600"
+                                bgColor="bg-purple-50"
+                            />
+                            <AnalyticsCard
+                                title="Overall Conversion"
+                                value={`${funnelMetrics.overview.overallConversion}%`}
+                                subtitle="landing to success"
+                                icon={TrendingUp}
+                                color="text-green-600"
+                                bgColor="bg-green-50"
+                            />
+                        </div>
+
+                        {/* Funnel Trends Chart */}
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-6">Funnel Trends</h3>
+                            <RevenueChart
+                                data={funnelMetrics.trends}
+                                type="area"
+                                dataKey="landing"
+                                color="#3b82f6"
+                                height={240}
+                                formatValue={(v) => `${v.toLocaleString()} views`}
+                                formatYAxis={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+                            />
+                        </div>
+
+                        {/* Top Referrers */}
+                        {funnelMetrics.topReferrers.length > 0 && (
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="p-6 border-b border-gray-100">
+                                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                        <Globe className="w-5 h-5 text-blue-500" />
+                                        Top Landing Page Referrers
+                                    </h3>
+                                </div>
+                                <div className="divide-y divide-gray-50">
+                                    {funnelMetrics.topReferrers.map((ref, i) => (
+                                        <div key={ref.url || i} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <span className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-bold flex items-center justify-center text-sm flex-shrink-0">
+                                                    {i + 1}
+                                                </span>
+                                                <p className="font-medium text-gray-900 truncate">{ref.url.replace(/^https?:\/\//, '').replace(/\/$/, '')}</p>
+                                            </div>
+                                            <span className="font-bold text-blue-600 flex-shrink-0 ml-3">{ref.count} visits</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
             </div>

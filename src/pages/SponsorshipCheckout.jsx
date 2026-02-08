@@ -12,6 +12,7 @@ import SquarePaymentForm from "../components/SquarePaymentForm";
 import { API_BASE_URL } from "../config";
 import { formatCurrency } from "../utils/formatCurrency";
 import { saveGuestSponsorSession } from "../utils/guestSponsorSession";
+import { usePageTracking } from "../hooks/usePageTracking";
 
 // Debounce helper
 function useDebounce(value, delay) {
@@ -142,6 +143,7 @@ export default function SponsorshipCheckout() {
   // Get the organizer ID from the first item (assuming single organizer cart for now)
   const organizerId =
     checkoutItems.length > 0 ? checkoutItems[0].organizerId : null;
+  usePageTracking('checkout', organizerId);
 
   // Helper: Only link to logged-in user if their email matches the sponsor email
   // This prevents purchases for others from being linked to the wrong account

@@ -33,5 +33,22 @@ export const analyticsService = {
         const res = await fetch(`${API_URL}/org/${orgId}/widget?period=${period}`);
         if (!res.ok) throw new Error('Failed to fetch widget metrics');
         return res.json();
+    },
+
+    // Page view tracking (fire-and-forget from public pages)
+    trackPageView: async (organizerId, page, sessionId) => {
+        await fetch(`${API_URL}/track/page-view`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ organizerId, page, sessionId, referrer: document.referrer }),
+            keepalive: true
+        });
+    },
+
+    // Funnel performance metrics
+    getFunnelMetrics: async (orgId, period = '30d') => {
+        const res = await fetch(`${API_URL}/org/${orgId}/funnel?period=${period}`);
+        if (!res.ok) throw new Error('Failed to fetch funnel metrics');
+        return res.json();
     }
 };

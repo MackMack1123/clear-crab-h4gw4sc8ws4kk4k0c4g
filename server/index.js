@@ -80,8 +80,13 @@ const limiter = rateLimit({
     message: { error: 'Too many requests, please try again later.' }
 });
 
-// Apply rate limiting to all API routes
-app.use('/api/', limiter);
+// Apply rate limiting to all API routes (skip tracking endpoints — they have their own limiters)
+app.use('/api/', (req, res, next) => {
+    if (req.path.startsWith('/analytics/track') || req.path.startsWith('/widget/track')) {
+        return next();
+    }
+    limiter(req, res, next);
+});
 
 // Stricter rate limit for auth-related endpoints
 const authLimiter = rateLimit({
@@ -137,6 +142,15 @@ const widgetTrackingLimiter = rateLimit({
     message: { error: 'Too many requests' }
 });
 app.use('/api/widget/track', widgetTrackingLimiter);
+// Page view tracking rate limiter (generous — public pages fire these)
+const pageTrackingLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 500,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests' }
+});
+app.use('/api/analytics/track', pageTrackingLimiter);
 app.use('/api/widget', require('./routes/widget'));
 app.use('/api/slack', require('./routes/slack'));
 

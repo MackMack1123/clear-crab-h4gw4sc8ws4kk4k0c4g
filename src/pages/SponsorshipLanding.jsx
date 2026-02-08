@@ -6,6 +6,7 @@ import { Check, ArrowRight, HeartHandshake, Star, ShoppingCart, Loader2 } from '
 import ContactModal from '../components/public/ContactModal';
 import { useSponsorship } from '../context/SponsorshipContext';
 import { API_BASE_URL } from '../config';
+import { usePageTracking } from '../hooks/usePageTracking';
 
 function SponsorWallBlock({ block, organizerId, primaryColor }) {
     const [sponsors, setSponsors] = useState([]);
@@ -114,6 +115,7 @@ export default function SponsorshipLanding() {
     const [showContactModal, setShowContactModal] = useState(false);
     const { addToCart, cart } = useSponsorship();
     const [addingId, setAddingId] = useState(null);
+    usePageTracking('landing', organizer?._id);
 
     const handleAddToCart = (pkg) => {
         setAddingId(pkg.id);

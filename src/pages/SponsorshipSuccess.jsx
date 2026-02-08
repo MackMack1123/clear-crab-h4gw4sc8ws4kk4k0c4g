@@ -9,6 +9,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, fetchSignIn
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../config';
 import { saveGuestSponsorSession } from '../utils/guestSponsorSession';
+import { usePageTracking } from '../hooks/usePageTracking';
 
 export default function SponsorshipSuccess() {
     const [searchParams] = useSearchParams();
@@ -19,6 +20,7 @@ export default function SponsorshipSuccess() {
     const orgId = searchParams.get('org_id');
     const sponsorEmail = searchParams.get('email');
     const isGuest = searchParams.get('guest') === 'true';
+    usePageTracking('success', orgId);
 
     const [status, setStatus] = useState('verifying'); // verifying, success, error
     const [count, setCount] = useState(0);

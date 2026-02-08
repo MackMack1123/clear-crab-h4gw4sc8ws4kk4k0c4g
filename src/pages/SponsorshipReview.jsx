@@ -3,6 +3,7 @@ import { useSponsorship } from '../context/SponsorshipContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2, ShieldCheck, ArrowRight } from 'lucide-react';
 import { formatCurrency } from '../utils/formatCurrency';
+import { usePageTracking } from '../hooks/usePageTracking';
 
 export default function SponsorshipReview() {
     // Scroll to top on mount
@@ -11,6 +12,7 @@ export default function SponsorshipReview() {
     }, []);
     const { cart, removeFromCart, cartTotal, cartSubtotal, processingFee, platformFee, originalPlatformFee, coverFees, toggleCoverFees, feesWaived } = useSponsorship();
     const navigate = useNavigate();
+    usePageTracking('review', cart[0]?.organizerId);
 
     if (cart.length === 0) {
         return (
