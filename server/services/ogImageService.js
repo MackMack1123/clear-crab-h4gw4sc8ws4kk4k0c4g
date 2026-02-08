@@ -161,24 +161,29 @@ async function generateOgImage(orgProfile) {
 
     // --- Right side: Text + CTA button (all rendered as vector paths) ---
     const textX = 540;
-    const subtitle = 'Browse sponsorship packages and show your support';
 
     const textSvg = `
     <svg width="${OG_WIDTH}" height="${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-      <!-- "Become a Sponsor for" -->
-      ${textToSvgPath('Become a Sponsor for', textX, 230, 38, fontExtraBold, '#0f172a')}
+      <!-- "Support & Grow with" -->
+      ${textToSvgPath('Support & Grow with', textX, 210, 40, fontExtraBold, '#0f172a')}
 
-      <!-- Org name in accent color -->
-      ${textToSvgPath(displayName, textX, 280, 38, fontExtraBold, primaryColor)}
+      <!-- Org name (slightly smaller) -->
+      ${textToSvgPath(displayName, textX, 260, 34, fontBold, '#0f172a')}
 
-      <!-- Subtitle -->
-      ${textToSvgPath(subtitle, textX, 325, 16, fontRegular, '#64748b')}
+      <!-- Subheading line 1 -->
+      ${textToSvgPath('Strengthen Community, Boost your', textX, 310, 17, fontRegular, '#64748b')}
+
+      <!-- "Brand" in org color -->
+      ${textToSvgPath('Brand', textX + measureText('Strengthen Community, Boost your ', 17, fontRegular), 310, 17, fontBold, primaryColor)}${textToSvgPath('.', textX + measureText('Strengthen Community, Boost your ', 17, fontRegular) + measureText('Brand', 17, fontBold), 310, 17, fontRegular, '#64748b')}
+
+      <!-- Subheading line 2 -->
+      ${textToSvgPath('Browse our Sponsorship Packages today!', textX, 335, 17, fontRegular, '#64748b')}
 
       <!-- Learn More button background -->
-      <rect x="${textX}" y="355" width="180" height="50" rx="12" fill="${primaryColor}"/>
+      <rect x="${textX}" y="370" width="180" height="50" rx="12" fill="${primaryColor}"/>
 
       <!-- Learn More button text (centered in button) -->
-      ${textToSvgPath('Learn More', textX + 90 - measureText('Learn More', 18, fontBold) / 2, 386, 18, fontBold, '#ffffff')}
+      ${textToSvgPath('Learn More', textX + 90 - measureText('Learn More', 18, fontBold) / 2, 401, 18, fontBold, '#ffffff')}
     </svg>`;
 
     composites.push({
