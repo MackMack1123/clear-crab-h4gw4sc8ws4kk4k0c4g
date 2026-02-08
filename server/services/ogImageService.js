@@ -161,23 +161,24 @@ async function generateOgImage(orgProfile) {
 
     // --- Right side: Text + CTA button (all rendered as vector paths) ---
     const textX = 540;
+    const subtitle = 'Browse sponsorship packages and show your support';
 
     const textSvg = `
     <svg width="${OG_WIDTH}" height="${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <!-- "Become a Sponsor for" -->
-      ${textToSvgPath('Become a Sponsor for', textX, 250, 38, fontExtraBold, '#0f172a')}
+      ${textToSvgPath('Become a Sponsor for', textX, 230, 38, fontExtraBold, '#0f172a')}
 
       <!-- Org name in accent color -->
-      ${textToSvgPath(displayName, textX, 300, 38, fontExtraBold, primaryColor)}
+      ${textToSvgPath(displayName, textX, 280, 38, fontExtraBold, primaryColor)}
+
+      <!-- Subtitle -->
+      ${textToSvgPath(subtitle, textX, 325, 16, fontRegular, '#64748b')}
 
       <!-- Learn More button background -->
-      <rect x="${textX}" y="330" width="180" height="50" rx="12" fill="${primaryColor}"/>
+      <rect x="${textX}" y="355" width="180" height="50" rx="12" fill="${primaryColor}"/>
 
       <!-- Learn More button text (centered in button) -->
-      ${textToSvgPath('Learn More', textX + 90 - measureText('Learn More', 18, fontBold) / 2, 361, 18, fontBold, '#ffffff')}
-
-      <!-- getfundraisr.io branding (bottom right) -->
-      ${textToSvgPath('getfundraisr.io', OG_WIDTH - 50 - measureText('getfundraisr.io', 14, fontRegular), OG_HEIGHT - 28, 14, fontRegular, '#94a3b8')}
+      ${textToSvgPath('Learn More', textX + 90 - measureText('Learn More', 18, fontBold) / 2, 386, 18, fontBold, '#ffffff')}
     </svg>`;
 
     composites.push({
@@ -186,16 +187,45 @@ async function generateOgImage(orgProfile) {
         left: 0,
     });
 
-    // --- Fundraisr "F" badge (top center) ---
+    // --- "Powered by Fundraisr" pill badge (bottom right) ---
+    const poweredByText = 'Powered by';
+    const fundraisrText = 'Fundraisr';
+    const badgePadX = 16;
+    const badgePadY = 10;
+    const badgeGap = 8;
+    const logoSize = 22;
+    const logoGap = 6;
+    const poweredByWidth = measureText(poweredByText, 12, fontRegular);
+    const fundraisrWidth = measureText(fundraisrText, 13, fontBold);
+    const badgeInnerWidth = poweredByWidth + badgeGap + logoSize + logoGap + fundraisrWidth;
+    const badgeWidth = badgeInnerWidth + badgePadX * 2;
+    const badgeHeight = 34;
+    const badgeX = OG_WIDTH - 50 - badgeWidth;
+    const badgeY = OG_HEIGHT - 70;
+
     const badgeSvg = `
-    <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
-      <rect width="40" height="40" rx="10" fill="#0f172a"/>
-      ${textToSvgPath('F', 20 - measureText('F', 22, fontExtraBold) / 2, 28, 22, fontExtraBold, '#ffffff')}
+    <svg width="${OG_WIDTH}" height="${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+      <!-- Pill background -->
+      <rect x="${badgeX}" y="${badgeY}" width="${badgeWidth}" height="${badgeHeight}" rx="17" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+
+      <!-- "Powered by" text -->
+      ${textToSvgPath(poweredByText, badgeX + badgePadX, badgeY + 22, 12, fontRegular, '#6b7280')}
+
+      <!-- F logo square -->
+      <rect x="${badgeX + badgePadX + poweredByWidth + badgeGap}" y="${badgeY + 6}" width="${logoSize}" height="${logoSize}" rx="5" fill="#111827"/>
+      ${textToSvgPath('F', badgeX + badgePadX + poweredByWidth + badgeGap + logoSize / 2 - measureText('F', 13, fontExtraBold) / 2, badgeY + 23, 13, fontExtraBold, '#ffffff')}
+
+      <!-- "Fundraisr" text -->
+      ${textToSvgPath(fundraisrText, badgeX + badgePadX + poweredByWidth + badgeGap + logoSize + logoGap, badgeY + 23, 13, fontBold, '#111827')}
+
+      <!-- getfundraisr.io below the badge -->
+      ${textToSvgPath('getfundraisr.io', OG_WIDTH - 50 - measureText('getfundraisr.io', 12, fontRegular), OG_HEIGHT - 22, 12, fontRegular, '#94a3b8')}
     </svg>`;
+
     composites.push({
-        input: await sharp(Buffer.from(badgeSvg)).png().toBuffer(),
-        top: 24,
-        left: Math.round(OG_WIDTH / 2) - 20,
+        input: Buffer.from(badgeSvg),
+        top: 0,
+        left: 0,
     });
 
     return pipeline.composite(composites).png().toBuffer();
