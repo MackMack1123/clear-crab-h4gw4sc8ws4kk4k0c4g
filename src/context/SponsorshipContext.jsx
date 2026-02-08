@@ -66,11 +66,12 @@ export function SponsorshipProvider({ children }) {
     }, [cart]);
 
     const addToCart = (pkg, organizerData) => {
+        // Check if already in cart before tracking (avoid false positives)
+        if (cart.find(item => item.id === pkg.id)) return;
+        // Track add-to-cart event with package info (outside state updater)
+        trackAddToCart(pkg.organizerId || organizerData?._id, pkg);
         setCart(prev => {
             if (prev.find(item => item.id === pkg.id)) return prev;
-            // Track add-to-cart event with package info
-            trackAddToCart(pkg.organizerId, pkg);
-            // Attach organizer data snapshot to the item for easier display
             return [...prev, { ...pkg, organizerData }];
         });
     };
