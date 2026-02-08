@@ -5,14 +5,15 @@ traefik.http.routers.api-share-links.tls.certresolver=letsencrypt
 traefik.http.routers.api-share-links.service=https-0-v8g8w8c0w8koogk08o88gow8
 traefik.http.routers.api-share-links.priority=100
 
-# Proxy /org/* to API ONLY for social media crawlers (so they get dynamic OG tags).
-# Normal browsers bypass this and get the SPA as usual.
-traefik.http.routers.api-org-crawlers.rule=Host(`getfundraisr.io`) && PathPrefix(`/org/`) && HeadersRegexp(`User-Agent`, `.*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|TelegramBot|Slackbot|Discordbot|Pinterest|Googlebot|bingbot|redditbot|Applebot|iMessageLinkPreviews).*`)
-traefik.http.routers.api-org-crawlers.entryPoints=https
-traefik.http.routers.api-org-crawlers.tls=true
-traefik.http.routers.api-org-crawlers.tls.certresolver=letsencrypt
-traefik.http.routers.api-org-crawlers.service=https-0-v8g8w8c0w8koogk08o88gow8
-traefik.http.routers.api-org-crawlers.priority=110
+# Proxy ALL /org/* to API — serves SPA HTML with org-specific OG tags injected.
+# The API fetches & caches the SPA's index.html, replaces meta tags, and serves it.
+# Browsers get the full SPA (assets load from frontend domain), crawlers see OG tags.
+traefik.http.routers.api-org-pages.rule=Host(`getfundraisr.io`) && PathPrefix(`/org/`)
+traefik.http.routers.api-org-pages.entryPoints=https
+traefik.http.routers.api-org-pages.tls=true
+traefik.http.routers.api-org-pages.tls.certresolver=letsencrypt
+traefik.http.routers.api-org-pages.service=https-0-v8g8w8c0w8koogk08o88gow8
+traefik.http.routers.api-org-pages.priority=110
 
 
 

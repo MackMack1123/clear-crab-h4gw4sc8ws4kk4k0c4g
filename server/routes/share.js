@@ -22,17 +22,74 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;');
 }
 
+// --- Cached SPA index.html (fetched once from frontend, reused for /org/ requests) ---
+let cachedSpaHtml = null;
+let spaHtmlFetchedAt = 0;
+const SPA_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+async function getSpaHtml() {
+    const now = Date.now();
+    if (cachedSpaHtml && (now - spaHtmlFetchedAt) < SPA_CACHE_TTL) {
+        return cachedSpaHtml;
+    }
+    try {
+        const fetch = (await import('node-fetch')).default;
+        const frontendUrl = getFrontendUrl();
+        const res = await fetch(`${frontendUrl}/index.html`, { timeout: 5000 });
+        if (res.ok) {
+            cachedSpaHtml = await res.text();
+            spaHtmlFetchedAt = now;
+            console.log('[Share] Cached SPA index.html from frontend');
+        }
+    } catch (err) {
+        console.warn('[Share] Failed to fetch SPA index.html:', err.message);
+    }
+    return cachedSpaHtml;
+}
+
 /**
- * GET /s/:slug
- * Serves minimal HTML with OG meta tags for social media crawlers,
- * then instantly redirects browsers to the SPA.
+ * Replace OG meta tags in the SPA's index.html with org-specific values.
+ * Returns the modified HTML string.
+ */
+function injectOgTags(spaHtml, { title, description, ogImageUrl, spaUrl }) {
+    let html = spaHtml;
+
+    // Replace <title>
+    html = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`);
+
+    // Replace OG tags
+    html = html.replace(/<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${escapeHtml(title)}"/>`);
+    html = html.replace(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${escapeHtml(description)}"/>`);
+    html = html.replace(/<meta property="og:image"[^>]*\/?>(?:\s*<meta property="og:image:width"[^>]*\/?>)?(?:\s*<meta property="og:image:height"[^>]*\/?>)?/,
+        `<meta property="og:image" content="${escapeHtml(ogImageUrl)}"/>\n<meta property="og:image:width" content="1200"/>\n<meta property="og:image:height" content="630"/>`);
+    html = html.replace(/<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${escapeHtml(spaUrl)}"/>`);
+
+    // Replace Twitter tags
+    html = html.replace(/<meta property="twitter:title"[^>]*>/, `<meta property="twitter:title" content="${escapeHtml(title)}"/>`);
+    html = html.replace(/<meta property="twitter:description"[^>]*>/, `<meta property="twitter:description" content="${escapeHtml(description)}"/>`);
+    html = html.replace(/<meta property="twitter:image"[^>]*>/, `<meta property="twitter:image" content="${escapeHtml(ogImageUrl)}"/>`);
+    html = html.replace(/<meta property="twitter:url"[^>]*>/, `<meta property="twitter:url" content="${escapeHtml(spaUrl)}"/>`);
+
+    // Replace meta name="title" and name="description"
+    html = html.replace(/<meta name="title"[^>]*>/, `<meta name="title" content="${escapeHtml(title)}"/>`);
+    html = html.replace(/<meta name="description"[^>]*>/, `<meta name="description" content="${escapeHtml(description)}"/>`);
+
+    return html;
+}
+
+/**
+ * GET /:slug
+ *
+ * Mounted on both /s and /org:
+ * - /s/:slug  → minimal OG HTML + meta-refresh redirect (for share links)
+ * - /org/:slug → SPA index.html with OG tags injected (for direct page visits)
  */
 router.get('/:slug', async (req, res) => {
     const { slug } = req.params;
     const frontendUrl = getFrontendUrl();
+    const isOrgRoute = req.baseUrl === '/org';
 
     try {
-        // Look up user by slug (same pattern as GET /api/users/:id)
         const user = await User.findOne({
             $or: [
                 { slug },
@@ -41,7 +98,6 @@ router.get('/:slug', async (req, res) => {
         }).lean();
 
         if (!user) {
-            // Not found — redirect to frontend homepage
             return res.redirect(302, frontendUrl);
         }
 
@@ -52,6 +108,7 @@ router.get('/:slug', async (req, res) => {
         const spaUrl = `${frontendUrl}/org/${pageSlug}`;
         const apiBase = getApiBaseUrl(req);
         const ogImageUrl = `${apiBase}/og/${encodeURIComponent(pageSlug)}.png`;
+        const title = `Support & Grow with ${orgName}`;
 
         // Generate OG image on first visit if it doesn't exist
         if (!ogImageExists(String(pageSlug))) {
@@ -60,16 +117,29 @@ router.get('/:slug', async (req, res) => {
             });
         }
 
-        // Serve minimal HTML with OG tags
+        // --- /org/ route: serve SPA HTML with OG tags injected ---
+        if (isOrgRoute) {
+            const spaHtml = await getSpaHtml();
+            if (spaHtml) {
+                const html = injectOgTags(spaHtml, { title, description: description.substring(0, 200), ogImageUrl, spaUrl });
+                res.set('Content-Type', 'text/html; charset=utf-8');
+                res.set('Cache-Control', 'public, max-age=300');
+                return res.send(html);
+            }
+            // Fallback: if we couldn't fetch the SPA HTML, redirect
+            return res.redirect(302, spaUrl);
+        }
+
+        // --- /s/ route: minimal OG HTML + instant redirect ---
         const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Support & Grow with ${escapeHtml(orgName)}</title>
+<title>${escapeHtml(title)}</title>
 
 <!-- Open Graph -->
 <meta property="og:type" content="website"/>
-<meta property="og:title" content="${escapeHtml(`Support & Grow with ${orgName}`)}"/>
+<meta property="og:title" content="${escapeHtml(title)}"/>
 <meta property="og:description" content="${escapeHtml(description.substring(0, 200))}"/>
 <meta property="og:image" content="${escapeHtml(ogImageUrl)}"/>
 <meta property="og:image:width" content="1200"/>
@@ -78,7 +148,7 @@ router.get('/:slug', async (req, res) => {
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:title" content="${escapeHtml(`Support & Grow with ${orgName}`)}"/>
+<meta name="twitter:title" content="${escapeHtml(title)}"/>
 <meta name="twitter:description" content="${escapeHtml(description.substring(0, 200))}"/>
 <meta name="twitter:image" content="${escapeHtml(ogImageUrl)}"/>
 
@@ -92,7 +162,7 @@ router.get('/:slug', async (req, res) => {
 </html>`;
 
         res.set('Content-Type', 'text/html; charset=utf-8');
-        res.set('Cache-Control', 'public, max-age=300'); // 5 min cache
+        res.set('Cache-Control', 'public, max-age=300');
         res.send(html);
     } catch (err) {
         console.error('[Share] Error:', err.message);
