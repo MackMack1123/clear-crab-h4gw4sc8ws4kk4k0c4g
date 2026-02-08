@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, DollarSign, Users, Package, TrendingUp, Calendar } from 'lucide-react';
+import { Loader2, DollarSign, Users, Package, TrendingUp, Calendar, Eye, MousePointerClick, Percent, Globe } from 'lucide-react';
 import { analyticsService } from '../../services/analyticsService';
 import AnalyticsCard from './AnalyticsCard';
 import RevenueChart from './RevenueChart';
@@ -9,6 +9,7 @@ export default function OrgAnalytics({ orgId }) {
     const [period, setPeriod] = useState('30d');
     const [data, setData] = useState(null);
     const [trends, setTrends] = useState([]);
+    const [widgetMetrics, setWidgetMetrics] = useState(null);
 
     useEffect(() => {
         loadAnalytics();
@@ -17,12 +18,14 @@ export default function OrgAnalytics({ orgId }) {
     async function loadAnalytics() {
         setLoading(true);
         try {
-            const [analyticsData, trendsData] = await Promise.all([
+            const [analyticsData, trendsData, widgetData] = await Promise.all([
                 analyticsService.getOrgAnalytics(orgId, period),
-                analyticsService.getOrgTrends(orgId, period)
+                analyticsService.getOrgTrends(orgId, period),
+                analyticsService.getWidgetMetrics(orgId, period).catch(() => null)
             ]);
             setData(analyticsData);
             setTrends(trendsData);
+            setWidgetMetrics(widgetData);
         } catch (err) {
             console.error('Failed to load analytics:', err);
         } finally {
@@ -47,6 +50,7 @@ export default function OrgAnalytics({ orgId }) {
     }
 
     const { overview, packageStats, topSponsors, recentActivity } = data;
+    const hasWidgetData = widgetMetrics && widgetMetrics.overview.totalImpressions > 0;
 
     return (
         <div className="space-y-8 animate-fadeIn">
@@ -114,6 +118,142 @@ export default function OrgAnalytics({ orgId }) {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-6">Revenue Trend</h3>
                 <RevenueChart data={trends} type="area" height={280} />
+            </div>
+
+            {/* Widget Performance */}
+            <div className="space-y-6">
+                <h3 className="text-xl font-bold text-gray-900">Widget Performance</h3>
+
+                {!hasWidgetData ? (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+                        <Eye className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 font-medium mb-1">No widget activity yet</p>
+                        <p className="text-sm text-gray-400">Embed the sponsor widget on your website to start tracking impressions and clicks.</p>
+                    </div>
+                ) : (
+                    <>
+                        {/* Widget Stats Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <AnalyticsCard
+                                title="Widget Views"
+                                value={widgetMetrics.overview.totalImpressions.toLocaleString()}
+                                subtitle={`Last ${period === '12m' ? '12 months' : period.replace('d', ' days')}`}
+                                icon={Eye}
+                                color="text-indigo-600"
+                                bgColor="bg-indigo-50"
+                            />
+                            <AnalyticsCard
+                                title="Sponsor Clicks"
+                                value={widgetMetrics.overview.totalClicks.toLocaleString()}
+                                subtitle={`Last ${period === '12m' ? '12 months' : period.replace('d', ' days')}`}
+                                icon={MousePointerClick}
+                                color="text-emerald-600"
+                                bgColor="bg-emerald-50"
+                            />
+                            <AnalyticsCard
+                                title="Click Rate"
+                                value={`${widgetMetrics.overview.clickThroughRate}%`}
+                                subtitle="Clicks / views"
+                                icon={Percent}
+                                color="text-amber-600"
+                                bgColor="bg-amber-50"
+                            />
+                            <AnalyticsCard
+                                title="Embed Sites"
+                                value={widgetMetrics.overview.uniqueReferrers}
+                                subtitle="Unique websites"
+                                icon={Globe}
+                                color="text-sky-600"
+                                bgColor="bg-sky-50"
+                            />
+                        </div>
+
+                        {/* Widget Charts */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-6">Widget Impressions</h3>
+                                <RevenueChart
+                                    data={widgetMetrics.trends}
+                                    type="area"
+                                    dataKey="impressions"
+                                    color="#6366f1"
+                                    height={240}
+                                    formatValue={(v) => v.toLocaleString()}
+                                    formatYAxis={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+                                />
+                            </div>
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-6">Sponsor Clicks</h3>
+                                <RevenueChart
+                                    data={widgetMetrics.trends}
+                                    type="bar"
+                                    dataKey="clicks"
+                                    color="#10b981"
+                                    height={240}
+                                    formatValue={(v) => v.toLocaleString()}
+                                    formatYAxis={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Widget Tables */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Most Clicked Sponsors */}
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="p-6 border-b border-gray-100">
+                                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                        <MousePointerClick className="w-5 h-5 text-emerald-500" />
+                                        Most Clicked Sponsors
+                                    </h3>
+                                </div>
+                                <div className="divide-y divide-gray-50">
+                                    {widgetMetrics.topSponsorsClicked.length === 0 ? (
+                                        <div className="p-6 text-center text-gray-400">No clicks yet</div>
+                                    ) : (
+                                        widgetMetrics.topSponsorsClicked.map((sponsor, i) => (
+                                            <div key={sponsor.sponsorshipId || i} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 font-bold flex items-center justify-center text-sm">
+                                                        {i + 1}
+                                                    </span>
+                                                    <p className="font-medium text-gray-900">{sponsor.sponsorName || 'Unknown'}</p>
+                                                </div>
+                                                <span className="font-bold text-emerald-600">{sponsor.clicks} clicks</span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Top Embed Sites */}
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="p-6 border-b border-gray-100">
+                                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                        <Globe className="w-5 h-5 text-sky-500" />
+                                        Top Embed Sites
+                                    </h3>
+                                </div>
+                                <div className="divide-y divide-gray-50">
+                                    {widgetMetrics.topReferrers.length === 0 ? (
+                                        <div className="p-6 text-center text-gray-400">No referrer data yet</div>
+                                    ) : (
+                                        widgetMetrics.topReferrers.map((ref, i) => (
+                                            <div key={ref.url || i} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <span className="w-8 h-8 rounded-full bg-sky-50 text-sky-600 font-bold flex items-center justify-center text-sm flex-shrink-0">
+                                                        {i + 1}
+                                                    </span>
+                                                    <p className="font-medium text-gray-900 truncate">{ref.url.replace(/^https?:\/\//, '').replace(/\/$/, '')}</p>
+                                                </div>
+                                                <span className="font-bold text-sky-600 flex-shrink-0 ml-3">~{ref.count} views</span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Two Column Layout */}

@@ -3,6 +3,8 @@ const router = express.Router();
 const Sponsorship = require('../models/Sponsorship');
 const Package = require('../models/Package');
 const User = require('../models/User');
+const WidgetEvent = require('../models/WidgetEvent');
+const WidgetDailyStat = require('../models/WidgetDailyStat');
 
 // ========================================
 // PUBLIC WIDGET API ENDPOINTS
@@ -192,6 +194,110 @@ router.get('/sponsor/:sponsorshipId', async (req, res) => {
     } catch (error) {
         console.error('Widget Sponsor Profile Error:', error);
         res.status(500).json({ error: 'Failed to fetch sponsor profile' });
+    }
+});
+
+// ========================================
+// WIDGET TRACKING ENDPOINTS
+// Public (no auth) — fire-and-forget analytics
+// ========================================
+
+/**
+ * POST /api/widget/track/impression
+ * Track a widget load/view
+ */
+router.post('/track/impression', async (req, res) => {
+    try {
+        const { organizerId, widgetType, referrer } = req.body;
+        if (!organizerId) return res.sendStatus(400);
+
+        const today = new Date().toISOString().split('T')[0];
+
+        // Fire both writes concurrently
+        await Promise.all([
+            WidgetEvent.create({
+                organizerId,
+                eventType: 'impression',
+                widgetType,
+                referrer
+            }),
+            WidgetDailyStat.findOneAndUpdate(
+                { organizerId, date: today },
+                {
+                    $inc: { impressions: 1 },
+                    $addToSet: { referrers: { $each: referrer ? [referrer] : [] } }
+                },
+                { upsert: true }
+            ).then(async (doc) => {
+                // Cap referrers at 50
+                if (doc && doc.referrers && doc.referrers.length > 50) {
+                    await WidgetDailyStat.updateOne(
+                        { organizerId, date: today },
+                        { $push: { referrers: { $each: [], $slice: -50 } } }
+                    );
+                }
+            })
+        ]);
+
+        res.sendStatus(204);
+    } catch (error) {
+        // Silently handle — never break widget
+        console.error('Widget impression tracking error:', error.message);
+        res.sendStatus(204);
+    }
+});
+
+/**
+ * POST /api/widget/track/click
+ * Track a sponsor click in the widget
+ */
+router.post('/track/click', async (req, res) => {
+    try {
+        const { organizerId, sponsorshipId, sponsorName, widgetType, referrer } = req.body;
+        if (!organizerId) return res.sendStatus(400);
+
+        const today = new Date().toISOString().split('T')[0];
+
+        // Fire both writes concurrently
+        await Promise.all([
+            WidgetEvent.create({
+                organizerId,
+                eventType: 'click',
+                sponsorshipId,
+                sponsorName,
+                widgetType,
+                referrer
+            }),
+            (async () => {
+                // Increment daily click count
+                await WidgetDailyStat.findOneAndUpdate(
+                    { organizerId, date: today },
+                    {
+                        $inc: { clicks: 1 },
+                        $addToSet: { referrers: { $each: referrer ? [referrer] : [] } }
+                    },
+                    { upsert: true }
+                );
+
+                // Upsert sponsor click count in the sub-array
+                const updated = await WidgetDailyStat.updateOne(
+                    { organizerId, date: today, 'sponsorClicks.sponsorshipId': sponsorshipId },
+                    { $inc: { 'sponsorClicks.$.clicks': 1 } }
+                );
+
+                if (updated.matchedCount === 0 && sponsorshipId) {
+                    await WidgetDailyStat.updateOne(
+                        { organizerId, date: today },
+                        { $push: { sponsorClicks: { sponsorshipId, sponsorName, clicks: 1 } } }
+                    );
+                }
+            })()
+        ]);
+
+        res.sendStatus(204);
+    } catch (error) {
+        console.error('Widget click tracking error:', error.message);
+        res.sendStatus(204);
     }
 });
 

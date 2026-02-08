@@ -26,5 +26,12 @@ export const analyticsService = {
         const res = await fetch(`${API_URL}/admin/trends?period=${period}`);
         if (!res.ok) throw new Error('Failed to fetch admin trends');
         return res.json();
+    },
+
+    // Widget performance metrics
+    getWidgetMetrics: async (orgId, period = '30d') => {
+        const res = await fetch(`${API_URL}/org/${orgId}/widget?period=${period}`);
+        if (!res.ok) throw new Error('Failed to fetch widget metrics');
+        return res.json();
     }
 };

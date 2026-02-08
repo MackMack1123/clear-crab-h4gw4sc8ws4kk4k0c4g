@@ -39,7 +39,7 @@ app.use((req, res, next) => {
     // Widget routes: allow ANY origin (for embedding on external sites)
     if (req.path.startsWith('/api/widget') || req.path.startsWith('/widget')) {
         res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
         if (req.method === 'OPTIONS') {
             return res.sendStatus(200);
@@ -128,6 +128,15 @@ app.use('/api/email', require('./routes/email'));
 app.use('/api/system', require('./routes/system'));
 app.use('/api/discover', require('./routes/discover'));
 app.use('/api/team', require('./routes/team'));
+// Widget tracking rate limiter (generous — external sites fire these)
+const widgetTrackingLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 500,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests' }
+});
+app.use('/api/widget/track', widgetTrackingLimiter);
 app.use('/api/widget', require('./routes/widget'));
 app.use('/api/slack', require('./routes/slack'));
 

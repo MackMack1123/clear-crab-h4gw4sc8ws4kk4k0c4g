@@ -57,6 +57,39 @@
     let _sponsorMap = {};
     let _orgData = null;
 
+    // ===== ANALYTICS TRACKING =====
+
+    function trackEvent(type, data) {
+        try {
+            const payload = JSON.stringify({
+                organizerId: data.organizerId,
+                widgetType: data.widgetType,
+                referrer: window.location.href,
+                ...(type === 'click' ? {
+                    sponsorshipId: data.sponsorshipId,
+                    sponsorName: data.sponsorName
+                } : {})
+            });
+
+            const url = `${API_BASE}/widget/track/${type}`;
+
+            // Prefer sendBeacon (non-blocking, survives page unload)
+            if (navigator.sendBeacon) {
+                const blob = new Blob([payload], { type: 'application/json' });
+                navigator.sendBeacon(url, blob);
+            } else {
+                fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: payload,
+                    keepalive: true
+                }).catch(() => {});
+            }
+        } catch (e) {
+            // Never break the widget
+        }
+    }
+
     // SVG icons
     const ICONS = {
         globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
@@ -709,6 +742,10 @@
         const sponsor = _sponsorMap[sponsorId];
         if (!sponsor) return;
 
+        // Prevent stacking — close any existing modal first
+        const existing = document.querySelector('.fr-modal-overlay');
+        if (existing) existing.remove();
+
         const org = _orgData;
         const primaryColor = org?.primaryColor || BRAND.primary;
 
@@ -820,7 +857,19 @@
 
             e.preventDefault();
             e.stopPropagation();
-            openSponsorModal(sponsorEl.dataset.frSponsor);
+            const sponsorId = sponsorEl.dataset.frSponsor;
+            openSponsorModal(sponsorId);
+
+            // Track click
+            const sponsor = _sponsorMap[sponsorId];
+            if (sponsor) {
+                trackEvent('click', {
+                    organizerId: _orgData?.id,
+                    sponsorshipId: sponsorId,
+                    sponsorName: sponsor.name,
+                    widgetType: container.dataset.frWidgetType || 'unknown'
+                });
+            }
         });
     }
 
@@ -1120,6 +1169,10 @@
 
     // Main initialization function
     async function initWidget(container) {
+        // Guard against double-initialization (script loaded twice, manual re-init, etc.)
+        if (container._frInitialized) return;
+        container._frInitialized = true;
+
         const config = parseConfig(container);
 
         if (!config.orgId) {
@@ -1135,6 +1188,7 @@
                 const data = await fetchSponsors(config.orgId, 1, 'tier');
                 _orgData = data.organization;
                 renderBanner(container, data, config);
+                trackEvent('impression', { organizerId: config.orgId, widgetType: 'banner' });
             } catch (error) {
                 // Render banner with minimal data
                 renderBanner(container, { organization: { id: config.orgId } }, config);
@@ -1152,6 +1206,10 @@
             if (data.sponsors) {
                 data.sponsors.forEach(s => { _sponsorMap[s.id] = s; });
             }
+
+            // Track widget impression
+            container.dataset.frWidgetType = config.type;
+            trackEvent('impression', { organizerId: config.orgId, widgetType: config.type });
 
             if (!data.sponsors || data.sponsors.length === 0) {
                 renderEmpty(container, config.theme, data.organization);

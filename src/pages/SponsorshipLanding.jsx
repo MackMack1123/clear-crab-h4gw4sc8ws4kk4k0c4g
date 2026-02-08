@@ -329,7 +329,7 @@ export default function SponsorshipLanding() {
                                                 </div>
                                             )}
                                             <div className="mb-6">
-                                                <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">{pkg.title}</h3>
+                                                <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 line-clamp-2">{pkg.title}</h3>
                                                 <p className="text-sm text-gray-500 line-clamp-2 min-h-[2.5rem]">{pkg.description}</p>
                                             </div>
 
@@ -678,7 +678,7 @@ export default function SponsorshipLanding() {
                                                         className="group relative bg-white rounded-3xl p-8 border border-gray-200 shadow-sm hover:shadow-xl hover:shadow-gray-200/50 hover:border-gray-300 transition-all duration-300 flex flex-col"
                                                     >
                                                         <div className="mb-6">
-                                                            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">{pkg.title}</h3>
+                                                            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 line-clamp-2">{pkg.title}</h3>
                                                             <p className="text-sm text-gray-500 line-clamp-2 min-h-[2.5rem]">{pkg.description}</p>
                                                         </div>
 
@@ -741,7 +741,7 @@ export default function SponsorshipLanding() {
                                                     <div className="flex-1 w-full text-left">
                                                         <div className="flex flex-col lg:flex-row justify-between items-start mb-6 gap-4">
                                                             <div>
-                                                                <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-2">{pkg.title}</h3>
+                                                                <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-2 line-clamp-2">{pkg.title}</h3>
                                                                 <p className="text-gray-600 max-w-xl">{pkg.description}</p>
                                                             </div>
                                                             <div className="text-4xl font-heading font-bold text-gray-900 whitespace-nowrap">${pkg.price}</div>

@@ -26,11 +26,11 @@ export default function SquarePaymentForm({ amount, onSubmit, loading, locationI
                 <CreditCard
                     buttonProps={{
                         css: {
-                            backgroundColor: '#771520',
+                            backgroundColor: '#6366f1',
                             fontSize: '14px',
                             color: '#fff',
                             '&:hover': {
-                                backgroundColor: '#5e1019',
+                                backgroundColor: '#4f46e5',
                             },
                         },
                     }}

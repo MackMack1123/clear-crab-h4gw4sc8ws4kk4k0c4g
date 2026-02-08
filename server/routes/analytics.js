@@ -155,6 +155,109 @@ router.get('/org/:orgId/trends', async (req, res) => {
     }
 });
 
+// GET /api/analytics/org/:orgId/widget - Widget performance metrics
+router.get('/org/:orgId/widget', async (req, res) => {
+    try {
+        const { orgId } = req.params;
+        const { period = '30d' } = req.query;
+        const { start } = getDateRange(period);
+        const startDate = start.toISOString().split('T')[0];
+
+        const WidgetDailyStat = require('../models/WidgetDailyStat');
+
+        const dailyStats = await WidgetDailyStat.find({
+            organizerId: orgId,
+            date: { $gte: startDate }
+        }).sort({ date: 1 }).lean();
+
+        if (dailyStats.length === 0) {
+            return res.json({
+                overview: { totalImpressions: 0, totalClicks: 0, clickThroughRate: 0, uniqueReferrers: 0 },
+                trends: [],
+                topSponsorsClicked: [],
+                topReferrers: []
+            });
+        }
+
+        // Aggregate totals
+        let totalImpressions = 0;
+        let totalClicks = 0;
+        const referrerCounts = {};
+        const sponsorClickMap = {};
+
+        dailyStats.forEach(day => {
+            totalImpressions += day.impressions || 0;
+            totalClicks += day.clicks || 0;
+
+            // Collect referrers
+            (day.referrers || []).forEach(r => {
+                referrerCounts[r] = (referrerCounts[r] || 0) + (day.impressions || 1);
+            });
+
+            // Aggregate sponsor clicks
+            (day.sponsorClicks || []).forEach(sc => {
+                if (!sc.sponsorshipId) return;
+                if (!sponsorClickMap[sc.sponsorshipId]) {
+                    sponsorClickMap[sc.sponsorshipId] = { sponsorshipId: sc.sponsorshipId, sponsorName: sc.sponsorName, clicks: 0 };
+                }
+                sponsorClickMap[sc.sponsorshipId].clicks += sc.clicks || 0;
+            });
+        });
+
+        const clickThroughRate = totalImpressions > 0
+            ? Math.round((totalClicks / totalImpressions) * 10000) / 100
+            : 0;
+
+        // Build trends (fill missing days)
+        const trends = [];
+        const current = new Date(start);
+        const end = new Date();
+        const dailyMap = {};
+        dailyStats.forEach(d => { dailyMap[d.date] = d; });
+
+        while (current <= end) {
+            const dayStr = current.toISOString().split('T')[0];
+            const stat = dailyMap[dayStr];
+            trends.push({
+                date: dayStr,
+                impressions: stat?.impressions || 0,
+                clicks: stat?.clicks || 0
+            });
+            current.setDate(current.getDate() + 1);
+        }
+
+        // Top sponsors by clicks
+        const topSponsorsClicked = Object.values(sponsorClickMap)
+            .sort((a, b) => b.clicks - a.clicks)
+            .slice(0, 10);
+
+        // Top referrers
+        const topReferrers = Object.entries(referrerCounts)
+            .map(([url, count]) => ({ url, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
+        const uniqueReferrers = new Set();
+        dailyStats.forEach(d => (d.referrers || []).forEach(r => uniqueReferrers.add(r)));
+
+        res.json({
+            overview: {
+                totalImpressions,
+                totalClicks,
+                clickThroughRate,
+                uniqueReferrers: uniqueReferrers.size
+            },
+            trends,
+            topSponsorsClicked,
+            topReferrers
+        });
+
+    } catch (err) {
+        console.error('Widget analytics error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ==========================================
 // ADMIN ANALYTICS (Platform-wide)
 // ==========================================

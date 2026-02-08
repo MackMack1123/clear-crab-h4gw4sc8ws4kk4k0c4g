@@ -41,7 +41,8 @@ export default function RevenueChart({
     color = '#6366f1', // primary color
     height = 300,
     showGrid = true,
-    formatValue = (v) => `$${v.toLocaleString()}`
+    formatValue = (v) => `$${v.toLocaleString()}`,
+    formatYAxis
 }) {
     if (data.length === 0) {
         return (
@@ -65,7 +66,7 @@ export default function RevenueChart({
                     tickLine={false}
                 />
                 <YAxis
-                    tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                    tickFormatter={formatYAxis || ((v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`)}
                     tick={{ fontSize: 12, fill: '#9ca3af' }}
                     axisLine={false}
                     tickLine={false}
