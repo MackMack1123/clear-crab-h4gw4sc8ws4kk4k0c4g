@@ -693,11 +693,14 @@
             // Track impression
             trackEvent('impression', { organizerId: orgId });
 
+            // Sort helper: by price ascending
+            function byPrice(a, b) { return (a.price || 0) - (b.price || 0); }
+
             // Build body content
             var bodyHtml = '';
 
             if (blocks.length > 0) {
-                // Render blocks in order
+                // Render blocks in order, packages sorted by price within each block
                 blocks.forEach(function(block) {
                     if (block.type === 'package_highlight' && block.packageId) {
                         var pkg = pkgMap[block.packageId];
@@ -707,14 +710,16 @@
                     } else if (block.type === 'package_gallery' && block.packageIds) {
                         var galleryPkgs = block.packageIds
                             .map(function(id) { return pkgMap[id]; })
-                            .filter(Boolean);
+                            .filter(Boolean)
+                            .sort(byPrice);
                         if (galleryPkgs.length > 0) {
                             bodyHtml += renderGallery(galleryPkgs, org, block.title, buttonText);
                         }
                     } else if (block.type === 'package_list' && block.packageIds) {
                         var listPkgs = block.packageIds
                             .map(function(id) { return pkgMap[id]; })
-                            .filter(Boolean);
+                            .filter(Boolean)
+                            .sort(byPrice);
                         if (listPkgs.length > 0) {
                             bodyHtml += renderList(listPkgs, org, block.title);
                         }
@@ -727,6 +732,7 @@
                 if (pkgs.length === 0) {
                     bodyHtml = renderEmpty(org);
                 } else {
+                    pkgs.sort(byPrice);
                     bodyHtml = renderGallery(pkgs, org, null, buttonText);
                 }
             }
