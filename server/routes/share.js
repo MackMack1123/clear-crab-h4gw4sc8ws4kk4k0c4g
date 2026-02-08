@@ -47,7 +47,7 @@ router.get('/:slug', async (req, res) => {
 
         const orgProfile = user.organizationProfile || {};
         const orgName = orgProfile.orgName || user.teamName || 'Organization';
-        const description = orgProfile.description || `Support ${orgName} by becoming a sponsor today!`;
+        const description = orgProfile.description || `Strengthen community and boost your brand. Browse ${orgName}'s sponsorship packages today!`;
         const pageSlug = orgProfile.slug || user.slug || user._id;
         const spaUrl = `${frontendUrl}/org/${pageSlug}`;
         const apiBase = getApiBaseUrl(req);
@@ -65,11 +65,11 @@ router.get('/:slug', async (req, res) => {
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>${escapeHtml(orgName)} — Become a Sponsor</title>
+<title>Support & Grow with ${escapeHtml(orgName)}</title>
 
 <!-- Open Graph -->
 <meta property="og:type" content="website"/>
-<meta property="og:title" content="${escapeHtml(`Support ${orgName} — Become a Sponsor`)}"/>
+<meta property="og:title" content="${escapeHtml(`Support & Grow with ${orgName}`)}"/>
 <meta property="og:description" content="${escapeHtml(description.substring(0, 200))}"/>
 <meta property="og:image" content="${escapeHtml(ogImageUrl)}"/>
 <meta property="og:image:width" content="1200"/>
@@ -78,7 +78,7 @@ router.get('/:slug', async (req, res) => {
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:title" content="${escapeHtml(`Support ${orgName} — Become a Sponsor`)}"/>
+<meta name="twitter:title" content="${escapeHtml(`Support & Grow with ${orgName}`)}"/>
 <meta name="twitter:description" content="${escapeHtml(description.substring(0, 200))}"/>
 <meta name="twitter:image" content="${escapeHtml(ogImageUrl)}"/>
 

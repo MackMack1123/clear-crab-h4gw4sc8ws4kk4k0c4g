@@ -81,18 +81,19 @@ async function fetchImage(url) {
 /**
  * Generate a 1200x630 OG image as a PNG Buffer
  *
- * Layout (split design):
+ * Layout (split design — dark bg, accent left):
  * ┌──────────────────────────────────────────────────┐
- * │  "F" badge (top-center, small)                   │
- * │                                                  │
- * │  ┌────────────┐     Become a Sponsor for         │
- * │  │            │     {Organization Name}           │
- * │  │   [LOGO]   │                                  │
- * │  │            │     ┌────────────┐               │
- * │  └────────────┘     │ Learn More │               │
- * │                     └────────────┘               │
- * │  ▓▓ accent shape behind logo card                │
- * │                        getfundraisr.io (bottom)  │
+ * │ ▓▓▓▓▓▓▓▓▓▓▓│                                    │
+ * │ ▓ accent   ▓│  Support & Grow with               │
+ * │ ▓┌────────┐▓│  {Organization Name}               │
+ * │ ▓│ [LOGO] │▓│                                    │
+ * │ ▓└────────┘▓│  Strengthen Community, Boost Your  │
+ * │ ▓▓▓▓▓▓▓▓▓▓▓│  Brand. Browse Sponsorship Pkgs.   │
+ * │             │  ┌────────────┐                    │
+ * │             │  │ Learn More │ (outlined)         │
+ * │             │  └────────────┘                    │
+ * │             │      Powered by [F] Fundraisr      │
+ * │             │              getfundraisr.io       │
  * └──────────────────────────────────────────────────┘
  */
 async function generateOgImage(orgProfile) {
@@ -101,10 +102,10 @@ async function generateOgImage(orgProfile) {
     const orgName = orgProfile.orgName || 'Our Organization';
     const displayName = truncateText(orgName, 28);
 
-    // --- Background: white canvas with accent shape on left ---
+    // --- Background: dark canvas with accent shape on left ---
     const bgSvg = `
     <svg width="${OG_WIDTH}" height="${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-      <rect width="${OG_WIDTH}" height="${OG_HEIGHT}" fill="#ffffff"/>
+      <rect width="${OG_WIDTH}" height="${OG_HEIGHT}" fill="#1e293b"/>
       <defs>
         <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style="stop-color:${primaryColor};stop-opacity:1" />
@@ -165,25 +166,22 @@ async function generateOgImage(orgProfile) {
     const textSvg = `
     <svg width="${OG_WIDTH}" height="${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <!-- "Support & Grow with" -->
-      ${textToSvgPath('Support & Grow with', textX, 210, 40, fontExtraBold, '#0f172a')}
+      ${textToSvgPath('Support & Grow with', textX, 210, 40, fontExtraBold, '#ffffff')}
 
       <!-- Org name (slightly smaller) -->
-      ${textToSvgPath(displayName, textX, 260, 34, fontBold, '#0f172a')}
+      ${textToSvgPath(displayName, textX, 260, 34, fontBold, '#ffffff')}
 
-      <!-- Subheading line 1 -->
-      ${textToSvgPath('Strengthen Community, Boost your', textX, 310, 17, fontRegular, '#64748b')}
+      <!-- Subheading line 1: "Strengthen Community, Boost Your Brand. Browse" -->
+      ${textToSvgPath('Strengthen Community, Boost Your ', textX, 310, 17, fontRegular, '#94a3b8')}${textToSvgPath('Brand', textX + measureText('Strengthen Community, Boost Your ', 17, fontRegular), 310, 17, fontBold, primaryColor)}${textToSvgPath('. Browse', textX + measureText('Strengthen Community, Boost Your ', 17, fontRegular) + measureText('Brand', 17, fontBold), 310, 17, fontRegular, '#94a3b8')}
 
-      <!-- "Brand" in org color -->
-      ${textToSvgPath('Brand', textX + measureText('Strengthen Community, Boost your ', 17, fontRegular), 310, 17, fontBold, primaryColor)}${textToSvgPath('.', textX + measureText('Strengthen Community, Boost your ', 17, fontRegular) + measureText('Brand', 17, fontBold), 310, 17, fontRegular, '#64748b')}
+      <!-- Subheading line 2: "Sponsorship Packages." -->
+      ${textToSvgPath('Sponsorship', textX, 335, 17, fontBold, primaryColor)}${textToSvgPath(' Packages.', textX + measureText('Sponsorship', 17, fontBold), 335, 17, fontRegular, '#94a3b8')}
 
-      <!-- Subheading line 2 -->
-      ${textToSvgPath('Browse our Sponsorship Packages today!', textX, 335, 17, fontRegular, '#64748b')}
-
-      <!-- Learn More button background -->
-      <rect x="${textX}" y="370" width="180" height="50" rx="12" fill="${primaryColor}"/>
+      <!-- Learn More button (outlined) -->
+      <rect x="${textX}" y="370" width="180" height="50" rx="12" fill="none" stroke="${primaryColor}" stroke-width="2"/>
 
       <!-- Learn More button text (centered in button) -->
-      ${textToSvgPath('Learn More', textX + 90 - measureText('Learn More', 18, fontBold) / 2, 401, 18, fontBold, '#ffffff')}
+      ${textToSvgPath('Learn More', textX + 90 - measureText('Learn More', 18, fontBold) / 2, 401, 18, fontBold, primaryColor)}
     </svg>`;
 
     composites.push({
@@ -224,7 +222,7 @@ async function generateOgImage(orgProfile) {
       ${textToSvgPath(fundraisrText, badgeX + badgePadX + poweredByWidth + badgeGap + logoSize + logoGap, badgeY + 23, 13, fontBold, '#111827')}
 
       <!-- getfundraisr.io below the badge -->
-      ${textToSvgPath('getfundraisr.io', OG_WIDTH - 50 - measureText('getfundraisr.io', 12, fontRegular), OG_HEIGHT - 22, 12, fontRegular, '#94a3b8')}
+      ${textToSvgPath('getfundraisr.io', OG_WIDTH - 50 - measureText('getfundraisr.io', 12, fontRegular), OG_HEIGHT - 22, 12, fontRegular, '#64748b')}
     </svg>`;
 
     composites.push({
