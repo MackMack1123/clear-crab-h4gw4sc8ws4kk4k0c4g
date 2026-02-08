@@ -84,6 +84,16 @@ router.get('/sponsors/:organizerId', async (req, res) => {
             };
         });
 
+        // Deduplicate: if a sponsor bought multiple packages, show them once with highest tier
+        const deduped = {};
+        sponsors.forEach(s => {
+            const key = (s.name || '').toLowerCase().trim();
+            if (!deduped[key] || s.tierPriority > deduped[key].tierPriority) {
+                deduped[key] = s;
+            }
+        });
+        sponsors = Object.values(deduped);
+
         // Sort sponsors
         if (sortBy === 'tier') {
             sponsors.sort((a, b) => b.tierPriority - a.tierPriority);
