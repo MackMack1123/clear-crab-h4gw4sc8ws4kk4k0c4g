@@ -18,6 +18,8 @@ export default function WidgetGenerator() {
         showNames: true,
         maxSponsors: 12,
         scrollSpeed: 30,
+        // Wall-specific options
+        showTiers: true,
         // Banner-specific options
         buttonText: 'View Sponsorship Packages',
         buttonColor: '#6366f1'
@@ -67,6 +69,10 @@ export default function WidgetGenerator() {
 
         if (config.type === 'carousel') {
             baseAttrs.push(`data-scroll-speed="${config.scrollSpeed}"`);
+        }
+
+        if (config.type === 'wall') {
+            baseAttrs.push(`data-show-tiers="${config.showTiers}"`);
         }
 
         if (config.type === 'banner') {
@@ -257,6 +263,26 @@ export default function WidgetGenerator() {
                             </div>
                         )}
 
+                        {/* Wall-specific: Show Tiers Toggle */}
+                        {config.type === 'wall' && (
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-medium text-gray-700">Show Sponsorship Levels</label>
+                                    <button
+                                        onClick={() => setConfig({ ...config, showTiers: !config.showTiers })}
+                                        className={`relative w-12 h-6 rounded-full transition ${config.showTiers ? 'bg-purple-600' : 'bg-gray-300'}`}
+                                    >
+                                        <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${config.showTiers ? 'left-7' : 'left-1'}`} />
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {config.showTiers
+                                        ? 'Sponsors are grouped by sponsorship level, highest to lowest.'
+                                        : 'Sponsors are displayed in a randomized order each time.'}
+                                </p>
+                            </div>
+                        )}
+
                         {/* Banner-specific options */}
                         {config.type === 'banner' && (
                             <>
@@ -443,9 +469,41 @@ export default function WidgetGenerator() {
                                     /* Wall Preview */
                                     <div className="space-y-6">
                                         {(() => {
+                                            let wallSponsors = sponsors.slice(0, config.maxSponsors);
+
+                                            if (!config.showTiers) {
+                                                // Shuffle for preview
+                                                wallSponsors = [...wallSponsors].sort(() => Math.random() - 0.5);
+                                                return (
+                                                    <div className="flex flex-wrap justify-center gap-4">
+                                                        {wallSponsors.map(sponsor => (
+                                                            <div key={sponsor.id} className="text-center">
+                                                                <div
+                                                                    className={`rounded-lg p-3 mb-2 flex items-center justify-center ${config.theme === 'dark' ? 'bg-slate-800' : 'bg-gray-100'}`}
+                                                                    style={{ width: currentSize.width, height: currentSize.height }}
+                                                                >
+                                                                    {sponsor.logo ? (
+                                                                        <img src={sponsor.logo} alt={sponsor.name} className="max-w-full max-h-full object-contain" />
+                                                                    ) : (
+                                                                        <div className={`text-2xl font-bold ${config.theme === 'dark' ? 'text-slate-600' : 'text-gray-300'}`}>
+                                                                            {sponsor.name?.[0] || '?'}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                {config.showNames && (
+                                                                    <p className={`text-sm font-semibold truncate ${config.theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ maxWidth: currentSize.width }}>
+                                                                        {sponsor.name}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            }
+
                                             const tiers = {};
                                             const tierOrder = [];
-                                            sponsors.slice(0, config.maxSponsors).forEach(s => {
+                                            wallSponsors.forEach(s => {
                                                 const tier = s.tier || 'Sponsor';
                                                 if (!tiers[tier]) { tiers[tier] = []; tierOrder.push(tier); }
                                                 tiers[tier].push(s);

@@ -40,6 +40,7 @@
         maxSponsors: 20,
         scrollSpeed: 30, // pixels per second
         sortBy: 'tier',
+        showTiers: true, // Wall: group by tier or randomize
         // Banner specific
         buttonText: 'View Sponsorship Packages',
         buttonColor: BRAND.primary
@@ -686,6 +687,7 @@
         if (container.dataset.maxSponsors) config.maxSponsors = parseInt(container.dataset.maxSponsors);
         if (container.dataset.scrollSpeed) config.scrollSpeed = parseInt(container.dataset.scrollSpeed);
         if (container.dataset.sortBy) config.sortBy = container.dataset.sortBy;
+        if (container.dataset.showTiers !== undefined) config.showTiers = container.dataset.showTiers !== 'false';
         // Banner config
         if (container.dataset.buttonText) config.buttonText = container.dataset.buttonText;
         if (container.dataset.buttonColor) config.buttonColor = container.dataset.buttonColor;
@@ -1000,32 +1002,69 @@
         `;
     }
 
-    // Render wall (tier-grouped showcase)
+    // Shuffle array using Fisher-Yates
+    function shuffleArray(arr) {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+    }
+
+    // Render wall (tier-grouped or randomized showcase)
     function renderWall(container, data, config) {
         const { sponsors, organization } = data;
+        let wallHtml;
 
-        // Group sponsors by tier preserving API sort order
-        const tierOrder = [];
-        const tierMap = {};
-        sponsors.forEach(s => {
-            const tier = s.tier || 'Sponsor';
-            if (!tierMap[tier]) {
-                tierMap[tier] = [];
-                tierOrder.push(tier);
-            }
-            tierMap[tier].push(s);
-        });
+        if (config.showTiers) {
+            // Group sponsors by tier preserving API sort order
+            const tierOrder = [];
+            const tierMap = {};
+            sponsors.forEach(s => {
+                const tier = s.tier || 'Sponsor';
+                if (!tierMap[tier]) {
+                    tierMap[tier] = [];
+                    tierOrder.push(tier);
+                }
+                tierMap[tier].push(s);
+            });
 
-        // Assign priority: top 1/3 = high, middle = medium, bottom = low
-        const tierCount = tierOrder.length;
-        const highCutoff = Math.ceil(tierCount / 3);
-        const medCutoff = Math.ceil((tierCount * 2) / 3);
+            // Assign priority: top 1/3 = high, middle = medium, bottom = low
+            const tierCount = tierOrder.length;
+            const highCutoff = Math.ceil(tierCount / 3);
+            const medCutoff = Math.ceil((tierCount * 2) / 3);
 
-        const tiersHtml = tierOrder.map((tierName, idx) => {
-            const priority = idx < highCutoff ? 'high' : idx < medCutoff ? 'medium' : 'low';
-            const tierSponsors = tierMap[tierName];
+            wallHtml = tierOrder.map((tierName, idx) => {
+                const priority = idx < highCutoff ? 'high' : idx < medCutoff ? 'medium' : 'low';
+                const tierSponsors = tierMap[tierName];
 
-            const sponsorsHtml = tierSponsors.map(sponsor => {
+                const sponsorsHtml = tierSponsors.map(sponsor => {
+                    const logoHtml = sponsor.logo
+                        ? `<img src="${sponsor.logo}" alt="${sponsor.name}" class="fr-logo" loading="lazy">`
+                        : `<span style="font-size:24px;font-weight:700;color:var(--fr-text-secondary)">${(sponsor.name || '?')[0]}</span>`;
+
+                    return `
+                        <div data-fr-sponsor="${sponsor.id}" class="fr-wall-item">
+                            <div class="fr-logo-container">${logoHtml}</div>
+                            ${config.showNames ? `<p class="fr-sponsor-name">${sponsor.name}</p>` : ''}
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="fr-wall-tier">
+                        <div class="fr-wall-tier-name">${tierName}</div>
+                        <div class="fr-wall-tier-grid" data-priority="${priority}">
+                            ${sponsorsHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            // Randomized - no tier grouping, uniform size
+            const shuffled = shuffleArray(sponsors);
+            const sponsorsHtml = shuffled.map(sponsor => {
                 const logoHtml = sponsor.logo
                     ? `<img src="${sponsor.logo}" alt="${sponsor.name}" class="fr-logo" loading="lazy">`
                     : `<span style="font-size:24px;font-weight:700;color:var(--fr-text-secondary)">${(sponsor.name || '?')[0]}</span>`;
@@ -1038,21 +1077,20 @@
                 `;
             }).join('');
 
-            return `
+            wallHtml = `
                 <div class="fr-wall-tier">
-                    <div class="fr-wall-tier-name">${tierName}</div>
-                    <div class="fr-wall-tier-grid" data-priority="${priority}">
+                    <div class="fr-wall-tier-grid" data-priority="medium">
                         ${sponsorsHtml}
                     </div>
                 </div>
             `;
-        }).join('');
+        }
 
         container.innerHTML = `
             <div class="fr-widget fr-widget-${config.theme}">
                 <div class="fr-widget-container">
                     <div class="fr-wall">
-                        ${tiersHtml}
+                        ${wallHtml}
                     </div>
                     ${renderFooter(organization)}
                 </div>
