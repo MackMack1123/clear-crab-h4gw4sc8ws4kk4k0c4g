@@ -385,23 +385,40 @@
         .fr-footer a {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             padding: 8px 16px;
             font-size: 12px;
-            font-weight: 600;
-            color: #ffffff;
+            font-weight: 500;
+            color: #6b7280;
             text-decoration: none;
-            background: var(--fr-primary);
-            border-radius: 8px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 9999px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             transition: all 0.2s ease;
         }
         .fr-footer a:hover {
-            background: var(--fr-primary-hover);
-            transform: translateY(-1px);
+            background: #f9fafb;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        .fr-footer svg {
-            width: 14px;
-            height: 14px;
+        .fr-footer .fr-footer-logo {
+            width: 20px;
+            height: 20px;
+            background: #111827;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .fr-footer .fr-footer-brand {
+            font-weight: 700;
+            color: #111827;
+            font-size: 13px;
+            letter-spacing: -0.01em;
         }
 
         /* Empty State */
@@ -1192,10 +1209,9 @@
         return `
             <div class="fr-footer">
                 <a href="${orgUrl}" target="_blank" rel="noopener">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                    </svg>
-                    Powered by Fundraisr
+                    <span>Powered by</span>
+                    <span class="fr-footer-logo">F</span>
+                    <span class="fr-footer-brand">Fundraisr</span>
                 </a>
             </div>
         `;

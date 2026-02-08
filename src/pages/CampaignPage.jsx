@@ -177,9 +177,10 @@ export default function CampaignPage() {
 
                 {/* Branding Footer */}
                 <div className="mt-12 mb-6 text-center">
-                    <a href="/" target="_blank" className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/50 border border-gray-100 shadow-sm hover:bg-white hover:shadow-md transition-all duration-300 group">
-                        <div className="w-5 h-5 bg-primary rounded flex items-center justify-center text-white font-bold text-[10px] group-hover:scale-110 transition-transform">T</div>
-                        <span className="text-xs font-medium text-gray-500">Powered by <span className="font-bold text-gray-700">Fundraisr</span></span>
+                    <a href="/" target="_blank" className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 hover:shadow-md transition-all duration-300 group">
+                        <span className="text-xs font-medium text-gray-500">Powered by</span>
+                        <div className="w-5 h-5 bg-gray-900 rounded flex items-center justify-center text-white font-bold text-[10px]">F</div>
+                        <span className="font-bold text-gray-900 text-sm tracking-tight">Fundraisr</span>
                     </a>
                 </div>
             </div>

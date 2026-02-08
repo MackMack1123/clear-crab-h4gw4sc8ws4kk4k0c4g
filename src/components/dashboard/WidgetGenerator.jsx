@@ -394,13 +394,11 @@ export default function WidgetGenerator() {
                                     >
                                         {config.buttonText}
                                     </button>
-                                    <div className={`mt-4 pt-4 border-t ${config.theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-                                        <span
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-medium"
-                                            style={{ backgroundColor: '#6366f1' }}
-                                        >
-                                            <Sparkles className="w-3 h-3" />
-                                            Powered by Fundraisr
+                                    <div className={`mt-4 pt-4 border-t text-center ${config.theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+                                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-xs font-medium text-gray-500">
+                                            <span>Powered by</span>
+                                            <span className="w-5 h-5 bg-gray-900 rounded flex items-center justify-center text-white text-[10px] font-bold">F</span>
+                                            <span className="font-bold text-gray-900 text-[13px] tracking-tight">Fundraisr</span>
                                         </span>
                                     </div>
                                 </div>
@@ -622,12 +620,10 @@ export default function WidgetGenerator() {
 
                                 {/* Powered by footer */}
                                 <div className={`mt-4 pt-4 border-t text-center ${config.theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-                                    <span
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-medium"
-                                        style={{ backgroundColor: '#6366f1' }}
-                                    >
-                                        <Sparkles className="w-3 h-3" />
-                                        Powered by Fundraisr
+                                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-xs font-medium text-gray-500">
+                                        <span>Powered by</span>
+                                        <span className="w-5 h-5 bg-gray-900 rounded flex items-center justify-center text-white text-[10px] font-bold">F</span>
+                                        <span className="font-bold text-gray-900 text-[13px] tracking-tight">Fundraisr</span>
                                     </span>
                                 </div>
                             </div>
