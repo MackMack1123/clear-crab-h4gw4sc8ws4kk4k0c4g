@@ -1,4 +1,5 @@
 const sharp = require('sharp');
+const opentype = require('opentype.js');
 const path = require('path');
 const fs = require('fs');
 
@@ -9,6 +10,33 @@ const OG_HEIGHT = 630;
 // Ensure output directory exists
 if (!fs.existsSync(OG_DIR)) {
     fs.mkdirSync(OG_DIR, { recursive: true });
+}
+
+// Load bundled Inter font files at startup (vector paths — no system fonts needed)
+const fontRegular = opentype.loadSync(
+    path.join(__dirname, '../node_modules/@fontsource/inter/files/inter-latin-400-normal.woff')
+);
+const fontBold = opentype.loadSync(
+    path.join(__dirname, '../node_modules/@fontsource/inter/files/inter-latin-700-normal.woff')
+);
+const fontExtraBold = opentype.loadSync(
+    path.join(__dirname, '../node_modules/@fontsource/inter/files/inter-latin-800-normal.woff')
+);
+
+/**
+ * Convert text to an SVG <path> element using opentype.js
+ * This renders as vector outlines — works on any server without system fonts.
+ */
+function textToSvgPath(text, x, y, fontSize, font, fill) {
+    const otPath = font.getPath(text, x, y, fontSize);
+    return `<path d="${otPath.toPathData()}" fill="${fill}"/>`;
+}
+
+/**
+ * Measure text width for alignment
+ */
+function measureText(text, fontSize, font) {
+    return font.getAdvanceWidth(text, fontSize);
 }
 
 /**
@@ -27,23 +55,11 @@ function darkenColor(hex, amount) {
 }
 
 /**
- * Escape text for safe SVG embedding
- */
-function escapeXml(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-}
-
-/**
- * Truncate text to fit approximately within a width (rough character estimate)
+ * Truncate text to fit approximately within a width
  */
 function truncateText(text, maxChars) {
     if (text.length <= maxChars) return text;
-    return text.substring(0, maxChars - 1) + '\u2026';
+    return text.substring(0, maxChars - 1) + '...';
 }
 
 /**
@@ -75,7 +91,7 @@ async function fetchImage(url) {
  * │  │            │     ┌────────────┐               │
  * │  └────────────┘     │ Learn More │               │
  * │                     └────────────┘               │
- * │  ▓▓ purple accent shape behind logo card         │
+ * │  ▓▓ accent shape behind logo card                │
  * │                        getfundraisr.io (bottom)  │
  * └──────────────────────────────────────────────────┘
  */
@@ -88,10 +104,7 @@ async function generateOgImage(orgProfile) {
     // --- Background: white canvas with accent shape on left ---
     const bgSvg = `
     <svg width="${OG_WIDTH}" height="${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-      <!-- White background -->
       <rect width="${OG_WIDTH}" height="${OG_HEIGHT}" fill="#ffffff"/>
-
-      <!-- Purple accent shape (left side, diagonal) -->
       <defs>
         <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style="stop-color:${primaryColor};stop-opacity:1" />
@@ -99,8 +112,6 @@ async function generateOgImage(orgProfile) {
         </linearGradient>
       </defs>
       <path d="M0,0 L480,0 L420,630 L0,630 Z" fill="url(#accent)"/>
-
-      <!-- Subtle lighter accent overlay for depth -->
       <path d="M40,80 L440,40 L390,590 L30,610 Z" fill="rgba(255,255,255,0.08)"/>
     </svg>`;
 
@@ -112,12 +123,9 @@ async function generateOgImage(orgProfile) {
     const cardLeft = 130;
     const cardTop = 175;
 
-    // Card background (warm amber/gold like reference)
     const cardSvg = `
     <svg width="${cardSize + 20}" height="${cardSize + 20}" xmlns="http://www.w3.org/2000/svg">
-      <!-- Card shadow -->
       <rect x="6" y="6" width="${cardSize + 8}" height="${cardSize + 8}" rx="20" fill="rgba(0,0,0,0.12)"/>
-      <!-- Card body -->
       <rect x="0" y="0" width="${cardSize + 8}" height="${cardSize + 8}" rx="20" fill="#f5f0e8"/>
     </svg>`;
     composites.push({
@@ -151,44 +159,25 @@ async function generateOgImage(orgProfile) {
         }
     }
 
-    // --- Right side: Text + CTA button ---
+    // --- Right side: Text + CTA button (all rendered as vector paths) ---
     const textX = 540;
-    const textAreaWidth = OG_WIDTH - textX - 60;
-
-    // Word-wrap the title into lines
-    const titleLine1 = 'Become a Sponsor for';
-    const titleLine2 = escapeXml(displayName);
 
     const textSvg = `
     <svg width="${OG_WIDTH}" height="${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-      <!-- Title -->
-      <text x="${textX}" y="240"
-        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
-        font-size="40" font-weight="800" fill="#0f172a">
-        ${escapeXml(titleLine1)}
-      </text>
-      <text x="${textX}" y="290"
-        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
-        font-size="40" font-weight="800" fill="${primaryColor}">
-        ${titleLine2}
-      </text>
+      <!-- "Become a Sponsor for" -->
+      ${textToSvgPath('Become a Sponsor for', textX, 250, 38, fontExtraBold, '#0f172a')}
 
-      <!-- Learn More button -->
+      <!-- Org name in accent color -->
+      ${textToSvgPath(displayName, textX, 300, 38, fontExtraBold, primaryColor)}
+
+      <!-- Learn More button background -->
       <rect x="${textX}" y="330" width="180" height="50" rx="12" fill="${primaryColor}"/>
-      <text x="${textX + 90}" y="361"
-        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
-        font-size="18" font-weight="700" fill="#ffffff"
-        text-anchor="middle">
-        Learn More
-      </text>
 
-      <!-- Fundraisr branding (bottom right, minimal) -->
-      <text x="${OG_WIDTH - 50}" y="${OG_HEIGHT - 28}"
-        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
-        font-size="14" font-weight="500" fill="#94a3b8"
-        text-anchor="end">
-        getfundraisr.io
-      </text>
+      <!-- Learn More button text (centered in button) -->
+      ${textToSvgPath('Learn More', textX + 90 - measureText('Learn More', 18, fontBold) / 2, 361, 18, fontBold, '#ffffff')}
+
+      <!-- getfundraisr.io branding (bottom right) -->
+      ${textToSvgPath('getfundraisr.io', OG_WIDTH - 50 - measureText('getfundraisr.io', 14, fontRegular), OG_HEIGHT - 28, 14, fontRegular, '#94a3b8')}
     </svg>`;
 
     composites.push({
@@ -201,12 +190,7 @@ async function generateOgImage(orgProfile) {
     const badgeSvg = `
     <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
       <rect width="40" height="40" rx="10" fill="#0f172a"/>
-      <text x="20" y="27"
-        font-family="system-ui, -apple-system, sans-serif"
-        font-size="22" font-weight="800" fill="#ffffff"
-        text-anchor="middle">
-        F
-      </text>
+      ${textToSvgPath('F', 20 - measureText('F', 22, fontExtraBold) / 2, 28, 22, fontExtraBold, '#ffffff')}
     </svg>`;
     composites.push({
         input: await sharp(Buffer.from(badgeSvg)).png().toBuffer(),
@@ -233,7 +217,6 @@ async function generateAndSaveOgImage(userId, orgProfile) {
         return filename;
     } catch (err) {
         console.error('[OG Image] Generation failed:', err.message);
-        // Generate a simple fallback
         try {
             const fallback = await generateFallbackImage();
             fs.writeFileSync(filepath, fallback);
@@ -258,18 +241,8 @@ async function generateFallbackImage() {
         </linearGradient>
       </defs>
       <rect width="${OG_WIDTH}" height="${OG_HEIGHT}" fill="url(#bg)" />
-      <text x="${OG_WIDTH / 2}" y="${OG_HEIGHT / 2 - 20}"
-        font-family="system-ui, -apple-system, sans-serif"
-        font-size="56" font-weight="800" fill="white"
-        text-anchor="middle" dominant-baseline="central">
-        Fundraisr
-      </text>
-      <text x="${OG_WIDTH / 2}" y="${OG_HEIGHT / 2 + 40}"
-        font-family="system-ui, -apple-system, sans-serif"
-        font-size="24" font-weight="500" fill="rgba(255,255,255,0.7)"
-        text-anchor="middle" dominant-baseline="central">
-        Sponsorship &amp; Fundraising Made Easy
-      </text>
+      ${textToSvgPath('Fundraisr', OG_WIDTH / 2 - measureText('Fundraisr', 56, fontExtraBold) / 2, OG_HEIGHT / 2 - 10, 56, fontExtraBold, '#ffffff')}
+      ${textToSvgPath('Sponsorship & Fundraising Made Easy', OG_WIDTH / 2 - measureText('Sponsorship & Fundraising Made Easy', 24, fontRegular) / 2, OG_HEIGHT / 2 + 40, 24, fontRegular, 'rgba(255,255,255,0.7)')}
     </svg>`;
     return sharp(Buffer.from(svg)).resize(OG_WIDTH, OG_HEIGHT).png().toBuffer();
 }
