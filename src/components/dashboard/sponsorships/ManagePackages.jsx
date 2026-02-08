@@ -263,8 +263,16 @@ export default function ManagePackages() {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Package Image (Optional)</label>
                             <div className="flex items-center gap-4">
                                 {formData.imageUrl && (
-                                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                                    <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 group">
                                         <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Remove image"
+                                        >
+                                            <X className="w-5 h-5 text-white" />
+                                        </button>
                                     </div>
                                 )}
                                 <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition">
