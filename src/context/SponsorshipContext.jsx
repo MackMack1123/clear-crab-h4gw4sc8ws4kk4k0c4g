@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { systemService } from '../services/systemService';
 import { userService } from '../services/userService';
+import { trackAddToCart } from '../hooks/usePageTracking';
 
 const SponsorshipContext = createContext();
 
@@ -67,6 +68,8 @@ export function SponsorshipProvider({ children }) {
     const addToCart = (pkg, organizerData) => {
         setCart(prev => {
             if (prev.find(item => item.id === pkg.id)) return prev;
+            // Track add-to-cart event with package info
+            trackAddToCart(pkg.organizerId, pkg);
             // Attach organizer data snapshot to the item for easier display
             return [...prev, { ...pkg, organizerData }];
         });

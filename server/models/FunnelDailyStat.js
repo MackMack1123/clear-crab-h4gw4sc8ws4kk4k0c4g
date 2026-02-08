@@ -5,11 +5,18 @@ const funnelDailyStatSchema = new mongoose.Schema({
     organizerId: { type: String, required: true },
     date: { type: String, required: true }, // 'YYYY-MM-DD'
     landing: { type: Number, default: 0 },
+    add_to_cart: { type: Number, default: 0 },
     review: { type: Number, default: 0 },
     auth: { type: Number, default: 0 },
     checkout: { type: Number, default: 0 },
     success: { type: Number, default: 0 },
-    referrers: { type: [String], default: [] }
+    referrers: { type: [String], default: [] },
+    packages: [{
+        packageId: String,
+        packageTitle: String,
+        packagePrice: Number,
+        addToCartCount: { type: Number, default: 0 }
+    }]
 });
 
 // One doc per org per day

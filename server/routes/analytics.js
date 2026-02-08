@@ -25,18 +25,20 @@ function getDateRange(period = '30d') {
 // PAGE VIEW TRACKING (public, no auth)
 // ==========================================
 
-const VALID_PAGES = ['landing', 'review', 'auth', 'checkout', 'success'];
+const VALID_PAGES = ['landing', 'review', 'auth', 'checkout', 'success', 'add_to_cart'];
 
 // POST /api/analytics/track/page-view
 router.post('/track/page-view', async (req, res) => {
     try {
-        const { organizerId, page, sessionId, referrer } = req.body;
+        const { organizerId, page, sessionId, referrer, packageId, packageTitle, packagePrice } = req.body;
         if (!organizerId || !page || !VALID_PAGES.includes(page)) {
             return res.sendStatus(204);
         }
 
-        // Insert raw event
-        PageViewEvent.create({ organizerId, page, sessionId, referrer }).catch(() => {});
+        // Insert raw event (include package data if present)
+        const eventData = { organizerId, page, sessionId, referrer };
+        if (packageId) { eventData.packageId = packageId; eventData.packageTitle = packageTitle; eventData.packagePrice = packagePrice; }
+        PageViewEvent.create(eventData).catch(() => {});
 
         // Upsert daily stat
         const today = new Date().toISOString().split('T')[0];
@@ -57,6 +59,25 @@ router.post('/track/page-view', async (req, res) => {
                 ).catch(() => {});
             }
         }).catch(() => {});
+
+        // Track package interaction for add_to_cart events
+        if (page === 'add_to_cart' && packageId) {
+            FunnelDailyStat.findOne({ organizerId, date: today }).then(doc => {
+                if (!doc) return;
+                const existing = (doc.packages || []).find(p => p.packageId === packageId);
+                if (existing) {
+                    FunnelDailyStat.updateOne(
+                        { _id: doc._id, 'packages.packageId': packageId },
+                        { $inc: { 'packages.$.addToCartCount': 1 } }
+                    ).catch(() => {});
+                } else if ((doc.packages || []).length < 50) {
+                    FunnelDailyStat.updateOne(
+                        { _id: doc._id },
+                        { $push: { packages: { packageId, packageTitle, packagePrice, addToCartCount: 1 } } }
+                    ).catch(() => {});
+                }
+            }).catch(() => {});
+        }
 
         res.sendStatus(204);
     } catch (err) {
@@ -320,20 +341,23 @@ router.get('/org/:orgId/funnel', async (req, res) => {
         if (dailyStats.length === 0) {
             return res.json({
                 overview: {
-                    landing: 0, review: 0, checkout: 0, success: 0,
-                    landingToReview: 0, reviewToCheckout: 0, checkoutToSuccess: 0, overallConversion: 0
+                    landing: 0, addToCart: 0, review: 0, checkout: 0, success: 0,
+                    landingToAddToCart: 0, addToCartToReview: 0, reviewToCheckout: 0, checkoutToSuccess: 0, overallConversion: 0
                 },
                 trends: [],
-                topReferrers: []
+                topReferrers: [],
+                topPackages: []
             });
         }
 
         // Aggregate totals
-        let landing = 0, review = 0, checkout = 0, success = 0;
+        let landing = 0, addToCart = 0, review = 0, checkout = 0, success = 0;
         const referrerCounts = {};
+        const packageMap = {};
 
         dailyStats.forEach(day => {
             landing += day.landing || 0;
+            addToCart += day.add_to_cart || 0;
             review += day.review || 0;
             checkout += day.checkout || 0;
             success += day.success || 0;
@@ -341,9 +365,18 @@ router.get('/org/:orgId/funnel', async (req, res) => {
             (day.referrers || []).forEach(r => {
                 referrerCounts[r] = (referrerCounts[r] || 0) + 1;
             });
+
+            (day.packages || []).forEach(p => {
+                if (!p.packageId) return;
+                if (!packageMap[p.packageId]) {
+                    packageMap[p.packageId] = { packageId: p.packageId, packageTitle: p.packageTitle, packagePrice: p.packagePrice, addToCartCount: 0 };
+                }
+                packageMap[p.packageId].addToCartCount += p.addToCartCount || 0;
+            });
         });
 
-        const landingToReview = landing > 0 ? Math.round((review / landing) * 1000) / 10 : 0;
+        const landingToAddToCart = landing > 0 ? Math.round((addToCart / landing) * 1000) / 10 : 0;
+        const addToCartToReview = addToCart > 0 ? Math.round((review / addToCart) * 1000) / 10 : 0;
         const reviewToCheckout = review > 0 ? Math.round((checkout / review) * 1000) / 10 : 0;
         const checkoutToSuccess = checkout > 0 ? Math.round((success / checkout) * 1000) / 10 : 0;
         const overallConversion = landing > 0 ? Math.round((success / landing) * 1000) / 10 : 0;
@@ -361,6 +394,7 @@ router.get('/org/:orgId/funnel', async (req, res) => {
             trends.push({
                 date: dayStr,
                 landing: stat?.landing || 0,
+                addToCart: stat?.add_to_cart || 0,
                 review: stat?.review || 0,
                 checkout: stat?.checkout || 0,
                 success: stat?.success || 0
@@ -374,13 +408,19 @@ router.get('/org/:orgId/funnel', async (req, res) => {
             .sort((a, b) => b.count - a.count)
             .slice(0, 10);
 
+        // Top packages by add-to-cart
+        const topPackages = Object.values(packageMap)
+            .sort((a, b) => b.addToCartCount - a.addToCartCount)
+            .slice(0, 10);
+
         res.json({
             overview: {
-                landing, review, checkout, success,
-                landingToReview, reviewToCheckout, checkoutToSuccess, overallConversion
+                landing, addToCart, review, checkout, success,
+                landingToAddToCart, addToCartToReview, reviewToCheckout, checkoutToSuccess, overallConversion
             },
             trends,
-            topReferrers
+            topReferrers,
+            topPackages
         });
 
     } catch (err) {

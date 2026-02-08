@@ -36,11 +36,11 @@ export const analyticsService = {
     },
 
     // Page view tracking (fire-and-forget from public pages)
-    trackPageView: async (organizerId, page, sessionId) => {
+    trackPageView: async (organizerId, page, sessionId, extra = {}) => {
         await fetch(`${API_URL}/track/page-view`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ organizerId, page, sessionId, referrer: document.referrer }),
+            body: JSON.stringify({ organizerId, page, sessionId, referrer: document.referrer, ...extra }),
             keepalive: true
         });
     },

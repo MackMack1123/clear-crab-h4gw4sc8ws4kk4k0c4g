@@ -3,9 +3,12 @@ const mongoose = require('mongoose');
 const pageViewEventSchema = new mongoose.Schema({
     _id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
     organizerId: { type: String, required: true },
-    page: { type: String, required: true, enum: ['landing', 'review', 'auth', 'checkout', 'success'] },
+    page: { type: String, required: true, enum: ['landing', 'review', 'auth', 'checkout', 'success', 'add_to_cart'] },
     sessionId: { type: String },
     referrer: { type: String },
+    packageId: { type: String },
+    packageTitle: { type: String },
+    packagePrice: { type: Number },
     timestamp: { type: Date, default: Date.now }
 });
 

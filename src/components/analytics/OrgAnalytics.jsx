@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, DollarSign, Users, Package, TrendingUp, Calendar, Eye, MousePointerClick, Percent, Globe, ArrowRight, Filter } from 'lucide-react';
+import { Loader2, DollarSign, Users, Package, TrendingUp, Calendar, Eye, MousePointerClick, Percent, Globe, ArrowRight, Filter, ShoppingCart } from 'lucide-react';
 import { analyticsService } from '../../services/analyticsService';
 import AnalyticsCard from './AnalyticsCard';
 import RevenueChart from './RevenueChart';
@@ -277,6 +277,7 @@ export default function OrgAnalytics({ orgId }) {
                             <div className="space-y-3">
                                 {[
                                     { label: 'Landing Page', key: 'landing', color: 'bg-blue-500' },
+                                    { label: 'Add to Cart', key: 'addToCart', color: 'bg-cyan-500' },
                                     { label: 'Review Cart', key: 'review', color: 'bg-indigo-500' },
                                     { label: 'Checkout', key: 'checkout', color: 'bg-purple-500' },
                                     { label: 'Success', key: 'success', color: 'bg-green-500' }
@@ -317,11 +318,19 @@ export default function OrgAnalytics({ orgId }) {
                         </div>
 
                         {/* Conversion Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <AnalyticsCard
-                                title="Landing → Review"
-                                value={`${funnelMetrics.overview.landingToReview}%`}
-                                subtitle="of visitors review cart"
+                                title="Landing → Cart"
+                                value={`${funnelMetrics.overview.landingToAddToCart}%`}
+                                subtitle="of visitors add to cart"
+                                icon={ShoppingCart}
+                                color="text-cyan-600"
+                                bgColor="bg-cyan-50"
+                            />
+                            <AnalyticsCard
+                                title="Cart → Review"
+                                value={`${funnelMetrics.overview.addToCartToReview}%`}
+                                subtitle="of cart additions reviewed"
                                 icon={ArrowRight}
                                 color="text-indigo-600"
                                 bgColor="bg-indigo-50"
@@ -357,6 +366,36 @@ export default function OrgAnalytics({ orgId }) {
                                 formatYAxis={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
                             />
                         </div>
+
+                        {/* Top Packages by Add-to-Cart */}
+                        {funnelMetrics.topPackages && funnelMetrics.topPackages.length > 0 && (
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="p-6 border-b border-gray-100">
+                                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                        <ShoppingCart className="w-5 h-5 text-cyan-500" />
+                                        Most Popular Packages
+                                    </h3>
+                                </div>
+                                <div className="divide-y divide-gray-50">
+                                    {funnelMetrics.topPackages.map((pkg, i) => (
+                                        <div key={pkg.packageId || i} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <span className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-600 font-bold flex items-center justify-center text-sm flex-shrink-0">
+                                                    {i + 1}
+                                                </span>
+                                                <div>
+                                                    <p className="font-medium text-gray-900">{pkg.packageTitle || 'Unknown'}</p>
+                                                    {pkg.packagePrice != null && (
+                                                        <p className="text-sm text-gray-500">${pkg.packagePrice.toLocaleString()}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <span className="font-bold text-cyan-600">{pkg.addToCartCount} added</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Top Referrers */}
                         {funnelMetrics.topReferrers.length > 0 && (
