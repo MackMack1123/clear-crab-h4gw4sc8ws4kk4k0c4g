@@ -73,7 +73,9 @@ router.get('/sponsors/:organizerId', async (req, res) => {
                 name: s.sponsorInfo?.companyName || s.sponsorName,
                 logo: s.branding?.logoUrl,
                 tagline: s.branding?.tagline || s.sponsorInfo?.adMessage,
-                website: s.branding?.websiteUrl,
+                website: s.sponsorInfo?.showPublicWebsite ? (s.sponsorInfo?.publicWebsite || s.branding?.websiteUrl) : null,
+                email: s.sponsorInfo?.showPublicEmail ? (s.sponsorInfo?.publicEmail) : null,
+                phone: s.sponsorInfo?.showPublicPhone ? (s.sponsorInfo?.publicPhone) : null,
                 tier: pkg?.title || 'Sponsor',
                 tierPriority: pkg?.price || 0,
                 createdAt: s.createdAt
@@ -173,8 +175,9 @@ router.get('/sponsor/:sponsorshipId', async (req, res) => {
             name: sponsorship.sponsorInfo?.companyName || sponsorship.sponsorName,
             logo: sponsorship.branding?.logoUrl,
             tagline: sponsorship.branding?.tagline || sponsorship.sponsorInfo?.adMessage,
-            website: sponsorship.branding?.websiteUrl,
-            email: sponsorship.sponsorInfo?.publicEmail || null, // Only include if sponsor opted to display
+            website: sponsorship.sponsorInfo?.showPublicWebsite ? (sponsorship.sponsorInfo?.publicWebsite || sponsorship.branding?.websiteUrl) : null,
+            email: sponsorship.sponsorInfo?.showPublicEmail ? (sponsorship.sponsorInfo?.publicEmail) : null,
+            phone: sponsorship.sponsorInfo?.showPublicPhone ? (sponsorship.sponsorInfo?.publicPhone) : null,
             tier: pkg?.title || 'Sponsor',
             organization: {
                 id: sponsorship.organizerId,

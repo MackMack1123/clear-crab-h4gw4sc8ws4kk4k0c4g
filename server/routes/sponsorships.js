@@ -348,7 +348,7 @@ router.put("/:id", async (req, res) => {
 
     // Sponsors can only update certain fields (branding, sponsorInfo, children)
     if (isSponsor && !isOrganizer) {
-      const allowedFields = ['branding', 'sponsorInfo', 'children', 'status'];
+      const allowedFields = ['branding', 'sponsorInfo', 'children', 'notes', 'status'];
       const updateKeys = Object.keys(req.body);
       const hasDisallowedFields = updateKeys.some(key => !allowedFields.includes(key) && key !== 'userId');
       if (hasDisallowedFields) {

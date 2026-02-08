@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ExternalLink, Building2, Award, ArrowLeft, Globe, Loader2, Sparkles, Heart, Mail } from 'lucide-react';
+import { ExternalLink, Building2, Award, ArrowLeft, Globe, Loader2, Sparkles, Heart, Mail, Phone } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 export default function SponsorProfile() {
@@ -160,8 +160,8 @@ export default function SponsorProfile() {
                             </div>
                         )}
 
-                        {/* Website & Email CTAs */}
-                        {(sponsor.website || sponsor.email) && (
+                        {/* Website, Email & Phone CTAs */}
+                        {(sponsor.website || sponsor.email || sponsor.phone) && (
                             <div className="flex flex-wrap items-center justify-center gap-4 mb-12">
                                 {sponsor.website && (
                                     <a
@@ -182,6 +182,15 @@ export default function SponsorProfile() {
                                     >
                                         <Mail className="w-5 h-5" />
                                         Contact Us
+                                    </a>
+                                )}
+                                {sponsor.phone && (
+                                    <a
+                                        href={`tel:${sponsor.phone}`}
+                                        className="group inline-flex items-center gap-3 px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-2xl font-bold text-lg transition-all shadow-xl shadow-slate-500/15 hover:shadow-slate-500/25 hover:-translate-y-0.5"
+                                    >
+                                        <Phone className="w-5 h-5" />
+                                        {sponsor.phone}
                                     </a>
                                 )}
                             </div>

@@ -52,6 +52,20 @@
         large: { width: 180, height: 110 }
     };
 
+    // Store sponsor data for modal lookups
+    let _sponsorMap = {};
+    let _orgData = null;
+
+    // SVG icons
+    const ICONS = {
+        globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+        mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
+        phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+        close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+        external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg>',
+        award: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>'
+    };
+
     // CSS Styles
     const WIDGET_STYLES = `
         .fr-widget {
@@ -86,6 +100,11 @@
             border-radius: 16px;
             padding: 24px;
             overflow: hidden;
+        }
+
+        /* Clickable sponsor items */
+        [data-fr-sponsor] {
+            cursor: pointer;
         }
 
         /* Continuous Scroll Carousel */
@@ -194,6 +213,33 @@
             color: var(--fr-text-secondary);
             margin: 0;
             line-height: 1.5;
+        }
+        .fr-gallery-contact {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .fr-gallery-contact a {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--fr-primary);
+            text-decoration: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: var(--fr-surface);
+            border: 1px solid var(--fr-border);
+            transition: all 0.2s ease;
+        }
+        .fr-gallery-contact a:hover {
+            border-color: var(--fr-primary);
+            background: var(--fr-bg);
+        }
+        .fr-gallery-contact svg {
+            width: 12px;
+            height: 12px;
         }
 
         /* Banner CTA Widget */
@@ -397,6 +443,225 @@
         .fr-wall-item:hover {
             transform: translateY(-2px);
         }
+
+        /* ===== Sponsor Modal ===== */
+        .fr-modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .fr-modal-overlay.fr-modal-open {
+            opacity: 1;
+        }
+        .fr-modal {
+            position: relative;
+            width: 100%;
+            max-width: 520px;
+            max-height: 90vh;
+            overflow-y: auto;
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.2);
+            transform: scale(0.95) translateY(10px);
+            transition: transform 0.25s ease;
+        }
+        .fr-modal-open .fr-modal {
+            transform: scale(1) translateY(0);
+        }
+        .fr-modal-header {
+            position: relative;
+            padding: 32px 32px 0;
+            text-align: center;
+        }
+        .fr-modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: #f1f5f9;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease;
+            padding: 0;
+        }
+        .fr-modal-close:hover {
+            background: #e2e8f0;
+        }
+        .fr-modal-close svg {
+            width: 18px;
+            height: 18px;
+            color: #64748b;
+        }
+        .fr-modal-logo-wrap {
+            display: inline-block;
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+        .fr-modal-logo-wrap img {
+            max-width: 240px;
+            max-height: 120px;
+            object-fit: contain;
+            display: block;
+        }
+        .fr-modal-logo-placeholder {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+        .fr-modal-name {
+            font-size: 26px;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0 0 8px;
+            line-height: 1.2;
+        }
+        .fr-modal-tier {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 6px 14px;
+            border-radius: 999px;
+            margin-bottom: 4px;
+        }
+        .fr-modal-tier svg {
+            width: 14px;
+            height: 14px;
+        }
+        .fr-modal-body {
+            padding: 24px 32px;
+        }
+        .fr-modal-tagline {
+            font-size: 16px;
+            color: #475569;
+            line-height: 1.6;
+            text-align: center;
+            margin: 0 0 24px;
+            font-style: italic;
+        }
+        .fr-modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .fr-modal-action {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            border-radius: 14px;
+            text-decoration: none;
+            color: #0f172a;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            transition: all 0.15s ease;
+            font-size: 15px;
+            font-weight: 500;
+        }
+        .fr-modal-action:hover {
+            border-color: var(--fr-modal-color, #6366f1);
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .fr-modal-action-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .fr-modal-action-icon svg {
+            width: 20px;
+            height: 20px;
+            color: #ffffff;
+        }
+        .fr-modal-action-label {
+            flex: 1;
+            min-width: 0;
+        }
+        .fr-modal-action-label small {
+            display: block;
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: 400;
+            margin-top: 1px;
+        }
+        .fr-modal-action-arrow {
+            color: #cbd5e1;
+            flex-shrink: 0;
+        }
+        .fr-modal-action-arrow svg {
+            width: 16px;
+            height: 16px;
+        }
+        .fr-modal-footer {
+            padding: 16px 32px 24px;
+            text-align: center;
+            border-top: 1px solid #f1f5f9;
+        }
+        .fr-modal-org {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 10px;
+            transition: all 0.15s ease;
+        }
+        .fr-modal-org:hover {
+            background: #f8fafc;
+            color: #0f172a;
+        }
+        .fr-modal-org img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            border-radius: 6px;
+        }
+        .fr-modal-org-initial {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: #ffffff;
+        }
     `;
 
     // Inject styles once
@@ -436,6 +701,129 @@
         return response.json();
     }
 
+    // ===== MODAL SYSTEM =====
+
+    function openSponsorModal(sponsorId) {
+        const sponsor = _sponsorMap[sponsorId];
+        if (!sponsor) return;
+
+        const org = _orgData;
+        const primaryColor = org?.primaryColor || BRAND.primary;
+
+        // Build action links
+        let actionsHtml = '';
+        if (sponsor.website) {
+            actionsHtml += `
+                <a href="${sponsor.website}" target="_blank" rel="noopener" class="fr-modal-action" style="--fr-modal-color:${primaryColor}">
+                    <span class="fr-modal-action-icon" style="background:${primaryColor}">${ICONS.globe}</span>
+                    <span class="fr-modal-action-label">Visit Website<small>${sponsor.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</small></span>
+                    <span class="fr-modal-action-arrow">${ICONS.external}</span>
+                </a>`;
+        }
+        if (sponsor.email) {
+            actionsHtml += `
+                <a href="mailto:${sponsor.email}" class="fr-modal-action" style="--fr-modal-color:${primaryColor}">
+                    <span class="fr-modal-action-icon" style="background:${primaryColor}">${ICONS.mail}</span>
+                    <span class="fr-modal-action-label">Send Email<small>${sponsor.email}</small></span>
+                    <span class="fr-modal-action-arrow">${ICONS.external}</span>
+                </a>`;
+        }
+        if (sponsor.phone) {
+            actionsHtml += `
+                <a href="tel:${sponsor.phone}" class="fr-modal-action" style="--fr-modal-color:${primaryColor}">
+                    <span class="fr-modal-action-icon" style="background:${primaryColor}">${ICONS.phone}</span>
+                    <span class="fr-modal-action-label">Call<small>${sponsor.phone}</small></span>
+                    <span class="fr-modal-action-arrow">${ICONS.external}</span>
+                </a>`;
+        }
+
+        // Logo or initial
+        const logoHtml = sponsor.logo
+            ? `<div class="fr-modal-logo-wrap"><img src="${sponsor.logo}" alt="${sponsor.name}"></div>`
+            : `<div class="fr-modal-logo-placeholder" style="background:${primaryColor}">${(sponsor.name || '?')[0]}</div>`;
+
+        // Org footer
+        const orgUrl = org?.slug
+            ? `${PROFILE_BASE}/org/${org.slug}`
+            : `${PROFILE_BASE}/org/${org?.id || ''}`;
+
+        const orgLogoHtml = org?.logo
+            ? `<img src="${org.logo}" alt="${org.name || ''}">`
+            : `<span class="fr-modal-org-initial" style="background:${primaryColor}">${(org?.name || 'O')[0]}</span>`;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'fr-modal-overlay';
+        overlay.innerHTML = `
+            <div class="fr-modal" role="dialog" aria-modal="true">
+                <div class="fr-modal-header">
+                    <button class="fr-modal-close" aria-label="Close">${ICONS.close}</button>
+                    ${logoHtml}
+                    <h2 class="fr-modal-name">${sponsor.name}</h2>
+                    <span class="fr-modal-tier" style="color:${primaryColor};background:${primaryColor}12">
+                        ${ICONS.award}
+                        ${sponsor.tier}
+                    </span>
+                </div>
+                <div class="fr-modal-body">
+                    ${sponsor.tagline ? `<p class="fr-modal-tagline">"${sponsor.tagline}"</p>` : ''}
+                    ${actionsHtml ? `<div class="fr-modal-actions">${actionsHtml}</div>` : ''}
+                </div>
+                <div class="fr-modal-footer">
+                    <a href="${orgUrl}" target="_blank" rel="noopener" class="fr-modal-org">
+                        ${orgLogoHtml}
+                        Proud sponsor of ${org?.name || 'Organization'}
+                    </a>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        // Animate in
+        requestAnimationFrame(() => {
+            overlay.classList.add('fr-modal-open');
+        });
+
+        // Close handlers
+        const close = () => {
+            overlay.classList.remove('fr-modal-open');
+            setTimeout(() => overlay.remove(), 200);
+            document.removeEventListener('keydown', escHandler);
+        };
+
+        const escHandler = (e) => {
+            if (e.key === 'Escape') close();
+        };
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close();
+        });
+
+        overlay.querySelector('.fr-modal-close').addEventListener('click', close);
+        document.addEventListener('keydown', escHandler);
+    }
+
+    // Attach click delegation to a widget container
+    function attachModalHandlers(container) {
+        container.addEventListener('click', (e) => {
+            // Find the closest sponsor element
+            const sponsorEl = e.target.closest('[data-fr-sponsor]');
+            if (!sponsorEl) return;
+
+            // Don't intercept direct link clicks inside the element (contact links in gallery)
+            const clickedLink = e.target.closest('a[href]');
+            if (clickedLink && !clickedLink.hasAttribute('data-fr-sponsor')) {
+                return; // Let the link navigate normally
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+            openSponsorModal(sponsorEl.dataset.frSponsor);
+        });
+    }
+
+    // ===== RENDER FUNCTIONS =====
+
     // Render loading state
     function renderLoading(container, theme) {
         container.innerHTML = `
@@ -473,13 +861,12 @@
         `;
     }
 
-    // Render sponsor item for carousel/grid
+    // Render sponsor item for carousel/grid (now uses div with data attr instead of anchor)
     function renderSponsorItem(sponsor, config, itemClass) {
         const size = LOGO_SIZES[config.logoSize] || LOGO_SIZES.medium;
-        const profileUrl = `${PROFILE_BASE}/sponsor/${sponsor.id}`;
 
         return `
-            <a href="${profileUrl}" target="_blank" rel="noopener" class="${itemClass}">
+            <div data-fr-sponsor="${sponsor.id}" class="${itemClass}">
                 <div class="fr-logo-container" style="width: ${size.width}px; height: ${size.height}px;">
                     <img src="${sponsor.logo}" alt="${sponsor.name}" class="fr-logo" loading="lazy">
                 </div>
@@ -487,23 +874,38 @@
                     <p class="fr-sponsor-name" style="max-width: ${size.width}px;">${sponsor.name}</p>
                     <p class="fr-sponsor-tier">${sponsor.tier}</p>
                 ` : ''}
-            </a>
+            </div>
         `;
     }
 
     // Render gallery item (larger card with more info)
     function renderGalleryItem(sponsor) {
-        const profileUrl = `${PROFILE_BASE}/sponsor/${sponsor.id}`;
+        // Build contact links
+        let contactHtml = '';
+        const contactLinks = [];
+        if (sponsor.website) {
+            contactLinks.push(`<a href="${sponsor.website}" target="_blank" rel="noopener">${ICONS.globe} Website</a>`);
+        }
+        if (sponsor.email) {
+            contactLinks.push(`<a href="mailto:${sponsor.email}">${ICONS.mail} Email</a>`);
+        }
+        if (sponsor.phone) {
+            contactLinks.push(`<a href="tel:${sponsor.phone}">${ICONS.phone} ${sponsor.phone}</a>`);
+        }
+        if (contactLinks.length > 0) {
+            contactHtml = `<div class="fr-gallery-contact">${contactLinks.join('')}</div>`;
+        }
 
         return `
-            <a href="${profileUrl}" target="_blank" rel="noopener" class="fr-gallery-item">
+            <div data-fr-sponsor="${sponsor.id}" class="fr-gallery-item">
                 <div class="fr-gallery-logo">
                     <img src="${sponsor.logo}" alt="${sponsor.name}" loading="lazy">
                 </div>
                 <h3 class="fr-gallery-name">${sponsor.name}</h3>
                 <p class="fr-gallery-tier">${sponsor.tier}</p>
                 ${sponsor.tagline ? `<p class="fr-gallery-tagline">${sponsor.tagline}</p>` : ''}
-            </a>
+                ${contactHtml}
+            </div>
         `;
     }
 
@@ -532,6 +934,8 @@
                 </div>
             </div>
         `;
+
+        attachModalHandlers(container);
     }
 
     // Render grid
@@ -549,6 +953,8 @@
                 </div>
             </div>
         `;
+
+        attachModalHandlers(container);
     }
 
     // Render gallery (full page showcase)
@@ -566,6 +972,8 @@
                 </div>
             </div>
         `;
+
+        attachModalHandlers(container);
     }
 
     // Render banner CTA
@@ -618,16 +1026,15 @@
             const tierSponsors = tierMap[tierName];
 
             const sponsorsHtml = tierSponsors.map(sponsor => {
-                const profileUrl = `${PROFILE_BASE}/sponsor/${sponsor.id}`;
                 const logoHtml = sponsor.logo
                     ? `<img src="${sponsor.logo}" alt="${sponsor.name}" class="fr-logo" loading="lazy">`
                     : `<span style="font-size:24px;font-weight:700;color:var(--fr-text-secondary)">${(sponsor.name || '?')[0]}</span>`;
 
                 return `
-                    <a href="${profileUrl}" target="_blank" rel="noopener" class="fr-wall-item">
+                    <div data-fr-sponsor="${sponsor.id}" class="fr-wall-item">
                         <div class="fr-logo-container">${logoHtml}</div>
                         ${config.showNames ? `<p class="fr-sponsor-name">${sponsor.name}</p>` : ''}
-                    </a>
+                    </div>
                 `;
             }).join('');
 
@@ -651,6 +1058,8 @@
                 </div>
             </div>
         `;
+
+        attachModalHandlers(container);
     }
 
     // Render footer
@@ -686,6 +1095,7 @@
         if (config.type === 'banner') {
             try {
                 const data = await fetchSponsors(config.orgId, 1, 'tier');
+                _orgData = data.organization;
                 renderBanner(container, data, config);
             } catch (error) {
                 // Render banner with minimal data
@@ -698,6 +1108,12 @@
 
         try {
             const data = await fetchSponsors(config.orgId, config.maxSponsors, config.sortBy);
+
+            // Store data for modal lookups
+            _orgData = data.organization;
+            if (data.sponsors) {
+                data.sponsors.forEach(s => { _sponsorMap[s.id] = s; });
+            }
 
             if (!data.sponsors || data.sponsors.length === 0) {
                 renderEmpty(container, config.theme, data.organization);

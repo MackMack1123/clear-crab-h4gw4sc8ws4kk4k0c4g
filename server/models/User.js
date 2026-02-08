@@ -50,6 +50,7 @@ const UserSchema = new mongoose.Schema({
         logoUrl: String,
         primaryColor: String,
         description: String,
+        divisions: [String], // League divisions (e.g. "U8", "U10", "U12")
         waiveFees: { type: Boolean, default: false }, // Admin override to waive fees
         enableFundraising: { type: Boolean, default: true }, // Feature toggle for fundraising tabs
         heroSettings: {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useOrgPermissions } from '../../../hooks/useOrgPermissions';
 import { userService } from '../../../services/userService';
-import { Upload, Save, Globe, Mail, Link as LinkIcon, Palette, Lock } from 'lucide-react';
+import { Upload, Save, Globe, Mail, Link as LinkIcon, Palette, Lock, Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../../../config';
 
@@ -15,8 +15,10 @@ export default function OrgBranding() {
         website: '',
         primaryColor: '#3B82F6',
         slug: '',
-        logoUrl: ''
+        logoUrl: '',
+        divisions: []
     });
+    const [newDivision, setNewDivision] = useState('');
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [slugStatus, setSlugStatus] = useState('idle'); // 'idle' | 'checking' | 'available' | 'taken'
@@ -182,7 +184,8 @@ export default function OrgBranding() {
                 'organizationProfile.website': profile.website,
                 'organizationProfile.primaryColor': profile.primaryColor,
                 'organizationProfile.logoUrl': profile.logoUrl,
-                'organizationProfile.slug': profile.slug
+                'organizationProfile.slug': profile.slug,
+                'organizationProfile.divisions': profile.divisions || []
             };
 
             await userService.updateUser(orgId, payload);
@@ -351,6 +354,67 @@ export default function OrgBranding() {
                         />
                     </div>
                 </div>
+            </div>
+
+            {/* Divisions / Teams */}
+            <div className="space-y-3">
+                <label className="text-sm font-bold text-gray-700">League Divisions / Teams</label>
+                <p className="text-xs text-gray-500">Add divisions so sponsors can select which team their children play on.</p>
+                <div className="flex flex-wrap gap-2">
+                    {(profile.divisions || []).map((div, i) => (
+                        <span key={i} className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm font-medium">
+                            {div}
+                            {canEditSettings && (
+                                <button
+                                    type="button"
+                                    onClick={() => setProfile(prev => ({
+                                        ...prev,
+                                        divisions: prev.divisions.filter((_, idx) => idx !== i)
+                                    }))}
+                                    className="hover:text-red-600 transition"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                        </span>
+                    ))}
+                </div>
+                {canEditSettings && (
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            className="flex-1 px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none text-sm"
+                            placeholder="e.g. U8, U10, Varsity..."
+                            value={newDivision}
+                            onChange={e => setNewDivision(e.target.value)}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter' && newDivision.trim()) {
+                                    e.preventDefault();
+                                    setProfile(prev => ({
+                                        ...prev,
+                                        divisions: [...(prev.divisions || []), newDivision.trim()]
+                                    }));
+                                    setNewDivision('');
+                                }
+                            }}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (newDivision.trim()) {
+                                    setProfile(prev => ({
+                                        ...prev,
+                                        divisions: [...(prev.divisions || []), newDivision.trim()]
+                                    }));
+                                    setNewDivision('');
+                                }
+                            }}
+                            className="px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm font-bold hover:bg-primary/20 transition flex items-center gap-1"
+                        >
+                            <Plus className="w-4 h-4" /> Add
+                        </button>
+                    </div>
+                )}
             </div>
 
             {canEditSettings && (

@@ -40,6 +40,13 @@ const SponsorshipSchema = new mongoose.Schema(
       adMessage: String,
       email: String,
       phone: String,
+      website: String,
+      showPublicEmail: Boolean,
+      showPublicWebsite: Boolean,
+      showPublicPhone: Boolean,
+      publicEmail: String,
+      publicPhone: String,
+      publicWebsite: String,
     },
     children: [
       {
@@ -47,6 +54,7 @@ const SponsorshipSchema = new mongoose.Schema(
         division: String,
       },
     ],
+    notes: String, // Internal notes from sponsor (visible in org reports, not public widgets)
     createdAt: { type: Date, default: Date.now },
   },
   { _id: false },

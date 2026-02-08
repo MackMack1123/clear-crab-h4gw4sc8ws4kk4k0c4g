@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { sponsorshipService } from '../services/sponsorshipService';
-import { CheckCircle, Upload, Save, Plus, Trash2, Image } from 'lucide-react';
+import { CheckCircle, Upload, Save, Plus, Trash2, Image, MessageSquare } from 'lucide-react';
 import SignPreviewEditor from '../components/sponsor/SignPreviewEditor';
 import { API_BASE_URL } from '../config';
 
@@ -23,12 +23,18 @@ export default function SponsorshipFulfilment() {
         contactName: '',
         email: '',
         phone: '',
-        website: '',
+        website: 'https://',
         adMessage: '',
         logoUrl: '',
-        showPublicEmail: false, // Whether to display email on public profile
-        children: [] // { name, division }
+        showPublicEmail: false,
+        showPublicWebsite: false,
+        showPublicPhone: false,
+        hasChildren: null, // null = not answered, true/false
+        children: [], // { name, division }
+        notes: ''
     });
+    const [phoneError, setPhoneError] = useState('');
+    const [emailError, setEmailError] = useState('');
 
     useEffect(() => {
         // Wait for auth to finish loading before attempting to fetch
@@ -47,6 +53,7 @@ export default function SponsorshipFulfilment() {
                 // Robust Pre-fill Logic
                 // Priority: Saved sponsorInfo > Top Level Sponsorship Data > Basic User Profile
                 // Note: We do NOT use userProfile.organizationProfile as sponsors are not organizers
+                const existingChildren = data.children || [];
                 setFormData(prev => ({
                     ...prev,
                     email: data.sponsorInfo?.email || data.sponsorEmail || userProfile?.email || prev.email,
@@ -54,10 +61,14 @@ export default function SponsorshipFulfilment() {
                     companyName: data.sponsorInfo?.companyName || prev.companyName,
                     adMessage: data.sponsorInfo?.adMessage || data.branding?.tagline || prev.adMessage,
                     phone: data.sponsorInfo?.phone || data.sponsorPhone || prev.phone,
-                    website: data.branding?.websiteUrl || data.sponsorInfo?.website || prev.website,
+                    website: data.branding?.websiteUrl || data.sponsorInfo?.website || prev.website || 'https://',
                     logoUrl: data.branding?.logoUrl || prev.logoUrl,
                     showPublicEmail: data.sponsorInfo?.showPublicEmail || false,
-                    children: data.children || []
+                    showPublicWebsite: data.sponsorInfo?.showPublicWebsite || false,
+                    showPublicPhone: data.sponsorInfo?.showPublicPhone || false,
+                    hasChildren: existingChildren.length > 0 ? true : null,
+                    children: existingChildren,
+                    notes: data.notes || ''
                 }));
 
                 // Load Organizer Profile for Header
@@ -136,8 +147,54 @@ export default function SponsorshipFulfilment() {
         setFormData(prev => ({ ...prev, children: newChildren }));
     };
 
+    const formatPhone = (value) => {
+        const digits = value.replace(/\D/g, '').slice(0, 10);
+        if (digits.length <= 3) return digits;
+        if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+        return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+    };
+
+    const validatePhone = (value) => {
+        if (!value) return '';
+        const digits = value.replace(/\D/g, '');
+        if (digits.length !== 10) return 'Phone number must be 10 digits (e.g. 610-803-2138)';
+        return '';
+    };
+
+    const validateEmail = (value) => {
+        if (!value) return '';
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) return 'Please enter a valid email address';
+        return '';
+    };
+
+    const handleWebsiteChange = (value) => {
+        // If user clears the field, reset to https://
+        if (!value || value === 'http' || value === 'https' || value === 'https:' || value === 'https:/') {
+            setFormData(prev => ({ ...prev, website: 'https://' }));
+            return;
+        }
+        // Prevent double https://
+        if (value.startsWith('https://https://') || value.startsWith('https://http')) {
+            value = value.replace('https://https://', 'https://').replace('https://http://', 'http://').replace('https://http', 'https://');
+        }
+        setFormData(prev => ({ ...prev, website: value }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Validate phone
+        const phoneErr = validatePhone(formData.phone);
+        if (phoneErr) { setPhoneError(phoneErr); return; }
+
+        // Validate email
+        const emailErr = validateEmail(formData.email);
+        if (emailErr) { setEmailError(emailErr); return; }
+
+        // Clean website - if only https://, treat as empty
+        const cleanWebsite = formData.website === 'https://' ? '' : formData.website;
+
         setSubmitting(true);
         try {
             await sponsorshipService.updateSponsorship(sponsorshipId, {
@@ -148,17 +205,24 @@ export default function SponsorshipFulfilment() {
                     adMessage: formData.adMessage,
                     email: formData.email,
                     phone: formData.phone,
-                    website: formData.website,
+                    website: cleanWebsite,
                     showPublicEmail: formData.showPublicEmail,
-                    publicEmail: formData.showPublicEmail ? formData.email : null, // Only set if opted in
+                    showPublicWebsite: formData.showPublicWebsite,
+                    showPublicPhone: formData.showPublicPhone,
+                    publicEmail: formData.showPublicEmail ? formData.email : null,
+                    publicWebsite: formData.showPublicWebsite ? cleanWebsite : null,
+                    publicPhone: formData.showPublicPhone ? formData.phone : null,
                 },
                 branding: {
                     logoUrl: formData.logoUrl,
                     businessName: formData.companyName,
                     tagline: formData.adMessage,
-                    websiteUrl: formData.website,
+                    websiteUrl: cleanWebsite,
                 },
-                children: formData.children
+                children: formData.hasChildren
+                    ? formData.children.map(c => ({ name: c.name, division: c.division }))
+                    : [],
+                notes: formData.notes || ''
             });
             // Success State
             navigate('/thank-you', {
@@ -236,29 +300,30 @@ export default function SponsorshipFulfilment() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                                 <input
                                     type="tel" required
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none"
+                                    className={`w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none ${phoneError ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-primary/20'}`}
                                     value={formData.phone}
-                                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                    onChange={e => {
+                                        const formatted = formatPhone(e.target.value);
+                                        setFormData({ ...formData, phone: formatted });
+                                        setPhoneError('');
+                                    }}
+                                    placeholder="610-803-2138"
                                 />
+                                {phoneError && <p className="text-xs text-red-500 mt-1">{phoneError}</p>}
                             </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
                             <input
                                 type="email" required
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none"
+                                className={`w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none ${emailError ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-primary/20'}`}
                                 value={formData.email}
-                                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                onChange={e => {
+                                    setFormData({ ...formData, email: e.target.value });
+                                    setEmailError('');
+                                }}
                             />
-                            <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={formData.showPublicEmail}
-                                    onChange={e => setFormData({ ...formData, showPublicEmail: e.target.checked })}
-                                    className="w-4 h-4 rounded text-primary focus:ring-primary/20"
-                                />
-                                <span className="text-sm text-gray-600">Display email as a "Contact Us" button on my public sponsor page</span>
-                            </label>
+                            {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Website URL</label>
@@ -266,10 +331,50 @@ export default function SponsorshipFulfilment() {
                                 type="url"
                                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none"
                                 value={formData.website}
-                                onChange={e => setFormData({ ...formData, website: e.target.value })}
+                                onChange={e => handleWebsiteChange(e.target.value)}
                                 placeholder="https://www.yourcompany.com"
                             />
-                            <p className="text-xs text-gray-400 mt-1">Your website will be linked from your sponsor profile.</p>
+                        </div>
+                    </div>
+
+                    {/* Public Profile Visibility */}
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">Public Profile</h3>
+                        <p className="text-sm text-gray-500">
+                            What information would you like included with your profile on our website?
+                        </p>
+                        <div className="space-y-3">
+                            {[
+                                { key: 'showPublicWebsite', label: 'Website' },
+                                { key: 'showPublicEmail', label: 'Email' },
+                                { key: 'showPublicPhone', label: 'Phone Number' },
+                            ].map(({ key, label }) => (
+                                <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                    <span className="text-sm font-medium text-gray-700">{label}</span>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData(prev => ({ ...prev, [key]: true }))}
+                                            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition ${formData[key] === true
+                                                ? 'bg-primary text-white shadow-sm'
+                                                : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            Yes
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData(prev => ({ ...prev, [key]: false }))}
+                                            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition ${formData[key] === false
+                                                ? 'bg-gray-700 text-white shadow-sm'
+                                                : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            No
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
@@ -323,47 +428,138 @@ export default function SponsorshipFulfilment() {
 
                     {/* Child Info */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2 flex justify-between items-center">
-                            Children in League (Optional)
+                        <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">
+                            Children in {organizer?.organizationProfile?.orgName || 'the League'}
                         </h3>
-                        {formData.children.map((child, index) => (
-                            <div key={index} className="flex gap-4 items-end bg-gray-50 p-4 rounded-xl">
-                                <div className="flex-1">
-                                    <label className="block text-xs font-bold text-gray-500 mb-1">Child Name</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-2 rounded-lg border border-gray-200 text-sm"
-                                        value={child.name}
-                                        onChange={e => updateChild(index, 'name', e.target.value)}
-                                        placeholder="Name"
-                                    />
-                                </div>
-                                <div className="flex-1">
-                                    <label className="block text-xs font-bold text-gray-500 mb-1">Division/Team</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-2 rounded-lg border border-gray-200 text-sm"
-                                        value={child.division}
-                                        onChange={e => updateChild(index, 'division', e.target.value)}
-                                        placeholder="e.g. U12"
-                                    />
-                                </div>
+                        <p className="text-sm text-gray-500">
+                            Many sponsors are also parents in our league! If you have children who play, letting us know helps the organization recognize your family's connection and may feature your sponsorship alongside their team.
+                        </p>
+
+                        {/* Yes/No Toggle */}
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        hasChildren: true,
+                                        children: prev.children.length === 0 ? [{ name: '', division: '' }] : prev.children
+                                    }));
+                                }}
+                                className={`flex-1 py-3 rounded-xl font-bold text-sm border-2 transition ${formData.hasChildren === true
+                                    ? 'border-primary bg-primary/10 text-primary'
+                                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                }`}
+                            >
+                                Yes, I have children in the league
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, hasChildren: false, children: [] }))}
+                                className={`flex-1 py-3 rounded-xl font-bold text-sm border-2 transition ${formData.hasChildren === false
+                                    ? 'border-primary bg-primary/10 text-primary'
+                                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                }`}
+                            >
+                                No
+                            </button>
+                        </div>
+
+                        {/* Children Fields (only if Yes) */}
+                        {formData.hasChildren && (
+                            <div className="space-y-3">
+                                {formData.children.map((child, index) => (
+                                    <div key={index} className="flex gap-3 items-end bg-gray-50 p-4 rounded-xl">
+                                        <div className="flex-1">
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">Child Name</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-4 py-2 rounded-lg border border-gray-200 text-sm"
+                                                value={child.name}
+                                                onChange={e => updateChild(index, 'name', e.target.value)}
+                                                placeholder="Name"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">Division/Team</label>
+                                            {organizer?.organizationProfile?.divisions?.length > 0 ? (
+                                                <>
+                                                    <select
+                                                        className="w-full px-4 py-2 rounded-lg border border-gray-200 text-sm bg-white"
+                                                        value={organizer.organizationProfile.divisions.includes(child.division) ? child.division : (child.division ? '__other' : '')}
+                                                        onChange={e => {
+                                                            if (e.target.value === '__other') {
+                                                                updateChild(index, 'division', '');
+                                                                const newChildren = [...formData.children];
+                                                                newChildren[index] = { ...newChildren[index], _isCustom: true, division: '' };
+                                                                setFormData(prev => ({ ...prev, children: newChildren }));
+                                                            } else {
+                                                                const newChildren = [...formData.children];
+                                                                newChildren[index] = { ...newChildren[index], _isCustom: false, division: e.target.value };
+                                                                setFormData(prev => ({ ...prev, children: newChildren }));
+                                                            }
+                                                        }}
+                                                    >
+                                                        <option value="">Select division...</option>
+                                                        {organizer.organizationProfile.divisions.map((div, i) => (
+                                                            <option key={i} value={div}>{div}</option>
+                                                        ))}
+                                                        <option value="__other">Other...</option>
+                                                    </select>
+                                                    {(child._isCustom || (child.division && !organizer.organizationProfile.divisions.includes(child.division))) && (
+                                                        <input
+                                                            type="text"
+                                                            className="w-full px-4 py-2 rounded-lg border border-gray-200 text-sm mt-2"
+                                                            value={child.division}
+                                                            onChange={e => updateChild(index, 'division', e.target.value)}
+                                                            placeholder="Enter division name..."
+                                                            autoFocus
+                                                        />
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 text-sm"
+                                                    value={child.division}
+                                                    onChange={e => updateChild(index, 'division', e.target.value)}
+                                                    placeholder="e.g. U12"
+                                                />
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeChild(index)}
+                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                ))}
                                 <button
                                     type="button"
-                                    onClick={() => removeChild(index)}
-                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                                    onClick={addChild}
+                                    className="flex items-center gap-2 text-sm font-bold text-primary hover:underline"
                                 >
-                                    <Trash2 className="w-5 h-5" />
+                                    <Plus className="w-4 h-4" /> Add Another Child
                                 </button>
                             </div>
-                        ))}
-                        <button
-                            type="button"
-                            onClick={addChild}
-                            className="flex items-center gap-2 text-sm font-bold text-primary hover:underline"
-                        >
-                            <Plus className="w-4 h-4" /> Add Child
-                        </button>
+                        )}
+                    </div>
+
+                    {/* Notes */}
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2 flex items-center gap-2">
+                            <MessageSquare className="w-5 h-5 text-primary" />
+                            Notes for the Organization
+                        </h3>
+                        <textarea
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none min-h-[80px]"
+                            value={formData.notes}
+                            onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                            placeholder="Any additional notes or requests for the organization? (e.g. special instructions, preferred placement, etc.)"
+                        />
+                        <p className="text-xs text-gray-400">These notes are shared privately with the organization and will not appear publicly.</p>
                     </div>
 
                     <button
