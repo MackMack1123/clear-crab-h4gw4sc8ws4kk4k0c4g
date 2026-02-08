@@ -22,10 +22,10 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;');
 }
 
-// --- Cached SPA index.html (fetched once from frontend, reused for /org/ requests) ---
+// --- Cached SPA index.html (fetched from frontend, short TTL to stay in sync with deploys) ---
 let cachedSpaHtml = null;
 let spaHtmlFetchedAt = 0;
-const SPA_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const SPA_CACHE_TTL = 5 * 60 * 1000; // 5 minutes — short to pick up frontend deploys quickly
 
 async function getSpaHtml() {
     const now = Date.now();
@@ -126,8 +126,9 @@ router.get('/:slug', async (req, res) => {
                 res.set('Cache-Control', 'public, max-age=300');
                 return res.send(html);
             }
-            // Fallback: if we couldn't fetch the SPA HTML, redirect
-            return res.redirect(302, spaUrl);
+            // Fallback: SPA HTML unavailable — serve OG tags for crawlers + redirect
+            // to /s/:slug which meta-refreshes to the SPA (avoids /org/ loop)
+            return res.redirect(302, `${getApiBaseUrl(req)}/s/${encodeURIComponent(pageSlug)}`);
         }
 
         // --- /s/ route: minimal OG HTML + instant redirect ---
