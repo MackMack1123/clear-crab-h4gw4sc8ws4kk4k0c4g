@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Copy, Check, Code, Grid, LayoutList, Sun, Moon, ExternalLink, Sparkles, MousePointerClick, Palette, Type, Layers } from 'lucide-react';
+import { Copy, Check, Code, Grid, LayoutList, Sun, Moon, ExternalLink, Sparkles, MousePointerClick, Palette, Type, Layers, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../../config';
 
 export default function WidgetGenerator() {
     const { currentUser, userProfile } = useAuth();
+    const [widgetMode, setWidgetMode] = useState('sponsors');
     const [copied, setCopied] = useState(false);
+    const [copiedPkg, setCopiedPkg] = useState(false);
     const [previewLoading, setPreviewLoading] = useState(true);
     const [sponsors, setSponsors] = useState([]);
+
+    // Packages widget config
+    const [pkgConfig, setPkgConfig] = useState({
+        theme: 'light',
+        buttonText: 'View Package',
+    });
 
     // Widget configuration
     const [config, setConfig] = useState({
@@ -99,6 +107,24 @@ export default function WidgetGenerator() {
         setTimeout(() => setCopied(false), 2000);
     };
 
+    // Packages widget embed code
+    const generatePkgEmbedCode = () => {
+        return `<!-- Fundraisr Packages Widget -->
+<div id="fundraisr-packages"
+     data-org="${organizerId}"
+     data-theme="${pkgConfig.theme}"
+     data-button-text="${pkgConfig.buttonText}">
+</div>
+<script src="${API_BASE_URL}/widget/packages.js" async></script>`;
+    };
+
+    const handleCopyPkgCode = () => {
+        navigator.clipboard.writeText(generatePkgEmbedCode());
+        setCopiedPkg(true);
+        toast.success('Embed code copied to clipboard!');
+        setTimeout(() => setCopiedPkg(false), 2000);
+    };
+
     const logoSizes = {
         small: { width: 80, height: 60 },
         medium: { width: 120, height: 80 },
@@ -128,6 +154,154 @@ export default function WidgetGenerator() {
 
     return (
         <div className="space-y-8">
+            {/* Widget Mode Selector */}
+            <div className="flex gap-2">
+                <button
+                    onClick={() => setWidgetMode('sponsors')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition ${
+                        widgetMode === 'sponsors'
+                            ? 'bg-purple-600 text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                >
+                    <Layers className="w-4 h-4" />
+                    Sponsor Widget
+                </button>
+                <button
+                    onClick={() => setWidgetMode('packages')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition ${
+                        widgetMode === 'packages'
+                            ? 'bg-purple-600 text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                >
+                    <Package className="w-4 h-4" />
+                    Packages Widget
+                </button>
+            </div>
+
+            {/* ===== PACKAGES WIDGET ===== */}
+            {widgetMode === 'packages' && (
+                <>
+                    {/* Header */}
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Packages Widget</h2>
+                        <p className="text-gray-600">
+                            Embed your sponsorship packages on any website so visitors can browse and purchase directly. Works on WordPress, Squarespace, Wix, and any HTML site.
+                        </p>
+                    </div>
+
+                    <div className="grid lg:grid-cols-2 gap-8">
+                        {/* Config Panel */}
+                        <div className="space-y-6">
+                            <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
+                                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                                    <Code className="w-5 h-5 text-purple-600" />
+                                    Widget Settings
+                                </h3>
+
+                                {/* Theme */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Theme</label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setPkgConfig({ ...pkgConfig, theme: 'light' })}
+                                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition ${pkgConfig.theme === 'light'
+                                                ? 'border-purple-600 bg-purple-50 text-purple-700'
+                                                : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                                                }`}
+                                        >
+                                            <Sun className="w-5 h-5" />
+                                            <span className="font-medium">Light</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setPkgConfig({ ...pkgConfig, theme: 'dark' })}
+                                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition ${pkgConfig.theme === 'dark'
+                                                ? 'border-purple-600 bg-purple-50 text-purple-700'
+                                                : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                                                }`}
+                                        >
+                                            <Moon className="w-5 h-5" />
+                                            <span className="font-medium">Dark</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Button Text */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                        <Type className="w-4 h-4" />
+                                        Button Text
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={pkgConfig.buttonText}
+                                        onChange={(e) => setPkgConfig({ ...pkgConfig, buttonText: e.target.value })}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                                        placeholder="View Package"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Embed Code */}
+                            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="font-semibold text-gray-900">Embed Code</h3>
+                                    <button
+                                        onClick={handleCopyPkgCode}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${copiedPkg
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'bg-purple-600 text-white hover:bg-purple-700'
+                                            }`}
+                                    >
+                                        {copiedPkg ? (
+                                            <>
+                                                <Check className="w-4 h-4" />
+                                                Copied!
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Copy className="w-4 h-4" />
+                                                Copy Code
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                                <pre className="bg-slate-900 text-slate-300 p-4 rounded-xl text-sm overflow-x-auto">
+                                    <code>{generatePkgEmbedCode()}</code>
+                                </pre>
+                                <p className="text-xs text-gray-500 mt-3">
+                                    Paste this code into your website's HTML where you want the packages widget to appear.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Info Panel */}
+                        <div className="space-y-4">
+                            <div className="bg-purple-50 rounded-xl p-4">
+                                <h4 className="font-medium text-purple-900 mb-2">Packages Widget</h4>
+                                <p className="text-sm text-purple-800 mb-3">
+                                    Displays your active sponsorship packages as cards visitors can browse. Each card shows the package name, price, description, and a configurable action button linking to your sponsorship page.
+                                </p>
+                                <ol className="text-sm text-purple-800 space-y-1 list-decimal list-inside">
+                                    <li>Configure theme and button text above</li>
+                                    <li>Copy the embed code</li>
+                                    <li>Paste it into your website's HTML</li>
+                                </ol>
+                            </div>
+                            <div className="bg-blue-50 rounded-xl p-4">
+                                <h4 className="font-medium text-blue-900 mb-2">How it works</h4>
+                                <p className="text-sm text-blue-800">
+                                    The widget pulls your active packages from Fundraisr automatically. When you add, edit, or remove packages in your dashboard, the widget updates on your site — no code changes needed.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* ===== SPONSORS WIDGET (existing) ===== */}
+            {widgetMode === 'sponsors' && (<>
             {/* Header */}
             <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Sponsor Widget</h2>
@@ -669,6 +843,7 @@ export default function WidgetGenerator() {
                     )}
                 </div>
             </div>
+            </>)}
         </div>
     );
 }
