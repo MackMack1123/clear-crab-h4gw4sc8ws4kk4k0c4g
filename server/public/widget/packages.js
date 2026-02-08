@@ -60,6 +60,7 @@
         }\
         .fr-pkg-widget *, .fr-pkg-widget *::before, .fr-pkg-widget *::after {\
             box-sizing: inherit;\
+            text-decoration: none;\
         }\
         .fr-pkg-widget-light {\
             --fr-pkg-bg: #ffffff;\

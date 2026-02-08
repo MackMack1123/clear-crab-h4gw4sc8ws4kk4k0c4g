@@ -110,6 +110,7 @@
         }
         .fr-widget *, .fr-widget *::before, .fr-widget *::after {
             box-sizing: inherit;
+            text-decoration: none;
         }
         .fr-widget-light {
             --fr-bg: #ffffff;
