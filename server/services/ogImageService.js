@@ -164,25 +164,28 @@ async function generateOgImage(orgProfile) {
     // --- Right side: Text + CTA button (all rendered as vector paths) ---
     const textX = 540;
 
+    const ctaText = 'View Sponsorship Packages';
+    const ctaWidth = measureText(ctaText, 18, fontBold) + 48;
+
     const textSvg = `
     <svg width="${OG_WIDTH}" height="${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-      <!-- "Support & Grow with" -->
-      ${textToSvgPath('Support & Grow with', textX, 210, 40, fontExtraBold, '#ffffff')}
+      <!-- "Partner with" -->
+      ${textToSvgPath('Partner with', textX, 210, 40, fontExtraBold, '#ffffff')}
 
-      <!-- Org name (slightly smaller) -->
+      <!-- Org name -->
       ${textToSvgPath(displayName, textX, 260, 34, fontBold, '#ffffff')}
 
-      <!-- Subheading line 1: "Strengthen Community, Boost Your Brand. Browse" -->
-      ${textToSvgPath('Strengthen Community, Boost Your ', textX, 310, 17, fontRegular, '#94a3b8')}${textToSvgPath('Brand', textX + measureText('Strengthen Community, Boost Your ', 17, fontRegular), 310, 17, fontBold, primaryColor)}${textToSvgPath('. Browse', textX + measureText('Strengthen Community, Boost Your ', 17, fontRegular) + measureText('Brand', 17, fontBold), 310, 17, fontRegular, '#94a3b8')}
+      <!-- Subheading line 1 -->
+      ${textToSvgPath('Connect your brand with our softball', textX, 310, 17, fontRegular, '#94a3b8')}
 
-      <!-- Subheading line 2: "Sponsorship Packages." -->
-      ${textToSvgPath('Sponsorship', textX, 335, 17, fontBold, primaryColor)}${textToSvgPath(' Packages.', textX + measureText('Sponsorship', 17, fontBold), 335, 17, fontRegular, '#94a3b8')}
+      <!-- Subheading line 2 -->
+      ${textToSvgPath('community, and support our youth!', textX, 335, 17, fontRegular, '#94a3b8')}
 
-      <!-- Learn More button (outlined) -->
-      <rect x="${textX}" y="370" width="180" height="50" rx="12" fill="none" stroke="${primaryColor}" stroke-width="2"/>
+      <!-- CTA button (outlined) -->
+      <rect x="${textX}" y="370" width="${ctaWidth}" height="50" rx="12" fill="none" stroke="${primaryColor}" stroke-width="2"/>
 
-      <!-- Learn More button text (centered in button) -->
-      ${textToSvgPath('Learn More', textX + 90 - measureText('Learn More', 18, fontBold) / 2, 401, 18, fontBold, primaryColor)}
+      <!-- CTA button text (centered in button) -->
+      ${textToSvgPath(ctaText, textX + ctaWidth / 2 - measureText(ctaText, 18, fontBold) / 2, 401, 18, fontBold, primaryColor)}
     </svg>`;
 
     composites.push({
