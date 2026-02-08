@@ -368,6 +368,11 @@
             margin: 4px 0 0 0;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-align: center;
         }
 
         /* Footer - On Brand */
@@ -938,7 +943,7 @@
                 </div>
                 ${config.showNames ? `
                     <p class="fr-sponsor-name" style="max-width: ${size.width}px;">${sponsor.name}</p>
-                    <p class="fr-sponsor-tier">${sponsor.tier}</p>
+                    <p class="fr-sponsor-tier" style="max-width: ${size.width}px;">${sponsor.tier}</p>
                 ` : ''}
             </div>
         `;
