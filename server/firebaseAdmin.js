@@ -2,9 +2,24 @@ const admin = require('firebase-admin');
 
 let serviceAccount;
 
+// Support both raw JSON and base64-encoded JSON for the service account key
 const rawKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-if (rawKey) {
-    console.log('[Firebase Admin] Found env var, length:', rawKey.length, 'starts with:', rawKey.substring(0, 20));
+const b64Key = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_B64;
+
+if (b64Key) {
+    // Preferred: base64-encoded JSON (avoids shell/Docker escaping issues)
+    try {
+        const decoded = Buffer.from(b64Key, 'base64').toString('utf-8');
+        serviceAccount = JSON.parse(decoded);
+        if (serviceAccount.private_key) {
+            serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+        }
+        console.log('[Firebase Admin] Parsed from base64 env var, project:', serviceAccount.project_id);
+    } catch (e) {
+        console.error('[Firebase Admin] Failed to parse base64 key:', e.message);
+    }
+} else if (rawKey) {
+    console.log('[Firebase Admin] Found raw env var, length:', rawKey.length);
     try {
         // Strip surrounding quotes if Coolify/Docker wraps the value
         let cleaned = rawKey.trim();
@@ -13,14 +28,13 @@ if (rawKey) {
             cleaned = cleaned.slice(1, -1);
         }
         serviceAccount = JSON.parse(cleaned);
-        // Fix private key newlines — env vars often store \n as literal strings
         if (serviceAccount.private_key) {
             serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
         }
-        console.log('[Firebase Admin] Parsed service account for project:', serviceAccount.project_id);
+        console.log('[Firebase Admin] Parsed from raw env var, project:', serviceAccount.project_id);
     } catch (e) {
-        console.error('[Firebase Admin] Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', e.message);
-        console.error('[Firebase Admin] First 100 chars:', rawKey.substring(0, 100));
+        console.error('[Firebase Admin] Failed to parse raw key:', e.message);
+        console.error('[Firebase Admin] First 80 chars:', rawKey.substring(0, 80));
     }
 } else {
     console.log('[Firebase Admin] No FIREBASE_SERVICE_ACCOUNT_KEY env var found');
