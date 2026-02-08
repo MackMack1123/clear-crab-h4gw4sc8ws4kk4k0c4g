@@ -234,7 +234,7 @@ export default function Dashboard() {
 
   const copyShareLink = () => {
     const pageSlug = userProfile?.organizationProfile?.slug || currentUser?.uid;
-    const url = `${API_BASE_URL}/s/${pageSlug}`;
+    const url = `${window.location.origin}/s/${pageSlug}`;
     navigator.clipboard.writeText(url);
     toast.success("Share link copied!");
   };

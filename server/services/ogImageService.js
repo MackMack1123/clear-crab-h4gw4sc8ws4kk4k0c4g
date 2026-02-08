@@ -47,105 +47,6 @@ function truncateText(text, maxChars) {
 }
 
 /**
- * Generate a 1200x630 OG image as a PNG Buffer
- */
-async function generateOgImage(orgProfile) {
-    const primaryColor = orgProfile.primaryColor || '#7c3aed';
-    const darkColor = darkenColor(primaryColor, 0.4);
-    const orgName = orgProfile.orgName || 'Our Organization';
-    const displayName = truncateText(orgName, 30);
-
-    // Build gradient background SVG
-    const bgSvg = `
-    <svg width="${OG_WIDTH}" height="${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:${primaryColor};stop-opacity:1" />
-          <stop offset="100%" style="stop-color:${darkColor};stop-opacity:1" />
-        </linearGradient>
-      </defs>
-      <rect width="${OG_WIDTH}" height="${OG_HEIGHT}" fill="url(#bg)" />
-      <!-- Subtle pattern overlay -->
-      <rect width="${OG_WIDTH}" height="${OG_HEIGHT}" fill="rgba(0,0,0,0.15)" />
-    </svg>`;
-
-    // Start compositing with the gradient background
-    let pipeline = sharp(Buffer.from(bgSvg)).resize(OG_WIDTH, OG_HEIGHT);
-
-    const composites = [];
-
-    // Try to fetch and composite the org logo
-    if (orgProfile.logoUrl) {
-        try {
-            const logoBuffer = await fetchImage(orgProfile.logoUrl);
-            if (logoBuffer) {
-                const resizedLogo = await sharp(logoBuffer)
-                    .resize(160, 160, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-                    .png()
-                    .toBuffer();
-
-                // White circle background for the logo
-                const logoBgSvg = `
-                <svg width="180" height="180" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="180" height="180" rx="24" fill="white" opacity="0.95"/>
-                </svg>`;
-                const logoBg = await sharp(Buffer.from(logoBgSvg)).png().toBuffer();
-
-                const logoMeta = await sharp(resizedLogo).metadata();
-                const logoLeft = Math.round((180 - (logoMeta.width || 160)) / 2);
-                const logoTop = Math.round((180 - (logoMeta.height || 160)) / 2);
-
-                composites.push({
-                    input: logoBg,
-                    top: 140,
-                    left: Math.round((OG_WIDTH - 180) / 2),
-                });
-                composites.push({
-                    input: resizedLogo,
-                    top: 140 + logoTop,
-                    left: Math.round((OG_WIDTH - 180) / 2) + logoLeft,
-                });
-            }
-        } catch (err) {
-            console.warn('[OG Image] Failed to fetch logo, continuing without it:', err.message);
-        }
-    }
-
-    // Text overlay SVG
-    const textTopOffset = orgProfile.logoUrl ? 350 : 200;
-    const textSvg = `
-    <svg width="${OG_WIDTH}" height="${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-      <text x="${OG_WIDTH / 2}" y="${textTopOffset}"
-        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
-        font-size="52" font-weight="800" fill="white"
-        text-anchor="middle" dominant-baseline="central">
-        ${escapeXml('Support ' + displayName)}
-      </text>
-      <text x="${OG_WIDTH / 2}" y="${textTopOffset + 70}"
-        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
-        font-size="28" font-weight="500" fill="rgba(255,255,255,0.8)"
-        text-anchor="middle" dominant-baseline="central">
-        Become a Sponsor Today
-      </text>
-      <!-- Fundraisr badge -->
-      <text x="${OG_WIDTH - 40}" y="${OG_HEIGHT - 30}"
-        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
-        font-size="16" font-weight="600" fill="rgba(255,255,255,0.5)"
-        text-anchor="end" dominant-baseline="auto">
-        Powered by Fundraisr
-      </text>
-    </svg>`;
-
-    composites.push({
-        input: Buffer.from(textSvg),
-        top: 0,
-        left: 0,
-    });
-
-    return pipeline.composite(composites).png().toBuffer();
-}
-
-/**
  * Fetch an image from a URL and return as Buffer
  */
 async function fetchImage(url) {
@@ -159,6 +60,161 @@ async function fetchImage(url) {
         console.warn('[OG Image] fetchImage failed:', err.message);
         return null;
     }
+}
+
+/**
+ * Generate a 1200x630 OG image as a PNG Buffer
+ *
+ * Layout (split design):
+ * ┌──────────────────────────────────────────────────┐
+ * │  "F" badge (top-center, small)                   │
+ * │                                                  │
+ * │  ┌────────────┐     Become a Sponsor for         │
+ * │  │            │     {Organization Name}           │
+ * │  │   [LOGO]   │                                  │
+ * │  │            │     ┌────────────┐               │
+ * │  └────────────┘     │ Learn More │               │
+ * │                     └────────────┘               │
+ * │  ▓▓ purple accent shape behind logo card         │
+ * │                        getfundraisr.io (bottom)  │
+ * └──────────────────────────────────────────────────┘
+ */
+async function generateOgImage(orgProfile) {
+    const primaryColor = orgProfile.primaryColor || '#7c3aed';
+    const darkColor = darkenColor(primaryColor, 0.35);
+    const orgName = orgProfile.orgName || 'Our Organization';
+    const displayName = truncateText(orgName, 28);
+
+    // --- Background: white canvas with accent shape on left ---
+    const bgSvg = `
+    <svg width="${OG_WIDTH}" height="${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+      <!-- White background -->
+      <rect width="${OG_WIDTH}" height="${OG_HEIGHT}" fill="#ffffff"/>
+
+      <!-- Purple accent shape (left side, diagonal) -->
+      <defs>
+        <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:${primaryColor};stop-opacity:1" />
+          <stop offset="100%" style="stop-color:${darkColor};stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <path d="M0,0 L480,0 L420,630 L0,630 Z" fill="url(#accent)"/>
+
+      <!-- Subtle lighter accent overlay for depth -->
+      <path d="M40,80 L440,40 L390,590 L30,610 Z" fill="rgba(255,255,255,0.08)"/>
+    </svg>`;
+
+    let pipeline = sharp(Buffer.from(bgSvg)).resize(OG_WIDTH, OG_HEIGHT);
+    const composites = [];
+
+    // --- Logo card (centered on the accent area) ---
+    const cardSize = 220;
+    const cardLeft = 130;
+    const cardTop = 175;
+
+    // Card background (warm amber/gold like reference)
+    const cardSvg = `
+    <svg width="${cardSize + 20}" height="${cardSize + 20}" xmlns="http://www.w3.org/2000/svg">
+      <!-- Card shadow -->
+      <rect x="6" y="6" width="${cardSize + 8}" height="${cardSize + 8}" rx="20" fill="rgba(0,0,0,0.12)"/>
+      <!-- Card body -->
+      <rect x="0" y="0" width="${cardSize + 8}" height="${cardSize + 8}" rx="20" fill="#f5f0e8"/>
+    </svg>`;
+    composites.push({
+        input: await sharp(Buffer.from(cardSvg)).png().toBuffer(),
+        top: cardTop - 4,
+        left: cardLeft - 4,
+    });
+
+    // Try to fetch and composite the org logo inside the card
+    if (orgProfile.logoUrl) {
+        try {
+            const logoBuffer = await fetchImage(orgProfile.logoUrl);
+            if (logoBuffer) {
+                const resizedLogo = await sharp(logoBuffer)
+                    .resize(cardSize - 40, cardSize - 40, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+                    .png()
+                    .toBuffer();
+
+                const logoMeta = await sharp(resizedLogo).metadata();
+                const logoLeft = cardLeft + Math.round((cardSize - (logoMeta.width || 180)) / 2);
+                const logoTop = cardTop + Math.round((cardSize - (logoMeta.height || 180)) / 2);
+
+                composites.push({
+                    input: resizedLogo,
+                    top: logoTop,
+                    left: logoLeft,
+                });
+            }
+        } catch (err) {
+            console.warn('[OG Image] Failed to fetch logo, continuing without it:', err.message);
+        }
+    }
+
+    // --- Right side: Text + CTA button ---
+    const textX = 540;
+    const textAreaWidth = OG_WIDTH - textX - 60;
+
+    // Word-wrap the title into lines
+    const titleLine1 = 'Become a Sponsor for';
+    const titleLine2 = escapeXml(displayName);
+
+    const textSvg = `
+    <svg width="${OG_WIDTH}" height="${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+      <!-- Title -->
+      <text x="${textX}" y="240"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="40" font-weight="800" fill="#0f172a">
+        ${escapeXml(titleLine1)}
+      </text>
+      <text x="${textX}" y="290"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="40" font-weight="800" fill="${primaryColor}">
+        ${titleLine2}
+      </text>
+
+      <!-- Learn More button -->
+      <rect x="${textX}" y="330" width="180" height="50" rx="12" fill="${primaryColor}"/>
+      <text x="${textX + 90}" y="361"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="18" font-weight="700" fill="#ffffff"
+        text-anchor="middle">
+        Learn More
+      </text>
+
+      <!-- Fundraisr branding (bottom right, minimal) -->
+      <text x="${OG_WIDTH - 50}" y="${OG_HEIGHT - 28}"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="14" font-weight="500" fill="#94a3b8"
+        text-anchor="end">
+        getfundraisr.io
+      </text>
+    </svg>`;
+
+    composites.push({
+        input: Buffer.from(textSvg),
+        top: 0,
+        left: 0,
+    });
+
+    // --- Fundraisr "F" badge (top center) ---
+    const badgeSvg = `
+    <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+      <rect width="40" height="40" rx="10" fill="#0f172a"/>
+      <text x="20" y="27"
+        font-family="system-ui, -apple-system, sans-serif"
+        font-size="22" font-weight="800" fill="#ffffff"
+        text-anchor="middle">
+        F
+      </text>
+    </svg>`;
+    composites.push({
+        input: await sharp(Buffer.from(badgeSvg)).png().toBuffer(),
+        top: 24,
+        left: Math.round(OG_WIDTH / 2) - 20,
+    });
+
+    return pipeline.composite(composites).png().toBuffer();
 }
 
 /**
