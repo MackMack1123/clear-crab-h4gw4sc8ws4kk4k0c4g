@@ -193,6 +193,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
             gap: 24px;
+            padding-top: 4px;
         }
         .fr-grid-item {
             text-align: center;
@@ -210,6 +211,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 32px;
+            padding-top: 4px;
         }
         .fr-gallery-item {
             text-decoration: none;
@@ -375,6 +377,38 @@
             text-align: center;
         }
 
+        /* Inline Banner CTA (appended to grid/gallery/wall) */
+        .fr-inline-cta {
+            text-align: center;
+            padding: 24px 0 8px;
+        }
+        .fr-inline-cta a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #ffffff;
+            background: var(--fr-primary);
+            border: none;
+            border-radius: 12px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .fr-inline-cta a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+            filter: brightness(1.1);
+        }
+        .fr-inline-cta svg {
+            width: 16px;
+            height: 16px;
+        }
+
         /* Footer - On Brand */
         .fr-footer {
             margin-top: 20px;
@@ -467,6 +501,7 @@
         .fr-wall {
             max-width: 960px;
             margin: 0 auto;
+            padding-top: 4px;
         }
         .fr-wall-tier {
             margin-bottom: 32px;
@@ -912,6 +947,21 @@
 
     // ===== RENDER FUNCTIONS =====
 
+    // Generate inline style to override CSS variables with org colors
+    function orgColorStyle(organization) {
+        const color = organization?.primaryColor;
+        if (!color) return '';
+        // Darken by blending toward black for hover state
+        const darken = (hex) => {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            const f = 0.85;
+            return '#' + [r, g, b].map(c => Math.round(c * f).toString(16).padStart(2, '0')).join('');
+        };
+        return `--fr-primary:${color};--fr-primary-hover:${darken(color)};`;
+    }
+
     // Render loading state
     function renderLoading(container, theme) {
         container.innerHTML = `
@@ -1011,7 +1061,7 @@
         const duration = totalWidth / config.scrollSpeed;
 
         container.innerHTML = `
-            <div class="fr-widget fr-widget-${config.theme}">
+            <div class="fr-widget fr-widget-${config.theme}" style="${orgColorStyle(organization)}">
                 <div class="fr-widget-container">
                     ${renderHeader(config)}
                     <div class="fr-carousel">
@@ -1033,12 +1083,13 @@
         const sponsorsHtml = sponsors.map(s => renderSponsorItem(s, config, 'fr-grid-item')).join('');
 
         container.innerHTML = `
-            <div class="fr-widget fr-widget-${config.theme}">
+            <div class="fr-widget fr-widget-${config.theme}" style="${orgColorStyle(organization)}">
                 <div class="fr-widget-container">
                     ${renderHeader(config)}
                     <div class="fr-grid">
                         ${sponsorsHtml}
                     </div>
+                    ${renderInlineCTA(organization, config)}
                     ${renderFooter(organization)}
                 </div>
             </div>
@@ -1053,12 +1104,13 @@
         const sponsorsHtml = sponsors.map(s => renderGalleryItem(s)).join('');
 
         container.innerHTML = `
-            <div class="fr-widget fr-widget-${config.theme}">
+            <div class="fr-widget fr-widget-${config.theme}" style="${orgColorStyle(organization)}">
                 <div class="fr-widget-container" style="border: none; padding: 0; background: transparent;">
                     ${renderHeader(config)}
                     <div class="fr-gallery">
                         ${sponsorsHtml}
                     </div>
+                    ${renderInlineCTA(organization, config)}
                     ${renderFooter(organization)}
                 </div>
             </div>
@@ -1075,7 +1127,7 @@
             : `${PROFILE_BASE}/org/${organization?.id || config.orgId}`;
 
         container.innerHTML = `
-            <div class="fr-widget fr-widget-${config.theme}">
+            <div class="fr-widget fr-widget-${config.theme}" style="${orgColorStyle(organization)}">
                 <div class="fr-widget-container">
                     <div class="fr-banner">
                         <p class="fr-banner-title">Support ${organization?.name || 'Our Team'}</p>
@@ -1176,12 +1228,13 @@
         }
 
         container.innerHTML = `
-            <div class="fr-widget fr-widget-${config.theme}">
+            <div class="fr-widget fr-widget-${config.theme}" style="${orgColorStyle(organization)}">
                 <div class="fr-widget-container">
                     ${renderHeader(config)}
                     <div class="fr-wall">
                         ${wallHtml}
                     </div>
+                    ${renderInlineCTA(organization, config)}
                     ${renderFooter(organization)}
                 </div>
             </div>
@@ -1196,6 +1249,24 @@
         return `
             <div class="fr-header">
                 <h2 class="fr-header-title">View our Sponsors</h2>
+            </div>
+        `;
+    }
+
+    // Render inline banner CTA (for grid, gallery, wall)
+    function renderInlineCTA(organization, config) {
+        const orgUrl = organization?.slug
+            ? `${PROFILE_BASE}/org/${organization.slug}`
+            : `${PROFILE_BASE}/org/${organization?.id || ''}`;
+
+        return `
+            <div class="fr-inline-cta">
+                <a href="${orgUrl}" target="_blank" rel="noopener">
+                    ${config.buttonText}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
             </div>
         `;
     }
