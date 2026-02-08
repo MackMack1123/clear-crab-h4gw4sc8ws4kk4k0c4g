@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useOrgPermissions } from '../../../hooks/useOrgPermissions';
 import { sponsorshipService } from '../../../services/sponsorshipService';
-import { Plus, Edit2, Trash2, Check, X, Upload, Image as ImageIcon, MapPin, Lock } from 'lucide-react';
+import { Plus, Edit2, Trash2, Check, X, Upload, Image as ImageIcon, MapPin, Lock, ToggleLeft, ToggleRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../../common/ConfirmModal';
 import { API_BASE_URL } from '../../../config';
@@ -389,63 +389,110 @@ export default function ManagePackages() {
                     </form>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-6">
                     {loading ? (
                         <p className="text-gray-500">Loading packages...</p>
                     ) : packages.length === 0 ? (
-                        <div className="col-span-full text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                        <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                             <p className="text-gray-500">No packages created yet.</p>
                         </div>
                     ) : (
-                        packages.map(pkg => (
-                            <div key={pkg.id} className={`bg-white p-6 rounded-2xl border ${pkg.active ? 'border-gray-100' : 'border-gray-200 opacity-75'} shadow-sm relative group`}>
-                                {/* Only show edit/delete controls if user has edit permissions */}
-                                {canEditPackages && (
-                                    <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                                        <button
-                                            onClick={() => startEdit(pkg)}
-                                            className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg"
-                                            title="Edit package"
-                                        >
-                                            <Edit2 className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => setDeleteTarget(pkg)}
-                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
-                                            title="Delete package"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                        <>
+                            {/* Active Packages */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {packages.filter(p => p.active !== false).map(pkg => (
+                                    <div key={pkg.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative group">
+                                        {canEditPackages && (
+                                            <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                                                <button
+                                                    onClick={() => startEdit(pkg)}
+                                                    className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg"
+                                                    title="Edit package"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => toggleActive(pkg)}
+                                                    className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg"
+                                                    title="Deactivate package"
+                                                >
+                                                    <ToggleRight className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeleteTarget(pkg)}
+                                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                                                    title="Delete package"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h3 className="font-bold text-lg text-gray-900">{pkg.title}</h3>
+                                            <span className="font-heading font-bold text-xl text-primary">${pkg.price}</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mb-4">{pkg.description}</p>
+                                        <ul className="space-y-1">
+                                            {pkg.features?.map((f, i) => (
+                                                <li key={i} className="text-xs text-gray-500 flex items-center gap-2">
+                                                    <Check className="w-3 h-3 text-green-500" /> {f}
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
-                                )}
-                                <div className="flex justify-between items-start mb-2">
-                                    <h3 className="font-bold text-lg text-gray-900">{pkg.title}</h3>
-                                    <span className="font-heading font-bold text-xl text-primary">${pkg.price}</span>
-                                </div>
-                                <p className="text-sm text-gray-600 mb-4">{pkg.description}</p>
-                                <ul className="space-y-1 mb-4">
-                                    {pkg.features?.map((f, i) => (
-                                        <li key={i} className="text-xs text-gray-500 flex items-center gap-2">
-                                            <Check className="w-3 h-3 text-green-500" /> {f}
-                                        </li>
-                                    ))}
-                                </ul>
-                                <div className="flex items-center gap-2">
-                                    {canEditPackages ? (
-                                        <button
-                                            onClick={() => toggleActive(pkg)}
-                                            className={`text-xs font-bold px-3 py-1 rounded-full border ${pkg.active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}
-                                        >
-                                            {pkg.active ? 'Active' : 'Inactive'}
-                                        </button>
-                                    ) : (
-                                        <span className={`text-xs font-bold px-3 py-1 rounded-full border ${pkg.active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                                            {pkg.active ? 'Active' : 'Inactive'}
-                                        </span>
-                                    )}
-                                </div>
+                                ))}
                             </div>
-                        ))
+
+                            {/* Inactive Packages */}
+                            {packages.some(p => p.active === false) && (
+                                <div className="space-y-3">
+                                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Inactive Packages</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {packages.filter(p => p.active === false).map(pkg => (
+                                            <div key={pkg.id} className="bg-gray-50 p-6 rounded-2xl border border-gray-200 relative group opacity-60 hover:opacity-100 transition-opacity">
+                                                {canEditPackages && (
+                                                    <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                                                        <button
+                                                            onClick={() => startEdit(pkg)}
+                                                            className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg"
+                                                            title="Edit package"
+                                                        >
+                                                            <Edit2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => toggleActive(pkg)}
+                                                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg"
+                                                            title="Reactivate package"
+                                                        >
+                                                            <ToggleLeft className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setDeleteTarget(pkg)}
+                                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                                                            title="Delete package"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <h3 className="font-bold text-lg text-gray-500">{pkg.title}</h3>
+                                                    <span className="font-heading font-bold text-xl text-gray-400">${pkg.price}</span>
+                                                </div>
+                                                <p className="text-sm text-gray-400 mb-4">{pkg.description}</p>
+                                                <ul className="space-y-1">
+                                                    {pkg.features?.map((f, i) => (
+                                                        <li key={i} className="text-xs text-gray-400 flex items-center gap-2">
+                                                            <Check className="w-3 h-3 text-gray-300" /> {f}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             )}
