@@ -142,6 +142,10 @@
         [data-fr-sponsor] {
             cursor: pointer;
         }
+        /* Prevent host-site lightbox / image-viewer libraries from intercepting clicks on logos */
+        [data-fr-sponsor] img {
+            pointer-events: none;
+        }
 
         /* Widget Header */
         .fr-header {
@@ -969,7 +973,7 @@
             }
 
             e.preventDefault();
-            e.stopPropagation();
+            e.stopImmediatePropagation();
             const sponsorId = sponsorEl.dataset.frSponsor;
             openSponsorModal(sponsorId);
 

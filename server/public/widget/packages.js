@@ -62,6 +62,10 @@
             box-sizing: inherit;\
             text-decoration: none;\
         }\
+        /* Prevent host-site lightbox / image-viewer libraries from intercepting clicks */\
+        .fr-pkg-widget img {\
+            pointer-events: none;\
+        }\
         .fr-pkg-widget-light {\
             --fr-pkg-bg: #ffffff;\
             --fr-pkg-surface: #f8fafc;\
