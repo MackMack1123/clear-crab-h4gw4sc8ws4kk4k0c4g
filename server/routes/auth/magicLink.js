@@ -4,6 +4,7 @@ const router = express.Router();
 const admin = require('../../firebaseAdmin');
 const MagicLinkToken = require('../../models/MagicLinkToken');
 const User = require('../../models/User');
+const Sponsorship = require('../../models/Sponsorship');
 const emailService = require('../../services/emailService');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -59,10 +60,49 @@ const buildEmailHtml = (title, body) => `
 </body>
 </html>`;
 
+// POST /identify — Identify email as sponsor, organizer, both, or unknown
+router.post('/identify', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email is required' });
+
+        const normalizedEmail = email.toLowerCase().trim();
+
+        const [user, sponsorshipCount] = await Promise.all([
+            User.findOne({ email: normalizedEmail }),
+            Sponsorship.countDocuments({ sponsorEmail: normalizedEmail })
+        ]);
+
+        const isOrganizer = !!user && (user.roles.includes('organizer') || user.role === 'organizer');
+        const isSponsor = sponsorshipCount > 0 || (!!user && (user.roles.includes('sponsor') || user.role === 'sponsor'));
+
+        let type = 'unknown';
+        if (isOrganizer && isSponsor) type = 'both';
+        else if (isOrganizer) type = 'organizer';
+        else if (isSponsor) type = 'sponsor';
+
+        // Check if user has a password set in Firebase
+        let hasPassword = false;
+        if (user) {
+            try {
+                const fbUser = await admin.auth().getUserByEmail(normalizedEmail);
+                hasPassword = fbUser.providerData.some(p => p.providerId === 'password');
+            } catch (fbErr) {
+                // User may not exist in Firebase yet
+            }
+        }
+
+        res.json({ type, hasPassword });
+    } catch (error) {
+        console.error('Identify error:', error);
+        res.status(500).json({ error: 'Failed to identify account.' });
+    }
+});
+
 // POST /send — Send magic link email
 router.post('/send', async (req, res) => {
     try {
-        const { email, role } = req.body;
+        const { email, role, redirectTo } = req.body;
         if (!email) return res.status(400).json({ error: 'Email is required' });
 
         const normalizedEmail = email.toLowerCase().trim();
@@ -73,6 +113,7 @@ router.post('/send', async (req, res) => {
             token,
             email: normalizedEmail,
             role: role || 'organizer',
+            redirectTo: redirectTo || null,
             expiresAt
         });
 
@@ -152,9 +193,9 @@ router.post('/verify', async (req, res) => {
         }
 
         // Ensure MongoDB user record exists
-        const existingMongoUser = await User.findById(uid);
+        let existingMongoUser = await User.findById(uid);
         if (!existingMongoUser) {
-            await User.create({
+            existingMongoUser = await User.create({
                 _id: uid,
                 email,
                 role: record.role || 'organizer',
@@ -163,10 +204,39 @@ router.post('/verify', async (req, res) => {
             isNewUser = true;
         }
 
+        // If logging in as sponsor, ensure sponsor role is present
+        if (record.role === 'sponsor') {
+            if (!existingMongoUser.roles.includes('sponsor')) {
+                existingMongoUser.roles.push('sponsor');
+                await existingMongoUser.save();
+            }
+        }
+
+        // Auto-link unlinked sponsorships to this user
+        try {
+            await Sponsorship.updateMany(
+                { sponsorEmail: email, sponsorUserId: null },
+                { $set: { sponsorUserId: uid } }
+            );
+        } catch (linkErr) {
+            console.error('Auto-link sponsorships error (non-fatal):', linkErr);
+        }
+
+        // Determine effective role for redirect
+        const userRoles = existingMongoUser.roles || [existingMongoUser.role];
+        let effectiveRole = record.role || 'organizer';
+        if (userRoles.includes('organizer')) effectiveRole = 'organizer';
+        if (record.role === 'sponsor') effectiveRole = 'sponsor';
+
         // Generate custom token for frontend sign-in
         const customToken = await admin.auth().createCustomToken(uid);
 
-        res.json({ customToken, isNewUser });
+        res.json({
+            customToken,
+            isNewUser,
+            role: effectiveRole,
+            redirectTo: record.redirectTo || null
+        });
     } catch (error) {
         console.error('Magic link verify error:', error.code || error.message, error.stack);
         res.status(500).json({ error: 'Failed to verify link. Please try again.' });

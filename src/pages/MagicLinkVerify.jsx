@@ -44,8 +44,15 @@ export default function MagicLinkVerify() {
                 await signInWithCustomToken(auth, data.customToken);
                 setStatus('success');
 
-                // Redirect to sponsor dashboard after brief delay
-                setTimeout(() => navigate('/sponsor/dashboard'), 1500);
+                // Determine redirect destination
+                let destination = '/dashboard';
+                if (data.redirectTo) {
+                    destination = data.redirectTo;
+                } else if (data.role === 'sponsor') {
+                    destination = '/sponsor/dashboard';
+                }
+
+                setTimeout(() => navigate(destination), 1500);
             } catch (err) {
                 console.error('Magic link verify error:', err);
                 setStatus('error');
