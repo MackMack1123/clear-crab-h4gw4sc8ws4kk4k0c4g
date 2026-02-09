@@ -294,7 +294,7 @@ export default function ThankYou() {
                 to={`/sponsorship/fulfilment/${firstSponsorshipId}`}
                 className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-xl font-bold text-lg hover:bg-primary-700 transition shadow-lg shadow-primary/20 hover:-translate-y-0.5"
               >
-                Design Your Ad <ArrowRight className="w-5 h-5" />
+                Upload Your Logo <ArrowRight className="w-5 h-5" />
               </Link>
             )}
             <Link
