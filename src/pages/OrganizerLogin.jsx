@@ -1,11 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Loader2, ArrowRight, Mail, ArrowLeft, CheckCircle, Sparkles, Lock } from 'lucide-react';
 import { API_BASE_URL } from '../config';
+import { useAuth } from '../context/AuthContext';
 
 export default function OrganizerLogin() {
+    const { currentUser, activeRole } = useAuth();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const redirectTo = searchParams.get('redirect') || '/dashboard';
+
+    // Redirect already-authenticated users to their dashboard
+    useEffect(() => {
+        if (currentUser) {
+            if (redirectTo !== '/dashboard') {
+                navigate(redirectTo, { replace: true });
+            } else if (activeRole === 'sponsor') {
+                navigate('/sponsor/dashboard', { replace: true });
+            } else {
+                navigate('/dashboard', { replace: true });
+            }
+        }
+    }, [currentUser, activeRole, redirectTo, navigate]);
+
     // Step flow
     const [step, setStep] = useState('email'); // 'email' | 'auth'
     const [userType, setUserType] = useState(null); // 'sponsor' | 'organizer' | 'both' | 'unknown'
@@ -27,10 +46,6 @@ export default function OrganizerLogin() {
     // Magic link
     const [magicLinkLoading, setMagicLinkLoading] = useState(false);
     const [magicLinkSent, setMagicLinkSent] = useState(false);
-
-    const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
-    const redirectTo = searchParams.get('redirect') || '/dashboard';
 
     // Step 1: Identify the email
     const handleIdentify = async (e) => {
