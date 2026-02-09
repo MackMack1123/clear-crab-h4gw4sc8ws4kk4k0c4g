@@ -73,8 +73,17 @@ router.post('/identify', async (req, res) => {
             Sponsorship.countDocuments({ sponsorEmail: normalizedEmail })
         ]);
 
-        const isOrganizer = !!user && (user.roles.includes('organizer') || user.role === 'organizer');
-        const isSponsor = sponsorshipCount > 0 || (!!user && (user.roles.includes('sponsor') || user.role === 'sponsor'));
+        console.log('Identify:', normalizedEmail, '| user:', user ? { _id: user._id, role: user.role, roles: user.roles } : null, '| sponsorships:', sponsorshipCount);
+
+        const orgRoles = ['organizer', 'admin'];
+        const isOrganizer = !!user && (
+            (user.roles && user.roles.some(r => orgRoles.includes(r))) ||
+            orgRoles.includes(user.role)
+        );
+        const isSponsor = sponsorshipCount > 0 || (!!user && (
+            (user.roles && user.roles.includes('sponsor')) ||
+            user.role === 'sponsor'
+        ));
 
         let type = 'unknown';
         if (isOrganizer && isSponsor) type = 'both';
