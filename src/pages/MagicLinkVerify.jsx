@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { signInWithCustomToken } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -10,14 +10,20 @@ export default function MagicLinkVerify() {
     const navigate = useNavigate();
     const [status, setStatus] = useState('verifying'); // verifying | success | error
     const [errorMessage, setErrorMessage] = useState('');
+    const verifiedRef = useRef(false);
+
+    const token = searchParams.get('token');
 
     useEffect(() => {
-        const token = searchParams.get('token');
+        if (verifiedRef.current) return;
+
         if (!token) {
             setStatus('error');
             setErrorMessage('No token found in the link.');
             return;
         }
+
+        verifiedRef.current = true;
 
         const verify = async () => {
             try {
@@ -38,8 +44,8 @@ export default function MagicLinkVerify() {
                 await signInWithCustomToken(auth, data.customToken);
                 setStatus('success');
 
-                // Redirect to dashboard after brief delay
-                setTimeout(() => navigate('/dashboard'), 1500);
+                // Redirect to sponsor dashboard after brief delay
+                setTimeout(() => navigate('/sponsor/dashboard'), 1500);
             } catch (err) {
                 console.error('Magic link verify error:', err);
                 setStatus('error');
@@ -48,7 +54,7 @@ export default function MagicLinkVerify() {
         };
 
         verify();
-    }, [searchParams, navigate]);
+    }, [token]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">

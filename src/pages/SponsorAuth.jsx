@@ -283,6 +283,25 @@ export default function SponsorAuth() {
                     </button>
                 </form>
 
+                {/* Magic Link Option */}
+                {isLogin && (
+                    <div className="mt-6 pt-6 border-t border-gray-100">
+                        <button
+                            onClick={() => {
+                                setShowForgotPassword(true);
+                                setResetEmail(email);
+                            }}
+                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:border-primary hover:text-primary transition"
+                        >
+                            <Sparkles className="w-4 h-4" />
+                            Sign in with Email Link (No Password)
+                        </button>
+                        <p className="text-xs text-gray-400 text-center mt-2">
+                            Perfect if you checked out as a guest
+                        </p>
+                    </div>
+                )}
+
                 <div className="mt-6 text-center text-sm text-gray-500">
                     {isLogin ? "Don't have an account? " : "Already have an account? "}
                     <button
