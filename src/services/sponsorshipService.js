@@ -242,5 +242,22 @@ export const sponsorshipService = {
         await Promise.all(ids.map(id =>
             fetch(`${API_URL}/${id}`, { method: 'DELETE' })
         ));
+    },
+
+    // Resend receipt email to sponsor
+    resendReceipt: async (sponsorshipId) => {
+        const headers = {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+        };
+        const res = await fetch(`${API_URL}/${sponsorshipId}/resend-receipt`, {
+            method: 'POST',
+            headers
+        });
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to resend receipt');
+        }
+        return await res.json();
     }
 };

@@ -571,6 +571,62 @@ router.get("/sponsor/:userId", async (req, res) => {
   }
 });
 
+// Resend receipt email to sponsor (organizer only)
+router.post("/:id/resend-receipt", async (req, res) => {
+  try {
+    const sponsorship = await Sponsorship.findById(req.params.id);
+    if (!sponsorship) {
+      return res.status(404).json({ error: "Sponsorship not found" });
+    }
+
+    const requesterId = req.headers['x-user-id'] || req.body.userId;
+
+    // Only organizer (or team members with permission) can resend
+    const isOrganizer = requesterId === sponsorship.organizerId;
+    let isTeamMember = false;
+    if (requesterId && !isOrganizer) {
+      const { canAccess, role } = await checkOrgAccess(requesterId, sponsorship.organizerId);
+      isTeamMember = canAccess && canPerformAction(role, 'editContent');
+    }
+    if (!isOrganizer && !isTeamMember) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    if (sponsorship.status !== 'paid' && sponsorship.status !== 'branding-submitted') {
+      return res.status(400).json({ error: "Can only resend receipts for paid sponsorships" });
+    }
+    if (!sponsorship.sponsorEmail) {
+      return res.status(400).json({ error: "Sponsorship has no sponsor email" });
+    }
+
+    const organizer = await User.findById(sponsorship.organizerId);
+    if (!organizer) {
+      return res.status(404).json({ error: "Organizer not found" });
+    }
+
+    const pkg = sponsorship.packageId ? await Package.findById(sponsorship.packageId) : null;
+    const portalUrl = `${process.env.FRONTEND_URL || "https://getfundraisr.io"}/sponsor/dashboard`;
+
+    await emailService.sendTemplateEmail(
+      organizer,
+      "sponsorship_confirmation",
+      sponsorship.sponsorEmail,
+      {
+        donorName: sponsorship.sponsorName || "Valued Sponsor",
+        contactName: sponsorship.sponsorName || "Valued Sponsor",
+        amount: `$${sponsorship.amount}`,
+        packageTitle: pkg?.title || sponsorship.packageTitle || "Sponsorship Package",
+        portalUrl: portalUrl,
+      }
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Resend Receipt Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get specific sponsorship by ID (requires authorization)
 // IMPORTANT: This must be AFTER all other specific routes like /organizer/:id, /admin/all, /sponsor/:id
 router.get("/:id", async (req, res) => {

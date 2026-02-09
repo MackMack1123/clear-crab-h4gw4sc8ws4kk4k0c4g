@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../context/AuthContext';
 import { sponsorshipService } from '../../../services/sponsorshipService';
-import { CheckCircle, Clock, XCircle, ExternalLink } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, ExternalLink, Mail, Loader2 } from 'lucide-react';
 
 export default function SponsorshipList() {
     const { currentUser, activeOrganization } = useAuth();
     const [sponsorships, setSponsorships] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [resendingId, setResendingId] = useState(null);
 
     // Use activeOrganization.id for team member support
     const orgId = activeOrganization?.id || currentUser?.uid;
@@ -26,6 +28,19 @@ export default function SponsorshipList() {
             console.error("Error loading sponsorships:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleResendReceipt = async (sponsorship) => {
+        const id = sponsorship._id || sponsorship.id;
+        setResendingId(id);
+        try {
+            await sponsorshipService.resendReceipt(id);
+            toast.success(`Receipt sent to ${sponsorship.sponsorEmail}!`);
+        } catch (err) {
+            toast.error(err.message || 'Failed to resend receipt');
+        } finally {
+            setResendingId(null);
         }
     };
 
@@ -61,6 +76,7 @@ export default function SponsorshipList() {
                             <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Status</th>
                             <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Date</th>
                             <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Children</th>
+                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -93,6 +109,22 @@ export default function SponsorshipList() {
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-500">
                                     {s.children?.map(c => c.name).join(', ') || '-'}
+                                </td>
+                                <td className="px-6 py-4">
+                                    {(s.status === 'paid' || s.status === 'branding-submitted') && s.sponsorEmail && (
+                                        <button
+                                            onClick={() => handleResendReceipt(s)}
+                                            disabled={resendingId === (s._id || s.id)}
+                                            title={`Resend receipt to ${s.sponsorEmail}`}
+                                            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {resendingId === (s._id || s.id) ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <Mail className="w-4 h-4" />
+                                            )}
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         ))}
