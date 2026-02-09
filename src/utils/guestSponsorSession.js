@@ -6,7 +6,7 @@
  */
 
 const STORAGE_KEY = 'fundraisr_guest_sponsor';
-const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /**
  * Save guest sponsor session after successful checkout
