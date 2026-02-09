@@ -1,15 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { sponsorshipService } from '../services/sponsorshipService';
 import { CheckCircle, Upload, Save, Plus, Trash2, Image, MessageSquare } from 'lucide-react';
 import SignPreviewEditor from '../components/sponsor/SignPreviewEditor';
 import { API_BASE_URL } from '../config';
+import { auth } from '../firebase';
+import { getGuestSponsorEmail } from '../utils/guestSponsorSession';
 
 export default function SponsorshipFulfilment() {
     const { currentUser, userProfile, loading: authLoading } = useAuth();
     const { sponsorshipId } = useParams();
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+
+    // Email from URL query param (from email links) as fallback auth
+    const emailFromUrl = searchParams.get('email');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -44,9 +50,31 @@ export default function SponsorshipFulfilment() {
         }
     }, [sponsorshipId, authLoading, currentUser, userProfile]); // Re-run when auth is ready
 
+    // Build auth headers, falling back to email from URL param
+    const getHeaders = (contentType) => {
+        const headers = {};
+        if (contentType) headers['Content-Type'] = contentType;
+
+        if (auth.currentUser) {
+            headers['x-user-id'] = auth.currentUser.uid;
+            if (auth.currentUser.email) headers['x-user-email'] = auth.currentUser.email;
+        } else {
+            const guestEmail = getGuestSponsorEmail();
+            if (guestEmail) {
+                headers['x-user-email'] = guestEmail;
+            } else if (emailFromUrl) {
+                headers['x-user-email'] = emailFromUrl;
+            }
+        }
+        return headers;
+    };
+
     const loadSponsorship = async () => {
         try {
-            const data = await sponsorshipService.getSponsorship(sponsorshipId);
+            const headers = getHeaders();
+            const res = await fetch(`${API_BASE_URL}/api/sponsorships/${sponsorshipId}`, { headers });
+            if (!res.ok) throw new Error('Failed to fetch sponsorship');
+            const data = await res.json();
             if (data) {
                 setSponsorship(data);
 
@@ -197,7 +225,11 @@ export default function SponsorshipFulfilment() {
 
         setSubmitting(true);
         try {
-            await sponsorshipService.updateSponsorship(sponsorshipId, {
+            const headers = getHeaders('application/json');
+            await fetch(`${API_BASE_URL}/api/sponsorships/${sponsorshipId}`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({
                 status: 'branding-submitted',
                 sponsorInfo: {
                     companyName: formData.companyName,
@@ -223,6 +255,7 @@ export default function SponsorshipFulfilment() {
                     ? formData.children.map(c => ({ name: c.name, division: c.division }))
                     : [],
                 notes: formData.notes || ''
+            })
             });
             // Success State
             navigate('/thank-you', {

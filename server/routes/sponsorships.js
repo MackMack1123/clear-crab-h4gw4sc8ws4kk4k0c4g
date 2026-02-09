@@ -287,7 +287,7 @@ router.post("/", async (req, res) => {
         `Sending sponsorship confirmation email to ${savedSponsorship.sponsorEmail}`,
       );
       // Fire and forget - don't block the response
-      const portalUrl = `${process.env.FRONTEND_URL || "https://getfundraisr.io"}/sponsor/dashboard`;
+      const portalUrl = `${process.env.FRONTEND_URL || "https://getfundraisr.io"}/sponsorship/fulfilment/${savedSponsorship._id}?email=${encodeURIComponent(savedSponsorship.sponsorEmail)}`;
       emailService
         .sendTemplateEmail(
           organizer,
@@ -605,7 +605,7 @@ router.post("/:id/resend-receipt", async (req, res) => {
     }
 
     const pkg = sponsorship.packageId ? await Package.findById(sponsorship.packageId) : null;
-    const portalUrl = `${process.env.FRONTEND_URL || "https://getfundraisr.io"}/sponsor/dashboard`;
+    const portalUrl = `${process.env.FRONTEND_URL || "https://getfundraisr.io"}/sponsorship/fulfilment/${sponsorship._id}?email=${encodeURIComponent(sponsorship.sponsorEmail)}`;
 
     await emailService.sendTemplateEmail(
       organizer,

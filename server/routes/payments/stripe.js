@@ -336,7 +336,7 @@ router.get('/verify-session', async (req, res) => {
                         const organizer = await User.findById(sp.organizerId);
                         if (organizer) {
                             const pkg = sp.packageId ? await Package.findById(sp.packageId) : null;
-                            const portalUrl = `${process.env.FRONTEND_URL || 'https://getfundraisr.io'}/sponsor/dashboard`;
+                            const portalUrl = `${process.env.FRONTEND_URL || 'https://getfundraisr.io'}/sponsorship/fulfilment/${sp._id}?email=${encodeURIComponent(sp.sponsorEmail)}`;
                             emailService.sendTemplateEmail(
                                 organizer,
                                 'sponsorship_confirmation',
