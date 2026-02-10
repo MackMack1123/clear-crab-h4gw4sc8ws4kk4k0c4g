@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const slackService = require('../services/slackService');
 const User = require('../models/User');
+const Sponsorship = require('../models/Sponsorship');
+const Package = require('../models/Package');
 
 // Get frontend URL from environment (for redirects after OAuth)
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -82,6 +84,77 @@ router.get('/callback', async (req, res) => {
     } catch (err) {
         console.error("[Slack OAuth] Callback Error:", err.message);
         res.redirect(`${FRONTEND_URL}/dashboard?slack_error=${encodeURIComponent(err.message)}`);
+    }
+});
+
+/**
+ * POST /api/slack/send-history
+ * Send Slack notifications for all existing paid sponsorships
+ */
+router.post('/send-history', async (req, res) => {
+    const { userId } = req.body;
+
+    if (!userId) {
+        return res.status(400).json({ error: 'userId is required' });
+    }
+
+    try {
+        const organizer = await User.findById(userId);
+        if (!organizer) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (!organizer.slackSettings?.connected || !organizer.slackSettings?.incomingWebhook?.url) {
+            return res.status(400).json({ error: 'Slack is not connected' });
+        }
+
+        const webhookUrl = organizer.slackSettings.incomingWebhook.url;
+
+        const sponsorships = await Sponsorship.find({
+            organizerId: userId,
+            status: 'paid'
+        });
+
+        if (sponsorships.length === 0) {
+            return res.json({ success: true, sent: 0, message: 'No paid sponsorships found' });
+        }
+
+        // Collect unique package IDs and fetch them in one query
+        const packageIds = [...new Set(sponsorships.map(s => s.packageId).filter(Boolean))];
+        const packages = await Package.find({ _id: { $in: packageIds } });
+        const packageMap = {};
+        for (const pkg of packages) {
+            packageMap[pkg._id.toString()] = pkg;
+        }
+
+        let sent = 0;
+        for (const sp of sponsorships) {
+            const pkg = sp.packageId ? packageMap[sp.packageId.toString()] : null;
+
+            // Send sponsorship notification
+            await slackService.sendSponsorshipNotification(
+                webhookUrl,
+                sp,
+                pkg || { title: 'Unknown Package', price: '0' }
+            );
+            sent++;
+
+            // Send branding notification if branding exists
+            if (sp.branding && (sp.branding.logoUrl || sp.branding.businessName)) {
+                // Small delay to avoid Slack rate limits
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await slackService.sendBrandingNotification(webhookUrl, sp);
+                sent++;
+            }
+
+            // Small delay between sponsorships to avoid rate limits
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        res.json({ success: true, sent, sponsorships: sponsorships.length });
+    } catch (err) {
+        console.error('[Slack Send History] Error:', err);
+        res.status(500).json({ error: err.message });
     }
 });
 

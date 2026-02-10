@@ -4,6 +4,7 @@ const User = require('../../models/User');
 const Sponsorship = require('../../models/Sponsorship');
 const Package = require('../../models/Package');
 const emailService = require('../../services/emailService');
+const slackService = require('../../services/slackService');
 
 // Stripe SDK - will be initialized with your platform's secret key
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -329,13 +330,23 @@ router.get('/verify-session', async (req, res) => {
                     }
                 );
 
-                // Send confirmation emails for each sponsorship
+                // Send confirmation emails and Slack notifications for each sponsorship
                 const sponsorships = await Sponsorship.find({ _id: { $in: sponsorshipIds } });
                 for (const sp of sponsorships) {
                     if (sp.sponsorEmail && sp.organizerId) {
                         const organizer = await User.findById(sp.organizerId);
                         if (organizer) {
                             const pkg = sp.packageId ? await Package.findById(sp.packageId) : null;
+
+                            // Slack notification
+                            if (organizer.slackSettings?.connected && organizer.slackSettings?.incomingWebhook?.url) {
+                                slackService.sendSponsorshipNotification(
+                                    organizer.slackSettings.incomingWebhook.url,
+                                    sp,
+                                    pkg || { title: 'Unknown Package', price: '0' }
+                                ).catch(err => console.error('Stripe verify-session Slack error:', err));
+                            }
+
                             const portalUrl = `${process.env.FRONTEND_URL || 'https://getfundraisr.io'}/sponsorship/fulfilment/${sp._id}?email=${encodeURIComponent(sp.sponsorEmail)}`;
                             emailService.sendTemplateEmail(
                                 organizer,

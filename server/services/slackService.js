@@ -104,21 +104,6 @@ const slackService = {
                         }
                     ]
                 },
-                {
-                    type: "actions",
-                    elements: [
-                        {
-                            type: "button",
-                            text: {
-                                type: "plain_text",
-                                text: "View in Dashboard",
-                                emoji: true
-                            },
-                            url: `${FRONTEND_URL}/dashboard`,
-                            style: "primary"
-                        }
-                    ]
-                }
             ]
         };
 
@@ -189,22 +174,6 @@ const slackService = {
                 alt_text: `${companyName} logo`
             });
         }
-
-        blocks.push({
-            type: "actions",
-            elements: [
-                {
-                    type: "button",
-                    text: {
-                        type: "plain_text",
-                        text: "Review Branding",
-                        emoji: true
-                    },
-                    url: `${FRONTEND_URL}/dashboard`,
-                    style: "primary"
-                }
-            ]
-        });
 
         const message = {
             text: `🎨 Branding updated for ${companyName}`,

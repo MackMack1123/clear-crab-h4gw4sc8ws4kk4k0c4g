@@ -5,6 +5,7 @@ const User = require('../../models/User');
 const Sponsorship = require('../../models/Sponsorship');
 const Package = require('../../models/Package');
 const emailService = require('../../services/emailService');
+const slackService = require('../../services/slackService');
 const { ensureValidSquareToken } = require('../../utils/squareTokenManager');
 
 // Initialize Square Client
@@ -212,9 +213,19 @@ router.post('/process-payment', async (req, res) => {
                     }
                 );
 
-                // Send confirmation emails for each sponsorship
+                // Send confirmation emails and Slack notifications for each sponsorship
                 const sponsorships = await Sponsorship.find({ _id: { $in: sponsorshipIds } });
                 for (const sp of sponsorships) {
+                    // Slack notification
+                    if (organizer.slackSettings?.connected && organizer.slackSettings?.incomingWebhook?.url) {
+                        const pkg = sp.packageId ? await Package.findById(sp.packageId) : null;
+                        slackService.sendSponsorshipNotification(
+                            organizer.slackSettings.incomingWebhook.url,
+                            sp,
+                            pkg || { title: 'Unknown Package', price: '0' }
+                        ).catch(err => console.error('Square payment Slack error:', err));
+                    }
+
                     if (sp.sponsorEmail) {
                         const pkg = sp.packageId ? await Package.findById(sp.packageId) : null;
                         const portalUrl = `${process.env.FRONTEND_URL || 'https://getfundraisr.io'}/sponsorship/fulfilment/${sp._id}?email=${encodeURIComponent(sp.sponsorEmail)}`;

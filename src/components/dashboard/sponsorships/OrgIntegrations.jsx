@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { userService } from '../../../services/userService';
 import PaymentGatewaySettings from '../PaymentGatewaySettings';
-import { Mail, CheckCircle2, AlertCircle, Save } from 'lucide-react';
+import { Mail, CheckCircle2, AlertCircle, Save, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../../../config';
 
@@ -42,6 +42,7 @@ export default function OrgIntegrations() {
         instructions: ''
     });
     const [saving, setSaving] = useState(false);
+    const [sendingHistory, setSendingHistory] = useState(false);
 
     useEffect(() => {
         if (initialProfile?.checkSettings) {
@@ -52,6 +53,28 @@ export default function OrgIntegrations() {
     const connectSlack = () => {
         window.location.href = `${API_BASE_URL}/api/slack/auth?userId=${currentUser.uid}`;
 
+    };
+
+    const handleSendHistory = async () => {
+        setSendingHistory(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/slack/send-history`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser.uid })
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success(`Sent ${data.sent} notification${data.sent !== 1 ? 's' : ''} for ${data.sponsorships} sponsorship${data.sponsorships !== 1 ? 's' : ''}`);
+            } else {
+                toast.error(data.error || 'Failed to send history');
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to send Slack history');
+        } finally {
+            setSendingHistory(false);
+        }
     };
 
     const handleSaveCheckSettings = async (e) => {
@@ -174,8 +197,12 @@ export default function OrgIntegrations() {
                             </div>
                             <div className="text-xs text-gray-400">to {slackTeam}</div>
                         </div>
-                        <button className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-bold hover:bg-gray-100 transition">
-                            Configure
+                        <button
+                            onClick={handleSendHistory}
+                            disabled={sendingHistory}
+                            className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-bold hover:bg-gray-100 transition flex items-center gap-2"
+                        >
+                            {sendingHistory ? 'Sending...' : <><Send className="w-4 h-4" /> Send History</>}
                         </button>
                     </div>
                 ) : (
