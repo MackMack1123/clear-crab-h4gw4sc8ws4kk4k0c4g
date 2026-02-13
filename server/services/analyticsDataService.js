@@ -1,6 +1,7 @@
 const Sponsorship = require('../models/Sponsorship');
 const Package = require('../models/Package');
 const FunnelDailyStat = require('../models/FunnelDailyStat');
+const PageViewEvent = require('../models/PageViewEvent');
 
 /**
  * Get date range based on period string
@@ -210,17 +211,45 @@ async function getWidgetMetrics(orgId, period = '30d') {
 
 /**
  * Get funnel performance metrics
+ * Overview uses distinct sessions (via PageViewEvent aggregation).
+ * Trends/referrers/packages still use FunnelDailyStat for speed.
  */
 async function getFunnelMetrics(orgId, period = '30d') {
     const { start } = getDateRange(period);
     const startDate = start.toISOString().split('T')[0];
 
-    const dailyStats = await FunnelDailyStat.find({
-        organizerId: orgId,
-        date: { $gte: startDate }
-    }).sort({ date: 1 }).lean();
+    // --- Overview: distinct sessions from PageViewEvent ---
+    const distinctCounts = await PageViewEvent.aggregate([
+        {
+            $match: {
+                organizerId: orgId,
+                timestamp: { $gte: start },
+                sessionId: { $exists: true, $ne: null }
+            }
+        },
+        {
+            $group: {
+                _id: { page: '$page', sessionId: '$sessionId' }
+            }
+        },
+        {
+            $group: {
+                _id: '$_id.page',
+                uniqueSessions: { $sum: 1 }
+            }
+        }
+    ]);
 
-    if (dailyStats.length === 0) {
+    const sessionMap = {};
+    distinctCounts.forEach(d => { sessionMap[d._id] = d.uniqueSessions; });
+
+    const landing = sessionMap['landing'] || 0;
+    const addToCart = sessionMap['add_to_cart'] || 0;
+    const review = sessionMap['review'] || 0;
+    const checkout = sessionMap['checkout'] || 0;
+    const success = sessionMap['success'] || 0;
+
+    if (landing === 0 && addToCart === 0 && review === 0 && checkout === 0 && success === 0) {
         return {
             overview: {
                 landing: 0, addToCart: 0, review: 0, checkout: 0, success: 0,
@@ -232,16 +261,23 @@ async function getFunnelMetrics(orgId, period = '30d') {
         };
     }
 
-    let landing = 0, addToCart = 0, review = 0, checkout = 0, success = 0;
+    const pct = (num, den) => den > 0 ? Math.min(Math.round((num / den) * 1000) / 10, 100) : 0;
+    const landingToAddToCart = pct(addToCart, landing);
+    const addToCartToReview = pct(review, addToCart);
+    const reviewToCheckout = pct(checkout, review);
+    const checkoutToSuccess = pct(success, checkout);
+    const overallConversion = pct(success, landing);
+
+    // --- Trends / referrers / packages: from FunnelDailyStat (fast) ---
+    const dailyStats = await FunnelDailyStat.find({
+        organizerId: orgId,
+        date: { $gte: startDate }
+    }).sort({ date: 1 }).lean();
+
     const referrerCounts = {};
     const packageMap = {};
 
     dailyStats.forEach(day => {
-        landing += day.landing || 0;
-        addToCart += day.add_to_cart || 0;
-        review += day.review || 0;
-        checkout += day.checkout || 0;
-        success += day.success || 0;
         (day.referrers || []).forEach(r => {
             referrerCounts[r] = (referrerCounts[r] || 0) + 1;
         });
@@ -253,13 +289,6 @@ async function getFunnelMetrics(orgId, period = '30d') {
             packageMap[p.packageId].addToCartCount += p.addToCartCount || 0;
         });
     });
-
-    const pct = (num, den) => den > 0 ? Math.min(Math.round((num / den) * 1000) / 10, 100) : 0;
-    const landingToAddToCart = pct(addToCart, landing);
-    const addToCartToReview = pct(review, addToCart);
-    const reviewToCheckout = pct(checkout, review);
-    const checkoutToSuccess = pct(success, checkout);
-    const overallConversion = pct(success, landing);
 
     const trends = [];
     const current = new Date(start);
