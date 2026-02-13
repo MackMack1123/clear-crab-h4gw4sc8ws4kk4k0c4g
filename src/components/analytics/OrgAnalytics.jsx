@@ -391,7 +391,7 @@ export default function OrgAnalytics({ orgId, slackConnected }) {
                                     const nextStep = arr[i + 1];
                                     const nextCount = nextStep ? funnelMetrics.overview[nextStep.key] : null;
                                     const dropoff = nextCount !== null && count > 0
-                                        ? Math.round((nextCount / count) * 100)
+                                        ? Math.min(Math.round((nextCount / count) * 100), 100)
                                         : null;
 
                                     return (

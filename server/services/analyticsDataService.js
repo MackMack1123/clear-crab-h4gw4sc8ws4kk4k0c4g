@@ -254,11 +254,12 @@ async function getFunnelMetrics(orgId, period = '30d') {
         });
     });
 
-    const landingToAddToCart = landing > 0 ? Math.round((addToCart / landing) * 1000) / 10 : 0;
-    const addToCartToReview = addToCart > 0 ? Math.round((review / addToCart) * 1000) / 10 : 0;
-    const reviewToCheckout = review > 0 ? Math.round((checkout / review) * 1000) / 10 : 0;
-    const checkoutToSuccess = checkout > 0 ? Math.round((success / checkout) * 1000) / 10 : 0;
-    const overallConversion = landing > 0 ? Math.round((success / landing) * 1000) / 10 : 0;
+    const pct = (num, den) => den > 0 ? Math.min(Math.round((num / den) * 1000) / 10, 100) : 0;
+    const landingToAddToCart = pct(addToCart, landing);
+    const addToCartToReview = pct(review, addToCart);
+    const reviewToCheckout = pct(checkout, review);
+    const checkoutToSuccess = pct(success, checkout);
+    const overallConversion = pct(success, landing);
 
     const trends = [];
     const current = new Date(start);
