@@ -114,7 +114,7 @@ export default function SponsorshipView({ currentTab = 'sales', onTabChange }) {
             {activeTab === 'packages' && <ManagePackages />}
             {activeTab === 'content' && <PageContentBuilder setActiveTab={handleTabChange} />}
             {activeTab === 'settings' && <SponsorshipSettings />}
-            {activeTab === 'analytics' && <OrgAnalytics orgId={currentUser?.uid} />}
+            {activeTab === 'analytics' && <OrgAnalytics orgId={currentUser?.uid} slackConnected={currentUserProfile?.slackSettings?.connected} />}
             {activeTab === 'emails' && <EmailTemplates />}
             {activeTab === 'widget' && <WidgetGenerator />}
         </div>

@@ -50,5 +50,34 @@ export const analyticsService = {
         const res = await fetch(`${API_URL}/org/${orgId}/funnel?period=${period}`);
         if (!res.ok) throw new Error('Failed to fetch funnel metrics');
         return res.json();
+    },
+
+    // Report: send to Slack
+    sendReportToSlack: async (orgId, period = '30d') => {
+        const res = await fetch(`${API_URL}/org/${orgId}/report/slack`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ period })
+        });
+        if (!res.ok) throw new Error('Failed to send report to Slack');
+        return res.json();
+    },
+
+    // Report schedule: get
+    getReportSchedule: async (orgId) => {
+        const res = await fetch(`${API_URL}/org/${orgId}/report/schedule`);
+        if (!res.ok) throw new Error('Failed to fetch report schedule');
+        return res.json();
+    },
+
+    // Report schedule: update
+    updateReportSchedule: async (orgId, schedule) => {
+        const res = await fetch(`${API_URL}/org/${orgId}/report/schedule`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(schedule)
+        });
+        if (!res.ok) throw new Error('Failed to update report schedule');
+        return res.json();
     }
 };

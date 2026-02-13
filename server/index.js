@@ -156,6 +156,7 @@ app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/payments/stripe', require('./routes/payments/stripe'));
 app.use('/api/payments/square', require('./routes/payments/square'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/analytics', require('./routes/reports'));
 app.use('/api/auth/github', authLimiter, require('./routes/auth/github')); // Auth rate limited
 app.use('/api/auth/magic-link', authLimiter, require('./routes/auth/magicLink'));
 app.use('/api/email', require('./routes/email'));
@@ -287,7 +288,12 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Database Connection
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/fundraisr')
-    .then(() => logger.info('MongoDB Connected'))
+    .then(() => {
+        logger.info('MongoDB Connected');
+        // Start scheduled report delivery
+        const { startScheduler } = require('./services/schedulerService');
+        startScheduler();
+    })
     .catch(err => logger.exception(err, { context: 'MongoDB Connection' }));
 
 app.listen(PORT, () => {

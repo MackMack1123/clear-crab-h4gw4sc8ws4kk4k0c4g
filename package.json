@@ -13,6 +13,7 @@
     "@paypal/react-paypal-js": "^8.9.2",
     "clsx": "^2.1.1",
     "firebase": "^12.6.0",
+    "html2canvas": "^1.4.1",
     "konva": "^10.2.0",
     "lucide-react": "^0.554.0",
     "react": "^19.2.0",

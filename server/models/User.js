@@ -106,6 +106,16 @@ const UserSchema = new mongoose.Schema({
         }
     },
 
+    // Scheduled analytics report settings
+    reportSchedule: {
+        enabled: { type: Boolean, default: false },
+        frequency: { type: String, enum: ['weekly', 'biweekly', 'monthly'], default: 'weekly' },
+        dayOfWeek: { type: Number, min: 0, max: 6, default: 1 }, // 0=Sun, 1=Mon
+        hour: { type: Number, min: 0, max: 23, default: 9 }, // UTC hour
+        period: { type: String, enum: ['7d', '30d', '90d'], default: '30d' },
+        lastSentAt: Date
+    },
+
     // GitHub Integration (Automation)
     githubSettings: {
         connected: { type: Boolean, default: false },

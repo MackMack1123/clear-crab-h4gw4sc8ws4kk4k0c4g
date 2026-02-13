@@ -1,16 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { Loader2, DollarSign, Users, Package, TrendingUp, Calendar, Eye, MousePointerClick, Percent, Globe, ArrowRight, Filter, ShoppingCart } from 'lucide-react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { Loader2, DollarSign, Users, Package, TrendingUp, Calendar, Eye, MousePointerClick, Percent, Globe, ArrowRight, Filter, ShoppingCart, Download, Send, Clock } from 'lucide-react';
 import { analyticsService } from '../../services/analyticsService';
 import AnalyticsCard from './AnalyticsCard';
 import RevenueChart from './RevenueChart';
+import ReportScheduleModal from './ReportScheduleModal';
 
-export default function OrgAnalytics({ orgId }) {
+export default function OrgAnalytics({ orgId, slackConnected }) {
     const [loading, setLoading] = useState(true);
     const [period, setPeriod] = useState('30d');
     const [data, setData] = useState(null);
     const [trends, setTrends] = useState([]);
     const [widgetMetrics, setWidgetMetrics] = useState(null);
     const [funnelMetrics, setFunnelMetrics] = useState(null);
+    const [exporting, setExporting] = useState(false);
+    const [sendingSlack, setSendingSlack] = useState(false);
+    const [showScheduleModal, setShowScheduleModal] = useState(false);
+    const [exportToast, setExportToast] = useState(null);
+    const analyticsRef = useRef(null);
 
     useEffect(() => {
         loadAnalytics();
@@ -36,6 +42,49 @@ export default function OrgAnalytics({ orgId }) {
         }
     }
 
+    const showToast = useCallback((message, type = 'success') => {
+        setExportToast({ message, type });
+        setTimeout(() => setExportToast(null), 3000);
+    }, []);
+
+    const handleDownloadPng = async () => {
+        if (!analyticsRef.current || exporting) return;
+        setExporting(true);
+        try {
+            const html2canvas = (await import('html2canvas')).default;
+            const canvas = await html2canvas(analyticsRef.current, {
+                scale: 2,
+                backgroundColor: '#f9fafb',
+                useCORS: true,
+                logging: false
+            });
+            const link = document.createElement('a');
+            link.download = `analytics-${period}-${new Date().toISOString().split('T')[0]}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            showToast('Report downloaded');
+        } catch (err) {
+            console.error('Export failed:', err);
+            showToast('Export failed', 'error');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handleSendToSlack = async () => {
+        if (sendingSlack) return;
+        setSendingSlack(true);
+        try {
+            await analyticsService.sendReportToSlack(orgId, period);
+            showToast('Report sent to Slack');
+        } catch (err) {
+            console.error('Slack send failed:', err);
+            showToast('Failed to send to Slack', 'error');
+        } finally {
+            setSendingSlack(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -58,9 +107,43 @@ export default function OrgAnalytics({ orgId }) {
 
     return (
         <div className="space-y-8 animate-fadeIn">
-            {/* Period Selector */}
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Analytics</h2>
+            {/* Export Toolbar + Period Selector */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-bold text-gray-900">Analytics</h2>
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            onClick={handleDownloadPng}
+                            disabled={exporting}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+                            title="Download as PNG"
+                        >
+                            {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                            <span className="hidden sm:inline">Download</span>
+                        </button>
+                        {slackConnected && (
+                            <>
+                                <button
+                                    onClick={handleSendToSlack}
+                                    disabled={sendingSlack}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+                                    title="Send to Slack"
+                                >
+                                    {sendingSlack ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                                    <span className="hidden sm:inline">Slack</span>
+                                </button>
+                                <button
+                                    onClick={() => setShowScheduleModal(true)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+                                    title="Schedule reports"
+                                >
+                                    <Clock className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Schedule</span>
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
                 <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
                     {[
                         { value: '7d', label: '7 Days' },
@@ -81,6 +164,26 @@ export default function OrgAnalytics({ orgId }) {
                     ))}
                 </div>
             </div>
+
+            {/* Toast notification */}
+            {exportToast && (
+                <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg text-sm font-medium transition-all ${
+                    exportToast.type === 'error' ? 'bg-red-600 text-white' : 'bg-green-600 text-white'
+                }`}>
+                    {exportToast.message}
+                </div>
+            )}
+
+            {/* Schedule Modal */}
+            {showScheduleModal && (
+                <ReportScheduleModal
+                    orgId={orgId}
+                    onClose={() => setShowScheduleModal(false)}
+                />
+            )}
+
+            {/* Analytics content (captured by screenshot) */}
+            <div ref={analyticsRef} className="space-y-8">
 
             {/* Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -527,6 +630,8 @@ export default function OrgAnalytics({ orgId }) {
                     )}
                 </div>
             </div>
+
+            </div>{/* end analyticsRef */}
         </div>
     );
 }
