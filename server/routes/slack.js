@@ -317,42 +317,43 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
         } else if (subcommand.startsWith('contact')) {
             const searchTerm = (text || '').replace(/^contact\s*/i, '').trim();
 
-            if (!searchTerm) {
-                return res.json({
-                    response_type: 'ephemeral',
-                    text: `Usage: \`${command} contact [company or name]\`\nExample: \`${command} contact ABC Plumbing\``
-                });
+            let matches;
+            if (searchTerm) {
+                // Search by company name, contact name, or email
+                const regex = new RegExp(searchTerm, 'i');
+                matches = await Sponsorship.find({
+                    organizerId: organizer._id.toString(),
+                    $or: [
+                        { 'sponsorInfo.companyName': regex },
+                        { 'sponsorInfo.contactName': regex },
+                        { 'sponsorInfo.email': regex },
+                        { sponsorName: regex },
+                        { sponsorEmail: regex },
+                    ]
+                }).sort({ createdAt: 1 });
+            } else {
+                // No search term — list all sponsors
+                matches = await Sponsorship.find({ organizerId: organizer._id.toString() }).sort({ createdAt: 1 });
             }
-
-            // Search sponsorships by company name, contact name, or email (case-insensitive)
-            const regex = new RegExp(searchTerm, 'i');
-            const matches = await Sponsorship.find({
-                organizerId: organizer._id.toString(),
-                $or: [
-                    { 'sponsorInfo.companyName': regex },
-                    { 'sponsorInfo.contactName': regex },
-                    { 'sponsorInfo.email': regex },
-                    { sponsorName: regex },
-                    { sponsorEmail: regex },
-                ]
-            }).sort({ createdAt: 1 });
 
             if (matches.length === 0) {
                 return res.json({
                     response_type: 'ephemeral',
-                    text: `No sponsors found matching "${searchTerm}".`
+                    text: searchTerm ? `No sponsors found matching "${searchTerm}".` : 'No sponsorships found.'
                 });
             }
 
             const statusLabelsContact = { paid: 'Paid', pending: 'Pending', 'branding-submitted': 'Complete' };
             const fmtCurrency = (v) => '$' + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+            const headerText = searchTerm ? `Contact Info — "${searchTerm}"` : `All Sponsor Contacts (${matches.length})`;
 
             const blocks = [
-                { type: 'header', text: { type: 'plain_text', text: `Contact Info — "${searchTerm}"`, emoji: true } },
+                { type: 'header', text: { type: 'plain_text', text: headerText, emoji: true } },
             ];
 
-            // Show up to 10 matches
-            for (const sp of matches.slice(0, 10)) {
+            // Show up to 10 per message (each sponsor = 4 blocks + divider = 5, so 10 fits in 50)
+            const display = matches.slice(0, 10);
+            for (const sp of display) {
                 const company = sp.sponsorInfo?.companyName || sp.sponsorName || 'Unknown';
                 const contact = sp.sponsorInfo?.contactName || sp.sponsorName || 'N/A';
                 const email = sp.sponsorInfo?.email || sp.sponsorEmail || sp.payerEmail || 'N/A';
@@ -394,13 +395,69 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
             if (matches.length > 10) {
                 blocks.push({
                     type: 'context', elements: [
-                        { type: 'mrkdwn', text: `_Showing 10 of ${matches.length} matches._` }
+                        { type: 'mrkdwn', text: `_Showing 10 of ${matches.length}. Use \`${command} contact [name]\` to search, or \`${command} export\` for full list._` }
                     ]
                 });
             }
 
             // Ephemeral so contact info stays private
-            return res.json({ response_type: 'ephemeral', blocks });
+            res.json({ response_type: 'ephemeral', blocks });
+
+            // Send remaining contacts via response_url
+            if (matches.length > 10) {
+                const { response_url } = req.body;
+                if (response_url) {
+                    const remaining = matches.slice(10);
+                    for (let i = 0; i < remaining.length; i += 10) {
+                        const chunk = remaining.slice(i, i + 10);
+                        const contBlocks = [
+                            { type: 'context', elements: [{ type: 'mrkdwn', text: `_Continued (${10 + i + 1}–${10 + i + chunk.length} of ${matches.length})..._` }] },
+                        ];
+                        for (const sp of chunk) {
+                            const company = sp.sponsorInfo?.companyName || sp.sponsorName || 'Unknown';
+                            const contact = sp.sponsorInfo?.contactName || sp.sponsorName || 'N/A';
+                            const email = sp.sponsorInfo?.email || sp.sponsorEmail || sp.payerEmail || 'N/A';
+                            const phone = sp.sponsorInfo?.phone || sp.sponsorPhone || 'N/A';
+                            const website = sp.branding?.websiteUrl || sp.sponsorInfo?.website || 'N/A';
+                            const statusLabel = statusLabelsContact[sp.status] || sp.status;
+                            const artStatus = sp.branding?.logoUrl ? 'Submitted' : 'Missing';
+
+                            contBlocks.push({ type: 'divider' });
+                            contBlocks.push({
+                                type: 'section',
+                                text: { type: 'mrkdwn', text: `*${company}*\n${sp.packageTitle || 'Package'} · ${fmtCurrency(sp.amount)} · ${statusLabel}` }
+                            });
+                            contBlocks.push({
+                                type: 'section',
+                                fields: [
+                                    { type: 'mrkdwn', text: `*Contact:*\n${contact}` },
+                                    { type: 'mrkdwn', text: `*Email:*\n${email}` },
+                                ]
+                            });
+                            contBlocks.push({
+                                type: 'section',
+                                fields: [
+                                    { type: 'mrkdwn', text: `*Phone:*\n${phone}` },
+                                    { type: 'mrkdwn', text: `*Website:*\n${website}` },
+                                ]
+                            });
+                            contBlocks.push({
+                                type: 'section',
+                                fields: [
+                                    { type: 'mrkdwn', text: `*Artwork:*\n${artStatus}` },
+                                ]
+                            });
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        await fetch(response_url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ response_type: 'ephemeral', blocks: contBlocks, replace_original: false })
+                        }).catch(err => console.error('[Slack Contact] Follow-up error:', err));
+                    }
+                }
+            }
+            return;
 
         } else if (subcommand === 'export') {
             // Respond immediately, then generate and DM the file async
