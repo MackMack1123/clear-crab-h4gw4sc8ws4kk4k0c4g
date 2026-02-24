@@ -306,6 +306,7 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
                                 `\`${command} pending\` — List pending sponsorships`,
                                 `\`${command} paid\` — List paid sponsorships`,
                                 `\`${command} complete\` — List completed sponsorships`,
+                                `\`${command} contact [name]\` — Look up sponsor contact info`,
                                 `\`${command} export\` — Export all sponsorships as Excel (DM)`,
                                 `\`${command} help\` — Show this help message`,
                             ].join('\n')
@@ -313,6 +314,96 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
                     }
                 ]
             });
+        } else if (subcommand.startsWith('contact')) {
+            const searchTerm = (text || '').replace(/^contact\s*/i, '').trim();
+
+            if (!searchTerm) {
+                return res.json({
+                    response_type: 'ephemeral',
+                    text: `Usage: \`${command} contact [company or name]\`\nExample: \`${command} contact ABC Plumbing\``
+                });
+            }
+
+            // Search sponsorships by company name, contact name, or email (case-insensitive)
+            const regex = new RegExp(searchTerm, 'i');
+            const matches = await Sponsorship.find({
+                organizerId: organizer._id.toString(),
+                $or: [
+                    { 'sponsorInfo.companyName': regex },
+                    { 'sponsorInfo.contactName': regex },
+                    { 'sponsorInfo.email': regex },
+                    { sponsorName: regex },
+                    { sponsorEmail: regex },
+                ]
+            }).sort({ createdAt: -1 });
+
+            if (matches.length === 0) {
+                return res.json({
+                    response_type: 'ephemeral',
+                    text: `No sponsors found matching "${searchTerm}".`
+                });
+            }
+
+            const statusLabelsContact = { paid: 'Paid', pending: 'Pending', 'branding-submitted': 'Complete' };
+            const statusEmojisContact = { paid: ':white_check_mark:', 'branding-submitted': ':star:', pending: ':hourglass_flowing_sand:' };
+            const fmtCurrency = (v) => '$' + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+
+            const blocks = [
+                { type: 'header', text: { type: 'plain_text', text: `📇 Contact Info — "${searchTerm}"`, emoji: true } },
+            ];
+
+            // Show up to 10 matches
+            for (const sp of matches.slice(0, 10)) {
+                const company = sp.sponsorInfo?.companyName || sp.sponsorName || 'Unknown';
+                const contact = sp.sponsorInfo?.contactName || sp.sponsorName || 'N/A';
+                const email = sp.sponsorInfo?.email || sp.sponsorEmail || sp.payerEmail || 'N/A';
+                const phone = sp.sponsorInfo?.phone || sp.sponsorPhone || 'N/A';
+                const website = sp.branding?.websiteUrl || sp.sponsorInfo?.website || 'N/A';
+                const statusEmoji = statusEmojisContact[sp.status] || '';
+                const statusLabel = statusLabelsContact[sp.status] || sp.status;
+                const artStatus = sp.branding?.logoUrl ? ':art: Submitted' : ':x: Missing';
+
+                blocks.push({ type: 'divider' });
+                blocks.push({
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: `*${company}*\n${sp.packageTitle || 'Package'} · ${fmtCurrency(sp.amount)} · ${statusEmoji} ${statusLabel}`
+                    }
+                });
+                blocks.push({
+                    type: 'section',
+                    fields: [
+                        { type: 'mrkdwn', text: `*Contact:*\n${contact}` },
+                        { type: 'mrkdwn', text: `*Email:*\n${email}` },
+                    ]
+                });
+                blocks.push({
+                    type: 'section',
+                    fields: [
+                        { type: 'mrkdwn', text: `*Phone:*\n${phone}` },
+                        { type: 'mrkdwn', text: `*Website:*\n${website}` },
+                    ]
+                });
+                blocks.push({
+                    type: 'section',
+                    fields: [
+                        { type: 'mrkdwn', text: `*Artwork:*\n${artStatus}` },
+                    ]
+                });
+            }
+
+            if (matches.length > 10) {
+                blocks.push({
+                    type: 'context', elements: [
+                        { type: 'mrkdwn', text: `_Showing 10 of ${matches.length} matches._` }
+                    ]
+                });
+            }
+
+            // Ephemeral so contact info stays private
+            return res.json({ response_type: 'ephemeral', blocks });
+
         } else if (subcommand === 'export') {
             // Respond immediately, then generate and DM the file async
             const { user_id } = req.body;
