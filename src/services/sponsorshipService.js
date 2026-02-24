@@ -244,6 +244,20 @@ export const sponsorshipService = {
         ));
     },
 
+    // Send Slack notification for a single sponsorship
+    sendSlackNotification: async (sponsorshipId, userId) => {
+        const res = await fetch(`${API_BASE_URL}/api/slack/notify/${sponsorshipId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to send Slack notification');
+        }
+        return await res.json();
+    },
+
     // Resend receipt email to sponsor
     resendReceipt: async (sponsorshipId) => {
         const headers = {

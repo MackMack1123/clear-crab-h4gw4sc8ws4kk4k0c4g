@@ -257,11 +257,13 @@ router.post("/", async (req, res) => {
     const pkg = await Package.findById(savedSponsorship.packageId);
     const organizer = await User.findById(savedSponsorship.organizerId);
 
-    // --- Slack Notification (only for immediately-paid sponsorships like sandbox/check) ---
+    // --- Slack Notification ---
+    // Fire for immediately-paid sponsorships (sandbox) AND check pledges (pending but should notify)
     // Stripe/Square sponsorships start as "pending" and get notified in their verify routes
+    const shouldNotifySlack = savedSponsorship.status === "paid" || savedSponsorship.paymentMethod === "check";
     if (
       organizer &&
-      savedSponsorship.status === "paid" &&
+      shouldNotifySlack &&
       organizer.slackSettings?.connected &&
       organizer.slackSettings?.incomingWebhook?.url
     ) {

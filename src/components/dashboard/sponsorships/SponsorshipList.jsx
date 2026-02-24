@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../context/AuthContext';
 import { sponsorshipService } from '../../../services/sponsorshipService';
-import { CheckCircle, Clock, XCircle, ExternalLink, Mail, Loader2 } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, ExternalLink, Mail, Loader2, MessageSquare } from 'lucide-react';
 
 export default function SponsorshipList() {
-    const { currentUser, activeOrganization } = useAuth();
+    const { currentUser, activeOrganization, userProfile } = useAuth();
     const [sponsorships, setSponsorships] = useState([]);
     const [loading, setLoading] = useState(true);
     const [resendingId, setResendingId] = useState(null);
+    const [slackSendingId, setSlackSendingId] = useState(null);
+    const slackConnected = userProfile?.slackSettings?.connected || false;
 
     // Use activeOrganization.id for team member support
     const orgId = activeOrganization?.id || currentUser?.uid;
@@ -41,6 +43,19 @@ export default function SponsorshipList() {
             toast.error(err.message || 'Failed to resend receipt');
         } finally {
             setResendingId(null);
+        }
+    };
+
+    const handleSendSlack = async (sponsorship) => {
+        const id = sponsorship._id || sponsorship.id;
+        setSlackSendingId(id);
+        try {
+            await sponsorshipService.sendSlackNotification(id, orgId);
+            toast.success('Slack notification sent!');
+        } catch (err) {
+            toast.error(err.message || 'Failed to send Slack notification');
+        } finally {
+            setSlackSendingId(null);
         }
     };
 
@@ -110,7 +125,7 @@ export default function SponsorshipList() {
                                 <td className="px-6 py-4 text-sm text-gray-500">
                                     {s.children?.map(c => c.name).join(', ') || '-'}
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-6 py-4 flex items-center gap-1">
                                     {(s.status === 'paid' || s.status === 'branding-submitted') && s.sponsorEmail && (
                                         <button
                                             onClick={() => handleResendReceipt(s)}
@@ -122,6 +137,20 @@ export default function SponsorshipList() {
                                                 <Loader2 className="w-4 h-4 animate-spin" />
                                             ) : (
                                                 <Mail className="w-4 h-4" />
+                                            )}
+                                        </button>
+                                    )}
+                                    {slackConnected && (
+                                        <button
+                                            onClick={() => handleSendSlack(s)}
+                                            disabled={slackSendingId === (s._id || s.id)}
+                                            title="Send Slack notification"
+                                            className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {slackSendingId === (s._id || s.id) ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <MessageSquare className="w-4 h-4" />
                                             )}
                                         </button>
                                     )}

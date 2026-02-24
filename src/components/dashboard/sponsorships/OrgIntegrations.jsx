@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { userService } from '../../../services/userService';
 import PaymentGatewaySettings from '../PaymentGatewaySettings';
-import { Mail, CheckCircle2, AlertCircle, Save, Send } from 'lucide-react';
+import { Mail, CheckCircle2, AlertCircle, Save, Send, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../../../config';
 
@@ -197,6 +197,13 @@ export default function OrgIntegrations() {
                             </div>
                             <div className="text-xs text-gray-400">to {slackTeam}</div>
                         </div>
+                        <button
+                            onClick={connectSlack}
+                            title="Reconnect to update permissions"
+                            className="p-2 border border-gray-200 text-gray-400 rounded-lg hover:text-gray-600 hover:bg-gray-100 transition"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                        </button>
                         <button
                             onClick={handleSendHistory}
                             disabled={sendingHistory}

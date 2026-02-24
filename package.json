@@ -12,6 +12,7 @@
   "dependencies": {
     "@paypal/react-paypal-js": "^8.9.2",
     "clsx": "^2.1.1",
+    "exceljs": "^4.4.0",
     "firebase": "^12.6.0",
     "html2canvas": "^1.4.1",
     "konva": "^10.2.0",

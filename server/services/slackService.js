@@ -53,15 +53,31 @@ const slackService = {
         const contactEmail = sponsorship.sponsorInfo?.email || sponsorship.sponsorEmail || sponsorship.payerEmail || 'Not provided';
         const contactPhone = sponsorship.sponsorInfo?.phone || sponsorship.sponsorPhone || 'Not provided';
         const amount = sponsorship.amount || packageDetails.price || 0;
+        const paymentMethod = sponsorship.paymentMethod || 'unknown';
+        const status = sponsorship.status || 'unknown';
+
+        // Build status context line
+        const methodLabels = { stripe: 'Stripe', square: 'Square', paypal: 'PayPal', check: 'Check', sandbox: 'Sandbox' };
+        const statusLabels = { paid: 'Paid', pending: 'Pending', 'branding-submitted': 'Complete' };
+        const methodLabel = methodLabels[paymentMethod] || paymentMethod;
+        const statusLabel = statusLabels[status] || status;
+        const statusEmoji = status === 'paid' ? ':white_check_mark:' : status === 'branding-submitted' ? ':star:' : ':hourglass_flowing_sand:';
+
+        // Header varies based on payment status
+        const isCheckPledge = paymentMethod === 'check' && status === 'pending';
+        const headerText = isCheckPledge ? "📋 New Check Pledge Received!" : "🎉 New Sponsorship Received!";
+        const fallbackText = isCheckPledge
+            ? `📋 Check Pledge! ${companyName} pledged for ${packageDetails.title}`
+            : `🎉 New Sponsorship! ${companyName} purchased ${packageDetails.title}`;
 
         const message = {
-            text: `🎉 New Sponsorship! ${companyName} purchased ${packageDetails.title}`,
+            text: fallbackText,
             blocks: [
                 {
                     type: "header",
                     text: {
                         type: "plain_text",
-                        text: "🎉 New Sponsorship Received!",
+                        text: headerText,
                         emoji: true
                     }
                 },
@@ -101,6 +117,19 @@ const slackService = {
                         {
                             type: "mrkdwn",
                             text: `*Phone:*\n${contactPhone}`
+                        }
+                    ]
+                },
+                {
+                    type: "section",
+                    fields: [
+                        {
+                            type: "mrkdwn",
+                            text: `*Payment Method:*\n${methodLabel}`
+                        },
+                        {
+                            type: "mrkdwn",
+                            text: `*Status:*\n${statusEmoji} ${statusLabel}`
                         }
                     ]
                 },
@@ -205,6 +234,61 @@ const slackService = {
         } catch (error) {
             console.error("Error sending Slack analytics report:", error);
         }
+    },
+
+    /**
+     * Upload a file to a Slack user via DM using the Web API
+     * Requires chat:write and files:write scopes
+     */
+    uploadFileDM: async (botToken, userId, { buffer, filename, title, initialComment }) => {
+        if (!botToken) throw new Error('Bot token required for file uploads');
+
+        // Use files.uploadV2 via the legacy upload endpoint (multipart form)
+        const FormData = (await import('node-fetch')).FormData || globalThis.FormData;
+
+        // Step 1: Get upload URL
+        const getUrlRes = await fetch(`https://slack.com/api/files.getUploadURLExternal`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${botToken}`,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                filename,
+                length: buffer.length.toString()
+            })
+        });
+        const getUrlData = await getUrlRes.json();
+        if (!getUrlData.ok) {
+            throw new Error(`Failed to get upload URL: ${getUrlData.error}`);
+        }
+
+        // Step 2: Upload the file to the URL
+        await fetch(getUrlData.upload_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/octet-stream' },
+            body: buffer
+        });
+
+        // Step 3: Complete the upload and share to user DM
+        const completeRes = await fetch('https://slack.com/api/files.completeUploadExternal', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${botToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                files: [{ id: getUrlData.file_id, title: title || filename }],
+                channel_id: userId,
+                initial_comment: initialComment || ''
+            })
+        });
+        const completeData = await completeRes.json();
+        if (!completeData.ok) {
+            throw new Error(`Failed to complete file upload: ${completeData.error}`);
+        }
+
+        return completeData;
     },
 
     sendBrandingNotification: async (webhookUrl, sponsorship) => {
