@@ -335,7 +335,7 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
                     { sponsorName: regex },
                     { sponsorEmail: regex },
                 ]
-            }).sort({ createdAt: -1 });
+            }).sort({ createdAt: 1 });
 
             if (matches.length === 0) {
                 return res.json({
@@ -413,7 +413,7 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
             // Fire and forget — generate Excel and DM to user
             (async () => {
                 try {
-                    const allSponsorships = await Sponsorship.find({ organizerId: organizer._id.toString() }).sort({ createdAt: -1 });
+                    const allSponsorships = await Sponsorship.find({ organizerId: organizer._id.toString() }).sort({ createdAt: 1 });
 
                     if (allSponsorships.length === 0) {
                         // Use response_url to follow up ephemerally
@@ -528,7 +528,7 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
             return; // Already responded
         }
 
-        const sponsorships = await Sponsorship.find(filter).sort({ createdAt: -1 });
+        const sponsorships = await Sponsorship.find(filter).sort({ createdAt: 1 });
 
         // Default or "summary" subcommand — show aggregate stats
         if (!subcommand || subcommand === 'summary') {
