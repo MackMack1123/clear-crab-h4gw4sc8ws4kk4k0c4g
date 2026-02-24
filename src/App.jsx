@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useSearchParams } from 'react-router-dom';
+import posthog from 'posthog-js';
 import { AuthProvider } from './context/AuthContext';
 import { SponsorshipProvider } from './context/SponsorshipContext';
 import PrivateRoute from './components/layout/PrivateRoute';
@@ -34,7 +35,11 @@ import { Toaster } from 'react-hot-toast';
 
 function ScrollToTop() {
     const { pathname } = useLocation();
-    React.useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+    const [searchParams] = useSearchParams();
+    React.useEffect(() => {
+        window.scrollTo(0, 0);
+        posthog.capture('$pageview', { $current_url: window.location.href });
+    }, [pathname, searchParams]);
     return null;
 }
 
