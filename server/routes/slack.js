@@ -583,42 +583,90 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
             });
         }
 
-        // Slack blocks have a max of 50 blocks; show up to 15 sponsorships
-        const display = sponsorships.slice(0, 15);
+        // Look up package titles
+        const packageIds = [...new Set(sponsorships.map(s => s.packageId).filter(Boolean))];
+        const packages = await Package.find({ _id: { $in: packageIds } });
+        const packageMap = {};
+        for (const pkg of packages) {
+            packageMap[pkg._id.toString()] = pkg;
+        }
+
         const statusEmojis = { paid: ':white_check_mark:', 'branding-submitted': ':star:', pending: ':hourglass_flowing_sand:' };
         const statusLabels = { paid: 'Paid', 'branding-submitted': 'Complete', pending: 'Pending' };
         const fmtCurrency = (v) => '$' + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
 
-        const blocks = [
+        // Slack allows max 50 blocks per message — send multiple messages if needed
+        // Each sponsorship = 1 block, plus header + divider = 2, so ~47 per message
+        const ITEMS_PER_MESSAGE = 47;
+        const chunks = [];
+        for (let i = 0; i < sponsorships.length; i += ITEMS_PER_MESSAGE) {
+            chunks.push(sponsorships.slice(i, i + ITEMS_PER_MESSAGE));
+        }
+
+        // Build first message blocks
+        const firstBlocks = [
             { type: 'header', text: { type: 'plain_text', text: `📋 ${orgName} — ${filterLabel} Sponsorships (${sponsorships.length})`, emoji: true } },
             { type: 'divider' }
         ];
 
-        for (const sp of display) {
+        for (const sp of chunks[0]) {
             const company = sp.sponsorInfo?.companyName || sp.sponsorName || 'Unknown';
+            const pkg = sp.packageId ? packageMap[sp.packageId.toString()] : null;
+            const pkgTitle = pkg?.title || sp.packageTitle || 'Unknown Package';
             const statusEmoji = statusEmojis[sp.status] || ':grey_question:';
             const statusLabel = statusLabels[sp.status] || sp.status;
             const method = sp.paymentMethod || 'N/A';
             const date = new Date(sp.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-            blocks.push({
+            firstBlocks.push({
                 type: 'section',
                 fields: [
-                    { type: 'mrkdwn', text: `*${company}*\n${sp.packageTitle || 'Package'}` },
+                    { type: 'mrkdwn', text: `*${company}*\n${pkgTitle}` },
                     { type: 'mrkdwn', text: `${fmtCurrency(sp.amount)} — ${statusEmoji} ${statusLabel}\n${method} · ${date} · ${sp.branding?.logoUrl ? ':art: Art' : ':x: No art'}` }
                 ]
             });
         }
 
-        if (sponsorships.length > 15) {
-            blocks.push({
-                type: 'context', elements: [
-                    { type: 'mrkdwn', text: `_Showing 15 of ${sponsorships.length}. View all in the <https://getfundraisr.io|Fundraisr Dashboard>._` }
-                ]
-            });
+        // Respond with the first chunk
+        res.json({ response_type: 'in_channel', blocks: firstBlocks });
+
+        // Send remaining chunks via response_url if there are more
+        if (chunks.length > 1) {
+            const { response_url } = req.body;
+            if (response_url) {
+                for (let c = 1; c < chunks.length; c++) {
+                    const contBlocks = [
+                        { type: 'context', elements: [{ type: 'mrkdwn', text: `_Continued (${c * ITEMS_PER_MESSAGE + 1}–${Math.min((c + 1) * ITEMS_PER_MESSAGE, sponsorships.length)} of ${sponsorships.length})..._` }] },
+                    ];
+                    for (const sp of chunks[c]) {
+                        const company = sp.sponsorInfo?.companyName || sp.sponsorName || 'Unknown';
+                        const pkg = sp.packageId ? packageMap[sp.packageId.toString()] : null;
+                        const pkgTitle = pkg?.title || sp.packageTitle || 'Unknown Package';
+                        const statusEmoji = statusEmojis[sp.status] || ':grey_question:';
+                        const statusLabel = statusLabels[sp.status] || sp.status;
+                        const method = sp.paymentMethod || 'N/A';
+                        const date = new Date(sp.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+                        contBlocks.push({
+                            type: 'section',
+                            fields: [
+                                { type: 'mrkdwn', text: `*${company}*\n${pkgTitle}` },
+                                { type: 'mrkdwn', text: `${fmtCurrency(sp.amount)} — ${statusEmoji} ${statusLabel}\n${method} · ${date} · ${sp.branding?.logoUrl ? ':art: Art' : ':x: No art'}` }
+                            ]
+                        });
+                    }
+                    // Small delay to avoid rate limits
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    await fetch(response_url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ response_type: 'in_channel', blocks: contBlocks, replace_original: false })
+                    }).catch(err => console.error('[Slack Command] Follow-up error:', err));
+                }
+            }
         }
 
-        return res.json({ response_type: 'in_channel', blocks });
+        return;
 
     } catch (err) {
         console.error('[Slack Command] Error:', err);
