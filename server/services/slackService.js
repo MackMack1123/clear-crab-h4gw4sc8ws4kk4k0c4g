@@ -251,8 +251,20 @@ const slackService = {
     uploadFileDM: async (botToken, userId, { buffer, filename, title, initialComment }) => {
         if (!botToken) throw new Error('Bot token required for file uploads');
 
-        // Use files.uploadV2 via the legacy upload endpoint (multipart form)
-        const FormData = (await import('node-fetch')).FormData || globalThis.FormData;
+        // Step 0: Open a DM conversation to get the channel ID
+        const convRes = await fetch('https://slack.com/api/conversations.open', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${botToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ users: userId })
+        });
+        const convData = await convRes.json();
+        if (!convData.ok) {
+            throw new Error(`Failed to open DM conversation: ${convData.error}`);
+        }
+        const dmChannelId = convData.channel.id;
 
         // Step 1: Get upload URL
         const getUrlRes = await fetch(`https://slack.com/api/files.getUploadURLExternal`, {
@@ -287,7 +299,7 @@ const slackService = {
             },
             body: JSON.stringify({
                 files: [{ id: getUrlData.file_id, title: title || filename }],
-                channel_id: userId,
+                channel_id: dmChannelId,
                 initial_comment: initialComment || ''
             })
         });
