@@ -406,10 +406,10 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
 
         } else if (subcommand === 'export') {
             // Respond immediately, then generate and DM the file async
-            const { user_id } = req.body;
+            const { user_id, user_name } = req.body;
             res.json({
-                response_type: 'ephemeral',
-                text: ':hourglass_flowing_sand: Generating your sponsorship export... Check your DMs in a moment.'
+                response_type: 'in_channel',
+                text: `:page_facing_up: Sponsorship list exported by <@${user_id}>`
             });
 
             // Fire and forget — generate Excel and DM to user
