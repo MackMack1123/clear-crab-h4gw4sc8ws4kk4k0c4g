@@ -61,14 +61,13 @@ const slackService = {
         const statusLabels = { paid: 'Paid', pending: 'Pending', 'branding-submitted': 'Complete' };
         const methodLabel = methodLabels[paymentMethod] || paymentMethod;
         const statusLabel = statusLabels[status] || status;
-        const statusEmoji = status === 'paid' ? ':white_check_mark:' : status === 'branding-submitted' ? ':star:' : ':hourglass_flowing_sand:';
 
         // Header varies based on payment status
         const isCheckPledge = paymentMethod === 'check' && status === 'pending';
-        const headerText = isCheckPledge ? "📋 New Check Pledge Received!" : "🎉 New Sponsorship Received!";
+        const headerText = isCheckPledge ? "New Check Pledge Received" : "New Sponsorship Received";
         const fallbackText = isCheckPledge
-            ? `📋 Check Pledge! ${companyName} pledged for ${packageDetails.title}`
-            : `🎉 New Sponsorship! ${companyName} purchased ${packageDetails.title}`;
+            ? `Check Pledge: ${companyName} pledged for ${packageDetails.title}`
+            : `New Sponsorship: ${companyName} purchased ${packageDetails.title}`;
 
         const message = {
             text: fallbackText,
@@ -129,7 +128,7 @@ const slackService = {
                         },
                         {
                             type: "mrkdwn",
-                            text: `*Status:*\n${statusEmoji} ${statusLabel}`
+                            text: `*Status:*\n${statusLabel}`
                         }
                     ]
                 },
@@ -138,7 +137,7 @@ const slackService = {
                     fields: [
                         {
                             type: "mrkdwn",
-                            text: `*Artwork:*\n${sponsorship.branding?.logoUrl ? ':art: Submitted' : ':x: Not submitted'}`
+                            text: `*Artwork:*\n${sponsorship.branding?.logoUrl ? 'Submitted' : 'Not submitted'}`
                         }
                     ]
                 },

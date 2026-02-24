@@ -345,11 +345,10 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
             }
 
             const statusLabelsContact = { paid: 'Paid', pending: 'Pending', 'branding-submitted': 'Complete' };
-            const statusEmojisContact = { paid: ':white_check_mark:', 'branding-submitted': ':star:', pending: ':hourglass_flowing_sand:' };
             const fmtCurrency = (v) => '$' + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
 
             const blocks = [
-                { type: 'header', text: { type: 'plain_text', text: `📇 Contact Info — "${searchTerm}"`, emoji: true } },
+                { type: 'header', text: { type: 'plain_text', text: `Contact Info — "${searchTerm}"`, emoji: true } },
             ];
 
             // Show up to 10 matches
@@ -359,16 +358,15 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
                 const email = sp.sponsorInfo?.email || sp.sponsorEmail || sp.payerEmail || 'N/A';
                 const phone = sp.sponsorInfo?.phone || sp.sponsorPhone || 'N/A';
                 const website = sp.branding?.websiteUrl || sp.sponsorInfo?.website || 'N/A';
-                const statusEmoji = statusEmojisContact[sp.status] || '';
                 const statusLabel = statusLabelsContact[sp.status] || sp.status;
-                const artStatus = sp.branding?.logoUrl ? ':art: Submitted' : ':x: Missing';
+                const artStatus = sp.branding?.logoUrl ? 'Submitted' : 'Missing';
 
                 blocks.push({ type: 'divider' });
                 blocks.push({
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: `*${company}*\n${sp.packageTitle || 'Package'} · ${fmtCurrency(sp.amount)} · ${statusEmoji} ${statusLabel}`
+                        text: `*${company}*\n${sp.packageTitle || 'Package'} · ${fmtCurrency(sp.amount)} · ${statusLabel}`
                     }
                 });
                 blocks.push({
@@ -547,7 +545,7 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
             return res.json({
                 response_type: 'in_channel',
                 blocks: [
-                    { type: 'header', text: { type: 'plain_text', text: `📊 ${orgName} — Sponsorship Summary`, emoji: true } },
+                    { type: 'header', text: { type: 'plain_text', text: `${orgName} — Sponsorship Summary`, emoji: true } },
                     {
                         type: 'section', fields: [
                             { type: 'mrkdwn', text: `*Total Sponsorships:*\n${totalCount}` },
@@ -556,14 +554,14 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
                     },
                     {
                         type: 'section', fields: [
-                            { type: 'mrkdwn', text: `*Paid / Complete:*\n:white_check_mark: ${paidCount}` },
-                            { type: 'mrkdwn', text: `*Pending:*\n:hourglass_flowing_sand: ${pendingCount} (${fmtCurrency(pendingRevenue)})` }
+                            { type: 'mrkdwn', text: `*Paid / Complete:*\n${paidCount}` },
+                            { type: 'mrkdwn', text: `*Pending:*\n${pendingCount} (${fmtCurrency(pendingRevenue)})` }
                         ]
                     },
                     {
                         type: 'section', fields: [
-                            { type: 'mrkdwn', text: `*Artwork Submitted:*\n:art: ${artworkCount}` },
-                            { type: 'mrkdwn', text: `*Artwork Missing:*\n:x: ${missingArtCount}` }
+                            { type: 'mrkdwn', text: `*Artwork Submitted:*\n${artworkCount}` },
+                            { type: 'mrkdwn', text: `*Artwork Missing:*\n${missingArtCount}` }
                         ]
                     },
                     {
@@ -591,7 +589,6 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
             packageMap[pkg._id.toString()] = pkg;
         }
 
-        const statusEmojis = { paid: ':white_check_mark:', 'branding-submitted': ':star:', pending: ':hourglass_flowing_sand:' };
         const statusLabels = { paid: 'Paid', 'branding-submitted': 'Complete', pending: 'Pending' };
         const fmtCurrency = (v) => '$' + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
 
@@ -605,7 +602,7 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
 
         // Build first message blocks
         const firstBlocks = [
-            { type: 'header', text: { type: 'plain_text', text: `📋 ${orgName} — ${filterLabel} Sponsorships (${sponsorships.length})`, emoji: true } },
+            { type: 'header', text: { type: 'plain_text', text: `${orgName} — ${filterLabel} Sponsorships (${sponsorships.length})`, emoji: true } },
             { type: 'divider' }
         ];
 
@@ -613,16 +610,16 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
             const company = sp.sponsorInfo?.companyName || sp.sponsorName || 'Unknown';
             const pkg = sp.packageId ? packageMap[sp.packageId.toString()] : null;
             const pkgTitle = pkg?.title || sp.packageTitle || 'Unknown Package';
-            const statusEmoji = statusEmojis[sp.status] || ':grey_question:';
             const statusLabel = statusLabels[sp.status] || sp.status;
             const method = sp.paymentMethod || 'N/A';
             const date = new Date(sp.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const art = sp.branding?.logoUrl ? 'Art' : 'No art';
 
             firstBlocks.push({
                 type: 'section',
                 fields: [
                     { type: 'mrkdwn', text: `*${company}*\n${pkgTitle}` },
-                    { type: 'mrkdwn', text: `${fmtCurrency(sp.amount)} — ${statusEmoji} ${statusLabel}\n${method} · ${date} · ${sp.branding?.logoUrl ? ':art: Art' : ':x: No art'}` }
+                    { type: 'mrkdwn', text: `${fmtCurrency(sp.amount)} · ${statusLabel}\n${method} · ${date} · ${art}` }
                 ]
             });
         }
@@ -642,16 +639,16 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
                         const company = sp.sponsorInfo?.companyName || sp.sponsorName || 'Unknown';
                         const pkg = sp.packageId ? packageMap[sp.packageId.toString()] : null;
                         const pkgTitle = pkg?.title || sp.packageTitle || 'Unknown Package';
-                        const statusEmoji = statusEmojis[sp.status] || ':grey_question:';
                         const statusLabel = statusLabels[sp.status] || sp.status;
                         const method = sp.paymentMethod || 'N/A';
                         const date = new Date(sp.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        const art = sp.branding?.logoUrl ? 'Art' : 'No art';
 
                         contBlocks.push({
                             type: 'section',
                             fields: [
                                 { type: 'mrkdwn', text: `*${company}*\n${pkgTitle}` },
-                                { type: 'mrkdwn', text: `${fmtCurrency(sp.amount)} — ${statusEmoji} ${statusLabel}\n${method} · ${date} · ${sp.branding?.logoUrl ? ':art: Art' : ':x: No art'}` }
+                                { type: 'mrkdwn', text: `${fmtCurrency(sp.amount)} · ${statusLabel}\n${method} · ${date} · ${art}` }
                             ]
                         });
                     }
