@@ -1,6 +1,5 @@
 const express = require('express');
 const crypto = require('crypto');
-const ExcelJS = require('exceljs');
 const router = express.Router();
 const slackService = require('../services/slackService');
 const User = require('../models/User');
@@ -349,6 +348,7 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
                     }
 
                     // Build Excel workbook
+                    const ExcelJS = require('exceljs');
                     const workbook = new ExcelJS.Workbook();
                     workbook.creator = 'Fundraisr';
                     workbook.created = new Date();
@@ -365,6 +365,7 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
                         { header: 'Payment Method', key: 'method', width: 16 },
                         { header: 'Status', key: 'status', width: 14 },
                         { header: 'Date', key: 'date', width: 14 },
+                        { header: 'Artwork', key: 'artwork', width: 14 },
                         { header: 'Website', key: 'website', width: 28 },
                         { header: 'Tagline', key: 'tagline', width: 30 },
                     ];
@@ -390,6 +391,7 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
                             method: methodLabels[sp.paymentMethod] || sp.paymentMethod || '',
                             status: statusLabels[sp.status] || sp.status || '',
                             date: new Date(sp.createdAt).toLocaleDateString('en-US'),
+                            artwork: sp.branding?.logoUrl ? 'Submitted' : 'Missing',
                             website: sp.branding?.websiteUrl || '',
                             tagline: sp.branding?.tagline || '',
                         });
@@ -399,7 +401,7 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
                     sheet.getColumn('amount').numFmt = '$#,##0.00';
 
                     // Add auto-filter
-                    sheet.autoFilter = { from: 'A1', to: `K${allSponsorships.length + 1}` };
+                    sheet.autoFilter = { from: 'A1', to: `L${allSponsorships.length + 1}` };
 
                     // Generate buffer
                     const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
@@ -447,6 +449,8 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
             const pendingCount = allSponsorships.filter(s => s.status === 'pending').length;
             const totalRevenue = allSponsorships.filter(s => s.status === 'paid' || s.status === 'branding-submitted').reduce((sum, s) => sum + (s.amount || 0), 0);
             const pendingRevenue = allSponsorships.filter(s => s.status === 'pending').reduce((sum, s) => sum + (s.amount || 0), 0);
+            const artworkCount = allSponsorships.filter(s => s.branding?.logoUrl).length;
+            const missingArtCount = totalCount - artworkCount;
             const fmtCurrency = (v) => '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2 });
 
             return res.json({
@@ -463,6 +467,12 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
                         type: 'section', fields: [
                             { type: 'mrkdwn', text: `*Paid / Complete:*\n:white_check_mark: ${paidCount}` },
                             { type: 'mrkdwn', text: `*Pending:*\n:hourglass_flowing_sand: ${pendingCount} (${fmtCurrency(pendingRevenue)})` }
+                        ]
+                    },
+                    {
+                        type: 'section', fields: [
+                            { type: 'mrkdwn', text: `*Artwork Submitted:*\n:art: ${artworkCount}` },
+                            { type: 'mrkdwn', text: `*Artwork Missing:*\n:x: ${missingArtCount}` }
                         ]
                     },
                     {
@@ -504,7 +514,7 @@ router.post('/commands', slackCommandParser, verifySlackSignature, async (req, r
                 type: 'section',
                 fields: [
                     { type: 'mrkdwn', text: `*${company}*\n${sp.packageTitle || 'Package'}` },
-                    { type: 'mrkdwn', text: `${fmtCurrency(sp.amount)} — ${statusEmoji} ${statusLabel}\n${method} · ${date}` }
+                    { type: 'mrkdwn', text: `${fmtCurrency(sp.amount)} — ${statusEmoji} ${statusLabel}\n${method} · ${date} · ${sp.branding?.logoUrl ? ':art: Art' : ':x: No art'}` }
                 ]
             });
         }

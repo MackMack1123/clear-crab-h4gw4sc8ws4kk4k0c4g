@@ -133,6 +133,15 @@ const slackService = {
                         }
                     ]
                 },
+                {
+                    type: "section",
+                    fields: [
+                        {
+                            type: "mrkdwn",
+                            text: `*Artwork:*\n${sponsorship.branding?.logoUrl ? ':art: Submitted' : ':x: Not submitted'}`
+                        }
+                    ]
+                },
             ]
         };
 
